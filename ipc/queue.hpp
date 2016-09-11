@@ -1,3 +1,4 @@
+// Author: James Kuszmaul <jabukuszmaul@gmail.com>
 #pragma once
 
 #include <boost/interprocess/ipc/message_queue.hpp>

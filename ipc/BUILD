@@ -3,6 +3,7 @@ cc_library(
   hdrs=["queue.hpp"],
   linkopts=["-lrt", "-pthread"],
 )
+# Unfortunately, can't access system resources (ie, shm) inside cc_test sandbox
 cc_binary(
   name="queue_test",
   srcs=["queue_test.cc"],
