@@ -7,12 +7,16 @@
 #include <cstring>
 #include <array>
 
+#include "glog/logging.h"
+
 namespace sailbot {
+
+// TODO(james): Fix documentation.
+
 /**
  * @brief A wrapper for the boost boost message_queue class.
  *
- * @tparam T The object being passed through the struct. This should be
- *   Plain-Old-Data (eg, a C-struct of basic types, or builtin types).
+ * @tparam T The object being passed through the queue. Should be a protobuf.
  *
  * The primary reasons for this wrapper are:
  * - Automatically deal with cleaning up shared memory.
@@ -30,7 +34,6 @@ namespace sailbot {
  * track of the number of instances, across all processes, of Queues using
  * the shared memory queue in question.
  */
-template <typename T>
 class Queue {
  public:
   /**
@@ -39,7 +42,7 @@ class Queue {
    * @param name The name to use for the memory mapped file for the queue.
    * @param queue_len The maximum number of messages allowed in the queue.
    */
-  Queue(const char *name, size_t queue_len=10);
+  Queue(const char *name, size_t queue_len=10, size_t msg_size=128);
 
   /**
    * @brief Cleans up shared memory as necessary.
@@ -50,25 +53,29 @@ class Queue {
    * @brief Append a message to the queue.
    *
    * See the boost::interprocess::message_queue documentation for more
-   *   information; this function just calls message_queue::send.
+   *   information; this function just calls message_queue::send after
+   *   serializing the protobuf.
    *
    * @param buffer The object to append to the queue.
    * @param priority The priority of the message within the queue (used to jump
    *   the queue).
    */
-  void send(const T *buffer, unsigned int priority=0);
+  void send(const void *buffer, size_t size, unsigned int priority=0);
 
   /**
    * @brief Retrieve the next message from the queue, blocking until available.
    *
    * See the boost::interprocess::message_queue documentation for more
-   *   information; this function just calls message_queue::send.
+   *   information; this function just calls message_queue::receive.
    *
    * @param buffer The buffer to fill the the new message.
    * @param priority The priority of the received message.
    */
-  void receive(T *buffer, unsigned int &priority);
-  void receive(T *buffer) { unsigned p; receive(buffer, p); }
+  void receive(void *buffer, size_t size, size_t &rcvd, unsigned int &priority);
+  void receive(void *buffer, size_t size, size_t &rcvd) {
+    unsigned p;
+    receive(buffer, size, rcvd, p);
+  }
 
   /**
    * @brief removes everything in shared memory. Call when doing global init.
@@ -92,50 +99,36 @@ class Queue {
   boost::interprocess::named_semaphore *semaphore_;
 };
 
-template <typename T>
-Queue<T>::Queue(const char *name, size_t queue_len) : name_(name) {
-  namespace bst = boost::interprocess;
-
-  semaphore_ = new bst::named_semaphore(bst::open_or_create, name, 0/*Initial Value*/);
-  semaphore_->post();
-  queue_ =
-      new bst::message_queue(bst::open_or_create, name_, queue_len, sizeof(T));
-}
 
 template <typename T>
-Queue<T>::~Queue() {
-  // We need to delete the queue_ before calling bst::message_queue::remove().
-  delete queue_;
+class ProtoQueue {
+ public:
+  ProtoQueue(const char *name) : impl_(name, 10, BUF_SIZE) {}
 
-  semaphore_->wait();
+  void send(const T *msg);
+  void receive(T *msg);
+ private:
+  Queue impl_;
 
-  // Check if the semaphore has reached zero and, if so, delete it.
-  if (!semaphore_->try_wait()) {
-    delete semaphore_;
-    remove(name_);
-  }
-  else {
-    // If the try_wait succeeded, then re-increment the semaphore_.
-    semaphore_->post();
+  //! Buffer to be used when writing out to queues.
+  static constexpr size_t BUF_SIZE = 128;
+  char buffer_[BUF_SIZE];
+};
+
+template <typename T>
+void ProtoQueue<T>::send(const T *msg) {
+  if (msg->SerializeToArray(buffer_, BUF_SIZE)) {
+    impl_.send(buffer_, msg->ByteSize(), 0);
+  } else {
+    LOG(FATAL) << "Failed to serialize message";
   }
 }
 
 template <typename T>
-void Queue<T>::send(const T *buffer, unsigned int priority) {
-  queue_->send(buffer, sizeof(T), priority);
+void ProtoQueue<T>::receive(T* msg) {
+  size_t rcvd;
+  impl_.receive(buffer_, BUF_SIZE, rcvd);
+  msg->ParseFromArray(buffer_, rcvd);
 }
 
-template <typename T>
-void Queue<T>::receive(T *buffer, unsigned int &priority) {
-  size_t recvd_size;
-  queue_->receive(buffer, sizeof(T), recvd_size, priority);
-  if (recvd_size != sizeof(T)) return; // TODO: error.
-}
-
-template <typename T>
-void Queue<T>::remove(const char *name) {
-  namespace bst = boost::interprocess;
-  bst::named_semaphore::remove(name);
-  bst::message_queue::remove(name);
-}
 } // namespace sailbot

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+package sailbot;
+
+message PingMsg {
+  float a = 1;
+}
+
+message PongMsg {
+  float b = 1;
+}

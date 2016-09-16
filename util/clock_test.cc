@@ -3,6 +3,10 @@
 #include <chrono>
 #include <stdio.h>
 
+namespace sailbot {
+namespace util {
+namespace testing {
+
 TEST(TimeTest, BasicLooping) {
   ::std::chrono::time_point<::std::chrono::steady_clock> start, cur;
 
@@ -21,3 +25,7 @@ TEST(TimeTest, BasicLooping) {
     start = cur;
   }
 }
+
+}  // testing
+}  // util
+}  // sailbot

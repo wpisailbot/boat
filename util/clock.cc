@@ -4,6 +4,9 @@
 
 #include "glog/logging.h"
 
+namespace sailbot {
+namespace util {
+
 namespace {
   bool time_is_greater(timespec rhs, timespec lhs) {
     return rhs.tv_sec == lhs.tv_sec ? rhs.tv_nsec > lhs.tv_nsec
@@ -33,3 +36,6 @@ void Loop::WaitForNext() {
   clock_nanosleep(clock_, TIMER_ABSTIME /*flags*/, &last_trigger_,
                   NULL /*remain*/);
 }
+
+}  // util
+}  // sailbot

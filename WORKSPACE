@@ -5,3 +5,10 @@ new_http_archive(
   build_file = "gtest.BUILD",
   strip_prefix = "googletest-release-1.8.0/googletest",
 )
+
+git_repository(
+  name = "protobuf",
+  remote = "https://github.com/google/protobuf",
+  tag = "v3.0.2",
+  #commit = "e7982e409deab9cb4390dd574441604e846caf7f", # master on 20160727
+)

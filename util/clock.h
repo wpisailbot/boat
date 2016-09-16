@@ -3,6 +3,10 @@
 
 #include <time.h>
 
+namespace sailbot {
+
+namespace util {
+
 class Loop {
  public:
   Loop(timespec period, clockid_t clockid=CLOCK_MONOTONIC);
@@ -12,3 +16,7 @@ class Loop {
   timespec period_;
   timespec last_trigger_;
 };
+
+}  // util
+
+}  // sailbot
