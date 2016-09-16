@@ -16,6 +16,27 @@ cc_library(
     "@protobuf//:protobuf",
   ]
 )
+cc_library(
+  name="logger",
+  srcs=["logger.cc"],
+  hdrs=["logger.h"],
+  deps = [
+    ":node",
+    "//ipc:queue",
+    ":msg_proto",
+    "@protobuf//:protobuf",
+  ]
+)
+cc_binary(
+  name="logger_main",
+  srcs=["logger_main.cc"],
+  deps=[":logger"],
+)
+cc_binary(
+  name="log_reader_main",
+  srcs=["log_reader_main.cc"],
+  deps=[":logger"],
+)
 cc_test(
   name="clock_test",
   srcs=["clock_test.cc"],
@@ -29,6 +50,7 @@ cc_test(
 cc_proto_library(
   name="msg_proto",
   srcs=["msg.proto"],
+  deps=["@protobuf//:cc_wkt_protos"],
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )

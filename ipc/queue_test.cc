@@ -42,31 +42,6 @@ TEST_F(QueueTest, UpDown) {
   EXPECT_EQ(rcv.foo(), send.foo());
 }
 
-#if 0
-TEST_F(QueueTest, DISABLED_Priority) {
-  Queue<int> data(name);
-  int one=1, two=2, three=3;
-  // We well send one, then two, then three.
-  // three will be sent with a priority of 1.
-  // We will do a receive before sending three and then two after.
-  // The expected order of receipt is one, three, two.
-  data.send(&one);
-  data.send(&two);
-  unsigned priority;
-  int rcv;
-  data.receive(&rcv, priority);
-  EXPECT_EQ(rcv, one);
-  EXPECT_EQ(priority, 0u);
-  data.send(&three, 1);
-  data.receive(&rcv, priority);
-  EXPECT_EQ(rcv, three);
-  EXPECT_EQ(priority, 1u);
-  data.receive(&rcv, priority);
-  EXPECT_EQ(rcv, two);
-  EXPECT_EQ(priority, 0u);
-}
-#endif
-
 TEST_F(QueueTest, MultipleProcess) {
   pid_t pid = fork();
   // Now in separate processes.

@@ -1,8 +1,11 @@
 syntax = "proto3";
 
-option cc_enable_arenas = true;
+import "google/protobuf/timestamp.proto";
 
 package sailbot;
+
+option cc_enable_arenas = true;
+
 
 message PingMsg {
   float a = 1;
@@ -10,4 +13,11 @@ message PingMsg {
 
 message PongMsg {
   float b = 1;
+}
+
+message LogEntry {
+  int32 id = 1;
+  google.protobuf.Timestamp time = 2;
+
+  bytes data = 7;
 }

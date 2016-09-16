@@ -28,7 +28,11 @@ class Node {
   template <typename T>
   T *AllocateMessage();
 
-  //time Time();
+  timespec Time() {
+    timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return time;
+  }
 
   virtual void Iterate() = 0;
 

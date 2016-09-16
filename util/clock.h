@@ -4,7 +4,6 @@
 #include <time.h>
 
 namespace sailbot {
-
 namespace util {
 
 class Loop {
@@ -18,5 +17,4 @@ class Loop {
 };
 
 }  // util
-
 }  // sailbot
