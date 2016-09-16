@@ -598,8 +598,7 @@ inline bool
          }
       }
 
-      --m_cur_msg;
-      m_cur_msg %= p_hdr->m_max_num_msg;
+      m_cur_msg = m_cur_msg ? m_cur_msg - 1 : p_hdr->m_max_num_msg - 1;
 
       if (p_hdr->end_index() >= p_hdr->m_cur_first_msg) {
         if (m_cur_msg > p_hdr->end_index() ||
