@@ -39,7 +39,7 @@ TEST_F(QueueTest, UpDown) {
   rcv.set_foo(99);
   data.send(&send);
   data.receive(&rcv);
-  EXPECT_TRUE(rcv.foo() == send.foo());
+  EXPECT_EQ(rcv.foo(), send.foo());
 }
 
 #if 0

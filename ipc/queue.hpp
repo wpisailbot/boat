@@ -1,8 +1,8 @@
 // Author: James Kuszmaul <jabukuszmaul@gmail.com>
 #pragma once
 
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/interprocess/shared_memory_object.hpp>
+//#include <boost/interprocess/ipc/message_queue.hpp>
+#include "message_queue.hpp"
 #include <boost/interprocess/sync/named_semaphore.hpp>
 #include <cstring>
 #include <array>
@@ -57,10 +57,8 @@ class Queue {
    *   serializing the protobuf.
    *
    * @param buffer The object to append to the queue.
-   * @param priority The priority of the message within the queue (used to jump
-   *   the queue).
    */
-  void send(const void *buffer, size_t size, unsigned int priority=0);
+  void send(const void *buffer, size_t size);
 
   /**
    * @brief Retrieve the next message from the queue, blocking until available.
@@ -69,13 +67,8 @@ class Queue {
    *   information; this function just calls message_queue::receive.
    *
    * @param buffer The buffer to fill the the new message.
-   * @param priority The priority of the received message.
    */
-  void receive(void *buffer, size_t size, size_t &rcvd, unsigned int &priority);
-  void receive(void *buffer, size_t size, size_t &rcvd) {
-    unsigned p;
-    receive(buffer, size, rcvd, p);
-  }
+  void receive(void *buffer, size_t size, size_t &rcvd);
 
   /**
    * @brief removes everything in shared memory. Call when doing global init.
@@ -118,7 +111,7 @@ class ProtoQueue {
 template <typename T>
 void ProtoQueue<T>::send(const T *msg) {
   if (msg->SerializeToArray(buffer_, BUF_SIZE)) {
-    impl_.send(buffer_, msg->ByteSize(), 0);
+    impl_.send(buffer_, msg->ByteSize());
   } else {
     LOG(FATAL) << "Failed to serialize message";
   }

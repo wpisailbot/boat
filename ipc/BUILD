@@ -3,7 +3,7 @@ load("@protobuf//:protobuf.bzl", "cc_proto_library")
 cc_library(
   name="queue",
   srcs=["queue.cc"],
-  hdrs=["queue.hpp"],
+  hdrs=["queue.hpp", "message_queue.hpp"],
   linkopts=["-lrt", "-pthread", "-lglog"],
 )
 cc_proto_library(

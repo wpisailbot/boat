@@ -28,13 +28,12 @@ Queue::~Queue() {
   }
 }
 
-void Queue::send(const void *msg, size_t size, unsigned int priority) {
-  queue_->send(msg, size, priority);
+void Queue::send(const void *msg, size_t size) {
+  queue_->send(msg, size);
 }
 
-void Queue::receive(void *msg, size_t size, size_t &rcvd,
-                    unsigned int &priority) {
-  queue_->receive(msg, size, rcvd, priority);
+void Queue::receive(void *msg, size_t size, size_t &rcvd) {
+  queue_->receive(msg, size, rcvd);
 }
 
 void Queue::remove(const char *name) {
