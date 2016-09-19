@@ -1,7 +1,8 @@
 // Author: James Kuszmaul <jabukuszmaul@gmail.com>
+// Contains Queue and ProtoQueue<T>, which uses Queue to send back and forth
+// protobuf messages.
 #pragma once
 
-//#include <boost/interprocess/ipc/message_queue.hpp>
 #include "message_queue.hpp"
 #include <boost/interprocess/sync/named_semaphore.hpp>
 #include <cstring>
@@ -14,25 +15,12 @@ namespace sailbot {
 // TODO(james): Fix documentation.
 
 /**
- * @brief A wrapper for the boost boost message_queue class.
+ * @brief A wrapper for the boost message_queue class.
  *
- * @tparam T The object being passed through the queue. Should be a protobuf.
- *
- * The primary reasons for this wrapper are:
- * - Automatically deal with cleaning up shared memory.
- * - Slightly clean up the message_queue interface for our uses.
- *
- * **Method of operation:**
- *
- * In order to keep track of when to completely destroy the shared memory,
- * we choose to assume that there will never be an period when no processes
- * are using the shared memory. The boost libraries do not make such an
- * assumption and so using the boost libraries the user has to keep track
- * of when to remove the shared memory.
- *
- * In order to keep track of this, we use a semaphore to keep
- * track of the number of instances, across all processes, of Queues using
- * the shared memory queue in question.
+ * Keeps track of a boost message_queue and IPC semaphore, in order
+ * to track when everyone is done using the message_queue. Unfortunately,
+ * due to a tendency to Ctrl-C processes, the semaphore rarely gets
+ * properly decremented and so some other implementation should be considered.
  */
 class Queue {
  public:
@@ -41,6 +29,7 @@ class Queue {
    *
    * @param name The name to use for the memory mapped file for the queue.
    * @param queue_len The maximum number of messages allowed in the queue.
+   * @param msg_size The mazimum size that a message will be.
    */
   Queue(const char *name, size_t queue_len=10, size_t msg_size=128);
 
@@ -53,8 +42,7 @@ class Queue {
    * @brief Append a message to the queue.
    *
    * See the boost::interprocess::message_queue documentation for more
-   *   information; this function just calls message_queue::send after
-   *   serializing the protobuf.
+   *   information; this function just calls message_queue::send.
    *
    * @param buffer The object to append to the queue.
    */
@@ -74,7 +62,7 @@ class Queue {
    * @brief removes everything in shared memory. Call when doing global init.
    *
    * If you don't call this and the various pieces of shared memory already are
-   * initialized, then things will get awkward.
+   * initialized, then things may get awkward.
    */
   static void remove(const char *name);
 
@@ -92,11 +80,17 @@ class Queue {
   boost::interprocess::named_semaphore *semaphore_;
 };
 
-
+/**
+ * Message queue for sending protobufs back and forth; deals with serializing
+ * and parsing the protobufs for you.
+ */
 template <typename T>
 class ProtoQueue {
  public:
-  ProtoQueue(const char *name) : impl_(name, 10, BUF_SIZE) {}
+  // TODO(james): Parameterize number of messages.
+  // @param name name of the queue to use.
+  ProtoQueue(const char *name)
+      : impl_(name, 10 /*number of messages*/, BUF_SIZE) {}
 
   void send(const T *msg);
   void receive(T *msg);

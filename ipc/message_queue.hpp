@@ -1,3 +1,8 @@
+// This is a modified version of the Boost IPC message queue.
+
+
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // (C) Copyright Ion Gaztanaga 2005-2012. Distributed under the Boost

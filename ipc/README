@@ -1,0 +1,5 @@
+Files:
+- queue.[cc,hpp]: Source for message queues. Should break out queue.hpp to .h and -impl.h
+- message_queue.hpp: Modified boost message_queue
+- queue_test.cc: Unit tests
+- queue_test_msg.proto: Protobuf for use in unit tests.

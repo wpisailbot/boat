@@ -12,6 +12,11 @@
 
 namespace sailbot {
 
+/**
+ * A class that all processes should inherit from, should handle everything.
+ * For now, mostly sticks to making it even easier to use the Loop interface and
+ * to register handlers to watch queues.
+ */
 class Node {
  public:
   Node(float loop_period);
