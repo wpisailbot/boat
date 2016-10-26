@@ -1,9 +1,11 @@
+#pragma once
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/LU>
 #include "util.h"
 
 class SimulatorSaoud2013 {
-  using Eigen::Vector3d;
-  using Eigen::Matrix3d;
+  typedef Eigen::Vector3d Vector3d;
+  typedef Eigen::Matrix3d Matrix3d;
   typedef Eigen::Matrix<double, 3, 4> Matrix34d;
   typedef Eigen::Matrix<double, 6, 6> Matrix6d;
   typedef Eigen::Matrix<double, 6, 1> Vector6d;
@@ -54,15 +56,15 @@ class SimulatorSaoud2013 {
 
   // Derivative of sail/rudder/keel states
   Vector3d GGs() { return RBI * xsB(); }
-  Vector3d vs() { return v + omega.cross(GGs) - ls * deltasdot * js(); }
+  Vector3d vs() { return v + omega.cross(GGs()) - ls * deltasdot * js(); }
   Vector3d vas() { return vs() - vw; }
 
   Vector3d GGr() { return RBI * xrB(); }
-  Vector3d vr() { return v + omega.cross(GGr) - lr * deltardot * jr(); }
+  Vector3d vr() { return v + omega.cross(GGr()) - lr * deltardot * jr(); }
   Vector3d var() { return vr() - vc; }
 
   Vector3d GGk() { return RBI * Vector3d(0, 0, hk); }
-  Vector3d vk() { return v + omega.cross(GGk); }
+  Vector3d vk() { return v + omega.cross(GGk()); }
   Vector3d vak() { return vk() - vc; }
 
   Vector3d omegaB() { return RBI.inverse() * omega; }
@@ -124,11 +126,11 @@ class SimulatorSaoud2013 {
   // Hydrodynamic resistances of the hull/waves, approximated quadratically.
   Vector3d Fd() {
     Vector3d va = RBI.inverse() * (v - vc);
-    return va.transpose() * c1 * va + va.dot(c2);
+    return va.cwiseAbs2().cwiseProduct(c1) + va.cwiseProduct(c2);
   }
   Vector3d taud() {
     Vector3d w = omegaB();
-    return w.transpose() * c3 * w + w.dot(c4);
+    return w.cwiseAbs2().cwiseProduct(c3) + w.cwiseProduct(c4);
   };
 
   // Restoring forces from Gravity/Buoyancy.
@@ -147,7 +149,7 @@ class SimulatorSaoud2013 {
   };
   Matrix6d CRB() {
     Matrix6d out = Matrix6d::Zero();
-    out.block(0, 0, 3, 3).diagonal() = m * omegaB();
+    out.block(0, 0, 3, 3).diagonal() = m0 * omegaB();
     out.block(3, 3, 3, 3).diagonal() = -J0 * omegaB();
     return out;
   }
@@ -174,17 +176,17 @@ class SimulatorSaoud2013 {
     forces << FnetB, taunetB;
     Vector6d nu;
     nu << vB(), omegaB();
-    return MT().inverse() * (forces - CT() * nu);
+    return MTinv * (forces - CT() * nu);
   }
   void Update() {
     Vector6d vdot = nudot();
-    Vector3d vB = vB() + vdot.block(0, 0, 3, 1);
-    Vector3d omegaB = omegaB() + vdot.block(3, 0, 3, 1);
+    Vector3d vbody = vB() + vdot.block(0, 0, 3, 1);
+    Vector3d omegabody = omegaB() + vdot.block(3, 0, 3, 1);
     Matrix3d wx;
-    wx.diagonal() = omegaB;
+    wx.diagonal() = omegabody;
     // Do actual update of v, omega:
-    v = RBI * vB;
-    omega = RBI * omegaB;
+    v = RBI * vbody;
+    omega = RBI * omegabody;
 
     // Do update of x, RBI:
     x += v * dt;
@@ -192,6 +194,7 @@ class SimulatorSaoud2013 {
   }
 
  private:
+  static constexpr double g = 9.8; // m/s^2
   double dt; // Timestep.
   // Parameters, same as Saoud article. All in SI units.
   const double ls; // Lateral distance of CoE of sail from mast (sort of "radius" of sail)
@@ -205,9 +208,6 @@ class SimulatorSaoud2013 {
   double deltardot; // Time derivative of deltar.
   const double rr; // Distance from back of boat to CoM of boat.
   const double rs; // Distance from CoM of boat to mast
-  //double alphas; // Sail's angle of attack
-  double alphar; // Rudder's angle of attack
-  double alphak; // Keel's angle of attack
   const double rhoair; // Density of Air
   const double rhowater; // Density of Water
   double Ss, Sr, Sk; // Surface area of the sail, rudder, and keel
@@ -226,13 +226,13 @@ class SimulatorSaoud2013 {
   // Lift & Drag coefficients of keel
   double CkL(double alpha) { return CLparam(c1k, alpha); }
   double CkD(double alpha) { return CDparam(c0k, c1k, alpha); }
-  const Matrix3d c1, c3; // Coefficients for quadratic term of hull resistance force/torque. Generally diagonal matrices.
-  const Vector3d c2, c4; // Coefficients for linear term of hull resistance force/torque
+  /*const*/ Vector3d c1, c3; // Coefficients for quadratic term of hull resistance force/torque.
+  /*const*/ Vector3d c2, c4; // Coefficients for linear term of hull resistance force/torque
   const double m0; // Boat mass
   double nabla; // Water volume displacement
   Matrix3d J0; // Boat Moment of Inertia
   Matrix6d MA; // ``Added'' inertia matrix.
-  Vector3d /*M*/, B; // Boat metacenter and center of buoyancy, wrt body frame.
+  Vector3d /*M,*/ B; // Boat metacenter and center of buoyancy, wrt body frame.
   // Non-written variables:
   // G: Boat CoM, wrt inertial frame
   // Gs, Gr, Gk: Centers of pressures of sail/rudder/keel, wrt body frame
@@ -251,47 +251,3 @@ class SimulatorSaoud2013 {
   Vector3d TBI(const Vector3d& p) { return Trans(p, RBI, x); }
 };
 
-
-SimulatorSaoud2013::SimulatorSaoud2013() : dt(0.01/*s*/),
-                                           ls(.5/*m*/),
-                                           lr(.05/*m*/),
-                                           hs(1.5/*m*/),
-                                           hr(-.3/*m*/),
-                                           hk(-.6/*m*/),
-                                           deltas(0/*rad*/),
-                                           deltasdot(0/*rad/s*/),
-                                           deltar(0/*rad*/),
-                                           deltardot(0/*rad/s*/),
-                                           rr(1/*m*/),
-                                           rs(.5/*m*/),
-                                           alphar(0/*rad*/),
-                                           alphak(0/*rad*/),
-                                           rhoair(1.225/*kg/m^3*/),
-                                           rhowater(1000/*kg/m^3*/),
-                                           Ss(5/*m^2*/),
-                                           Sr(.25/*m^2*/),
-                                           Sk(.5/*m^2*/),
-                                           c0s(.5), c1s(.5), c0r(c0s), c1r(c1s), c0k(c0s), c1k(c1s),
-                                           m0(40/*kg*/),
-                                           nabla(m0 / rhowater) {
-  // TODO(james):
-  // Not really sure what these should initialize to. They refer to the
-  // resistance along the hull through the water. Definitely shouldn't be zero.
-  c1 *= 0;
-  c3 *= 0;
-  c2 *= 0;
-  c4 *= 0;
-
-  J0 << ; // TODO(james) ?
-
-  MA *= 0; // TODO(james): Might be able to get away with 0...
-  // TODO(james): Calculations for metacenter/center of buoyancy.
-  B = TBI(Vector3d(0, 0, -.5));
-
-  x *= 0;
-  v *= 0;
-  vw *= 0;
-  vc *= 0;
-  RBI = RBI.Identity();
-  omega *= 0;
-}
