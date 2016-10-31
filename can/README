@@ -1,0 +1,14 @@
+There is currently relatively minimal stuff here.
+do_sock.cc and pgn.h right now allow you to listen
+to CAN messages. You need to have the CAN interface
+already up on the BBB and a CAN shield.
+
+Other useful files:
+overlay/build.sh: Run this file in order to start the CAN interface
+test-dump: From a test run of candump with the Airmar 220WX attached
+
+For some convenient CAN-related utilities, see can-util:
+https://github.com/linux-can/can-utils
+
+For NMEA2000 specific stuff, see CANBoat:
+https://github.com/canboat/canboat
