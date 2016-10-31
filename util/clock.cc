@@ -8,35 +8,22 @@ namespace sailbot {
 namespace util {
 
 bool monotonic_clock::fake_clock = false;
+std::atomic<monotonic_clock::rep> monotonic_clock::time_;
+std::condition_variable_any monotonic_clock::tick_;
+monotonic_clock::rep monotonic_clock::next_wakeup_;
+std::mutex monotonic_clock::wakeup_time_mutex_;
 
-namespace {
-  bool time_is_greater(timespec rhs, timespec lhs) {
-    return rhs.tv_sec == lhs.tv_sec ? rhs.tv_nsec > lhs.tv_nsec
-                                    : rhs.tv_sec > lhs.tv_sec;
-  }
-  void add_time(timespec *a, timespec *diff) {
-    // Assumes valid timespecs (ie, can't be negative).
-    a->tv_nsec += diff->tv_nsec;
-    a->tv_sec += diff->tv_sec + a->tv_nsec / 1000000000UL;
-    a->tv_nsec %= 1000000000UL;
-  }
-}  // namespace
+std::shared_timed_mutex ClockInstance::m_;
 
-Loop::Loop(timespec period, clockid_t clockid)
-    : clock_(clockid), period_(period) {
-  if (clock_gettime(clock_, &last_trigger_)) {
-    LOG(FATAL) << "Failed to fetch clock time.";
-  }
-}
+Loop::Loop(float period) : period_(monotonic_clock::rep(period * 1e9)) {}
 
 void Loop::WaitForNext() {
-  timespec time;
+  monotonic_clock::time_point time;
   do {
-    clock_gettime(clock_, &time);
-    add_time(&last_trigger_, &period_);
-  } while (time_is_greater(time, last_trigger_));
-  clock_nanosleep(clock_, TIMER_ABSTIME /*flags*/, &last_trigger_,
-                  NULL /*remain*/);
+    time = clock_.Time();
+    last_trigger_ += period_;
+  } while (time > last_trigger_);
+  clock_.SleepUntil(last_trigger_);
 }
 
 monotonic_clock::time_point monotonic_clock::now() {

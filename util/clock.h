@@ -13,22 +13,6 @@
 namespace sailbot {
 namespace util {
 
-/**
- * A class that allows you to construct a periodic loop, based on
- * clock_nanosleep. Calling WaitForNext() will sleep until the next
- * period.
- * TODO(james): Note/count missed cycles.
- */
-class Loop {
- public:
-  Loop(timespec period, clockid_t clockid=CLOCK_MONOTONIC);
-  void WaitForNext();
- private:
-  clockid_t clock_;
-  timespec period_;
-  timespec last_trigger_;
-};
-
 class monotonic_clock {
  public:
   typedef std::chrono::nanoseconds duration;
@@ -79,6 +63,22 @@ class ClockManager {
     monotonic_clock::fake_clock = is_fake;
   }
   static void Run();
+};
+
+/**
+ * A class that allows you to construct a periodic loop, based on
+ * clock_nanosleep. Calling WaitForNext() will sleep until the next
+ * period.
+ * TODO(james): Note/count missed cycles.
+ */
+class Loop {
+ public:
+  Loop(float period);
+  void WaitForNext();
+ private:
+  ClockInstance clock_;
+  monotonic_clock::duration period_;
+  monotonic_clock::time_point last_trigger_;
 };
 
 }  // util

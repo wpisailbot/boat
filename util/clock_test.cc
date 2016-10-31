@@ -11,7 +11,7 @@ TEST(TimeTest, BasicLooping) {
   ::std::chrono::time_point<::std::chrono::steady_clock> start, cur;
 
   double period = .001;
-  Loop loop({0, period * 1e9});
+  Loop loop(period);
 
   start = ::std::chrono::steady_clock::now();
   double last_elapsed = 0;
