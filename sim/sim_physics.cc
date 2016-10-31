@@ -29,6 +29,8 @@ SimulatorSaoud2013::SimulatorSaoud2013() : dt(0.01/*s*/),
   c4 *= 0;
 
 //  J0 << ; // TODO(james) ?
+  J0 *= 0;
+  J0.diagonal() = Vector3d(50, 50, 10);
 
   MA *= 0; // TODO(james): Might be able to get away with 0...
   // TODO(james): Calculations for metacenter/center of buoyancy.

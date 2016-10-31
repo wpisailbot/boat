@@ -3,7 +3,14 @@
 #include <eigen3/Eigen/LU>
 #include "util.h"
 
-class SimulatorSaoud2013 {
+class SimulatorDynamics {
+ public:
+  virtual std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> Update(
+      double sdot, double rdot) = 0;
+};
+
+class SimulatorSaoud2013 : public SimulatorDynamics {
+ public:
   typedef Eigen::Vector3d Vector3d;
   typedef Eigen::Matrix3d Matrix3d;
   typedef Eigen::Matrix<double, 3, 4> Matrix34d;
@@ -179,6 +186,8 @@ class SimulatorSaoud2013 {
     return MTinv * (forces - CT() * nu);
   }
   void Update() {
+    deltas += deltasdot * dt;
+    deltar += deltardot * dt;
     Vector6d vdot = nudot();
     Vector3d vbody = vB() + vdot.block(0, 0, 3, 1);
     Vector3d omegabody = omegaB() + vdot.block(3, 0, 3, 1);
@@ -193,9 +202,25 @@ class SimulatorSaoud2013 {
     RBI += RBI * wx * dt;
   }
 
+  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) {
+    deltasdot = sdot;
+    deltardot = rdot;
+    Update();
+    Vector6d nu;
+    nu << x, v;
+    return {nu, RBI};
+  }
+
+  Vector3d get_x() { return x; }
+  Vector3d get_v() { return v; }
+  Vector3d get_omega() { return omega; }
+  Matrix3d get_RBI() { return RBI; }
+  double get_deltas() { return deltas; }
+  double get_deltar() { return deltar; }
+
  private:
   static constexpr double g = 9.8; // m/s^2
-  double dt; // Timestep.
+  double dt = 0.001; // Timestep.
   // Parameters, same as Saoud article. All in SI units.
   const double ls; // Lateral distance of CoE of sail from mast (sort of "radius" of sail)
   const double lr; // Lateral distance of CoE of rudder from rotation ("radius" of rudder)
