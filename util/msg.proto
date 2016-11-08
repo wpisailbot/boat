@@ -15,8 +15,12 @@ message PongMsg {
 }
 
 message LogEntry {
-  int32 id = 1;
   google.protobuf.Timestamp time = 2;
 
-  bytes data = 7;
+  // The name of all members should be the EXACT same as their corresponding
+  // queue name.
+
+  // Test Messages
+  PingMsg ping = 2000;
+  PongMsg pong = 2001;
 }

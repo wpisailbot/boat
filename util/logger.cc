@@ -5,24 +5,27 @@
 
 namespace sailbot {
 
-void Logger::RegisterLogHandler(const QueueInfo &info) {
-  ::std::thread handler(&Logger::RunLogHandler, this, info);
+void Logger::RegisterLogHandler(const char *name) {
+  ::std::thread handler(&Logger::RunLogHandler, this, name);
   handler.detach();
 }
 
-void Logger::RunLogHandler(const QueueInfo& info) {
-  Queue q(info.name);
+void Logger::RunLogHandler(const char *name) {
+  Queue q(name);
   char buf[MAX_BUF];
   size_t rcvd;
   LogEntry *entry = AllocateMessage<LogEntry>();
-  entry->set_id(info.id);
+  const google::protobuf::FieldDescriptor *field =
+      entry->GetDescriptor()->FindFieldByName(name);
+  google::protobuf::Message *sub_msg;
   // TODO(james): Shutdown cleanly.
   while (true) {
     q.receive(buf, MAX_BUF, rcvd);
     timespec t = Time();
     entry->mutable_time()->set_seconds(t.tv_sec);
     entry->mutable_time()->set_nanos(t.tv_nsec);
-    entry->set_data(buf, rcvd);
+    sub_msg = entry->GetReflection()->MutableMessage(entry, field);
+    sub_msg->ParseFromArray(buf, rcvd);
 
     std::unique_lock<std::mutex> lck(out_lock_);
     uint16_t len_write = entry->ByteSize();
@@ -54,9 +57,13 @@ void ReadFile(const char *name) {
     file.read(buf, len);
     if (file.eof()) break;
     entry.ParseFromArray(buf, len);
-    if (entry.id() == 1311) {
-      foo.ParseFromString(entry.data());
-      LOG(INFO) << foo.a();
+    std::vector<const google::protobuf::FieldDescriptor*> fields;
+    entry.GetReflection()->ListFields(entry, &fields);
+    for (const auto field : fields) {
+      if (field->lowercase_name() == "ping") {
+        foo = entry.ping();
+        LOG(INFO) << foo.a();
+      }
     }
   }
 }

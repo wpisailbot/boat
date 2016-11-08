@@ -47,7 +47,7 @@ void monotonic_clock::sleep_until(time_point time,
   } else {
     {
       std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
-      if (next_wakeup_ < time_) {
+      if (next_wakeup_ <= time_) {
         next_wakeup_ = std::max(len, time_.load());
       } else {
         next_wakeup_ = std::min(next_wakeup_, len);

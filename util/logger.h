@@ -26,7 +26,7 @@ class Logger : public Node {
   Logger() : Node(1.), out_(open("/tmp/logfilename", O_CREAT | O_WRONLY)) {
     out_.SetCloseOnDelete(true);
     for (const QueueInfo& i : queue_index) {
-      RegisterLogHandler(i);
+      RegisterLogHandler(i.name);
     }
   }
 
@@ -36,8 +36,8 @@ class Logger : public Node {
     std::unique_lock<std::mutex> lck(out_lock_);
     out_.Flush();
   };
-  void RegisterLogHandler(const QueueInfo& info);
-  void RunLogHandler(const QueueInfo& info);
+  void RegisterLogHandler(const char* info);
+  void RunLogHandler(const char* info);
   google::protobuf::io::FileOutputStream out_;
   std::mutex out_lock_;
 };
