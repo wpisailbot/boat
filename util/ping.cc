@@ -7,9 +7,9 @@ namespace sailbot {
 
 class Ping : public Node {
  public:
-  Ping() : Node(0.1), queue_("ping"), msg_(AllocateMessage<PingMsg>()) {
-    RegisterHandler<PongMsg>("pong",
-                             [](const PongMsg &msg) { LOG(INFO) << msg.b(); });
+  Ping() : Node(0.1), queue_("ping"), msg_(AllocateMessage<msg::PingMsg>()) {
+    RegisterHandler<msg::PongMsg>(
+        "pong", [](const msg::PongMsg &msg) { LOG(INFO) << msg.b(); });
   }
 
  protected:
@@ -19,8 +19,8 @@ class Ping : public Node {
   }
 
  private:
-  ProtoQueue<PingMsg> queue_;
-  PingMsg *msg_;
+  ProtoQueue<msg::PingMsg> queue_;
+  msg::PingMsg *msg_;
 };
 
 }  // sailbot

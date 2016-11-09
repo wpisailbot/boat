@@ -9,13 +9,19 @@ Node::Node(float loop_period)
   arena_.reset(new google::protobuf::Arena(arena_settings_));
 }
 
-void Node::Run() {
-  // TODO(james): Shutdown cleanly.
-  while (true) {
-    loop_.WaitForNext();
-    Iterate();
+Node::~Node() {
+  for (auto& thread : threads_) {
+    thread.detach();
   }
 }
 
+void Node::Run() {
+  // TODO(james): Shutdown cleanly.
+  while (!IsShutdown()) {
+    loop_.WaitForNext();
+    Iterate();
+  }
+  loop_.Done();
+}
 
 }  // sailbot

@@ -1,9 +1,16 @@
 package(default_visibility = ['//visibility:public'])
 load("@protobuf//:protobuf.bzl", "cc_proto_library")
 cc_library(
+  name="core",
+  srcs=["core.cc"],
+  hdrs=["core.h"],
+  linkopts = ["-lglog"],
+)
+cc_library(
   name="clock",
   srcs=["clock.cc"],
   hdrs=["clock.h"],
+  deps=[":core"],
   linkopts = ["-lglog"],
 )
 cc_library(
@@ -15,6 +22,7 @@ cc_library(
     "//ipc:queue",
     ":msg_proto",
     "@protobuf//:protobuf",
+    "core",
   ]
 )
 cc_library(
@@ -51,7 +59,7 @@ cc_test(
 cc_proto_library(
   name="msg_proto",
   srcs=["msg.proto"],
-  deps=["@protobuf//:cc_wkt_protos"],
+  deps=["@protobuf//:cc_wkt_protos", "//control:actuator_cmd_proto"],
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )

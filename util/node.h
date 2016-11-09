@@ -7,6 +7,8 @@
 #include <math.h>
 #include "ipc/queue.hpp"
 #include <thread>
+#include <atomic>
+#include "core.h"
 
 #include "google/protobuf/arena.h"
 
@@ -20,9 +22,9 @@ namespace sailbot {
 class Node {
  public:
   Node(float loop_period);
+  ~Node();
 
   void Run();
-
  protected:
   template <typename T>
   void RegisterHandler(const char *queue_name,
@@ -48,14 +50,15 @@ class Node {
   util::Loop loop_;
 
   google::protobuf::ArenaOptions arena_settings_;
-  ::std::unique_ptr<google::protobuf::Arena> arena_;
+  std::unique_ptr<google::protobuf::Arena> arena_;
+
+  std::vector<std::thread> threads_;
 };
 
 template <typename T>
 void Node::RegisterHandler(const char *queue_name,
                            ::std::function<void(const T &)> callback) {
-  ::std::thread handler(&Node::RunHandlerCaller<T>, this, queue_name, callback);
-  handler.detach();
+  threads_.emplace_back(&Node::RunHandlerCaller<T>, this, queue_name, callback);
 }
 
 template <typename T>
@@ -68,8 +71,9 @@ void Node::RunHandlerCaller(const char *queue_name,
                             ::std::function<void(const T &)> callback) {
   ProtoQueue<T> q(queue_name);
   T* buffer = AllocateMessage<T>();
-  // TODO(james): Shutdown cleanly.
-  while (true) {
+  // TODO(james): Shutdown cleanly; currently won't handle shutdown while
+  // waiting on queue receive.
+  while (!IsShutdown()) {
     q.receive(buffer);
     callback(*buffer);
   }

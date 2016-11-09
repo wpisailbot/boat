@@ -8,8 +8,8 @@ namespace sailbot {
 class Pong : public Node {
  public:
   Pong() : Node(0.1), queue_("pong") {
-    msg_ = AllocateMessage<PongMsg>();
-    RegisterHandler<PingMsg>("ping", [this](const PingMsg &msg) {
+    msg_ = AllocateMessage<msg::PongMsg>();
+    RegisterHandler<msg::PingMsg>("ping", [this](const msg::PingMsg &msg) {
       msg_->set_b(2);
       queue_.send(msg_);
       LOG(INFO) << msg.a();
@@ -20,8 +20,8 @@ class Pong : public Node {
   virtual void Iterate() {}
 
  private:
-  ProtoQueue<PongMsg> queue_;
-  PongMsg *msg_;
+  ProtoQueue<msg::PongMsg> queue_;
+  msg::PongMsg *msg_;
 };
 
 }  // sailbot

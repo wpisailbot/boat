@@ -1,26 +1,31 @@
-syntax = "proto3";
-
+syntax = "proto2";
 import "google/protobuf/timestamp.proto";
+import "control/actuator_cmd.proto";
 
-package sailbot;
+package sailbot.msg;
 
 option cc_enable_arenas = true;
 
 message PingMsg {
-  float a = 1;
+  optional float a = 1;
 }
 
 message PongMsg {
-  float b = 1;
+  optional float b = 1;
 }
 
 message LogEntry {
-  google.protobuf.Timestamp time = 2;
+  optional google.protobuf.Timestamp time = 1;
 
   // The name of all members should be the EXACT same as their corresponding
   // queue name.
 
+  // Actually useful msgs
+  optional BoatState boat_state = 500;
+  optional SailCmd sail_cmd = 501;
+  optional RudderCmd rudder_cmd = 502;
+
   // Test Messages
-  PingMsg ping = 2000;
-  PongMsg pong = 2001;
+  optional PingMsg ping = 2000;
+  optional PongMsg pong = 2001;
 }

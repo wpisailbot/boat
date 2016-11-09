@@ -1,7 +1,5 @@
-syntax = "proto3";
-
 package sailbot.test;
 
 message QueueTestMsg {
-  float foo = 1;
+  optional float foo = 1;
 }

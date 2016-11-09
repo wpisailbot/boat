@@ -53,7 +53,7 @@ void monotonic_clock::sleep_until(time_point time,
         next_wakeup_ = std::min(next_wakeup_, len);
       }
     }
-    tick_.wait(l, [&]() { return len <= time_; });
+    tick_.wait(l, [&]() { return len <= time_ || IsShutdown(); });
   }
 }
 
@@ -69,10 +69,11 @@ void ClockInstance::SleepUntil(monotonic_clock::time_point time) {
 
 void ClockManager::Run() {
   if (monotonic_clock::is_fake()) {
-    while (true) {
+    while (!IsShutdown()) {
       std::unique_lock<std::shared_timed_mutex> lck(ClockInstance::m_);
       monotonic_clock::set_time(monotonic_clock::next_wakeup_);
     }
+    monotonic_clock::set_time(monotonic_clock::next_wakeup_);
   }
 }
 

@@ -2,6 +2,7 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 #include "util.h"
+#include <iostream>
 
 class SimulatorDynamics {
  public:
@@ -20,7 +21,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   // Outstanding questions (TODO(james)):
   // -What is the deal with the component of the lift pointing in the direction of the wind?
 
-  SimulatorSaoud2013();
+  SimulatorSaoud2013(float _dt=0.001/*s*/);
 
   // Inertial frame unit vectors
   Vector3d i0() { return Vector3d(1,0,0); }
@@ -46,9 +47,9 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Vector3d jsB() { return Vector3d(-std::sin(deltas), std::cos(deltas), 0); }
   Vector3d ksB() { return Vector3d(0, 0, 1); }
   Vector3d xs() { return TBI(xsB()); }
-  Vector3d is() { return TBI(isB()); }
-  Vector3d js() { return TBI(jsB()); }
-  Vector3d ks() { return TBI(ksB()); }
+  Vector3d is() { return RBI*isB(); }
+  Vector3d js() { return RBI*jsB(); }
+  Vector3d ks() { return RBI*ksB(); }
   // Rudder frame information. Same terminology as sail.
   Vector3d xrB() {
     return Vector3d(-rr - lr * std::cos(deltar), -lr * std::sin(deltar), hr);
@@ -57,9 +58,9 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Vector3d jrB() { return Vector3d(-std::sin(deltar), std::cos(deltar), 0); }
   Vector3d krB() { return Vector3d(0, 0, 1); }
   Vector3d xr() { return TBI(xrB()); }
-  Vector3d ir() { return TBI(irB()); }
-  Vector3d jr() { return TBI(jrB()); }
-  Vector3d kr() { return TBI(krB()); }
+  Vector3d ir() { return RBI*irB(); }
+  Vector3d jr() { return RBI*jrB(); }
+  Vector3d kr() { return RBI*krB(); }
 
   // Derivative of sail/rudder/keel states
   Vector3d GGs() { return RBI * xsB(); }
@@ -80,18 +81,21 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   // Sail/Rudder/Keel angle of attack
   double alphas() {
     Vector3d v = vas();
-    return std::atan(-v.dot(js()) / std::sqrt(std::pow(v.dot(is()), 2) +
-                                              std::pow(v.dot(ks()), 2)));
+    double d = std::sqrt(std::pow(v.dot(is()), 2) + std::pow(v.dot(ks()), 2));
+    if (std::abs(d) < 1e-3) return 0;
+    else return std::atan(-v.dot(js()) / d);
   }
   double alphar() {
     Vector3d v = var();
-    return std::atan(-v.dot(jr()) / std::sqrt(std::pow(v.dot(ir()), 2) +
-                                              std::pow(v.dot(kr()), 2)));
+    double d = std::sqrt(std::pow(v.dot(ir()), 2) + std::pow(v.dot(kr()), 2));
+    if (std::abs(d) < 1e-3) return 0;
+    else return std::atan(-v.dot(jr()) / d);
   }
   double alphak() {
     Vector3d v = RBI * vak();
-    return std::atan(-v(1, 0) / std::sqrt(std::pow(v(0, 0), 2) +
-                                          std::pow(v(2, 0), 2)));
+    double d = std::sqrt(std::pow(v(0, 0), 2) + std::pow(v(2, 0), 2));
+    if (std::abs(d) < 1e-3) return 0;
+    else return std::atan(-v(1, 0) / d);
   }
 
   // Useful constant...
@@ -100,6 +104,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     double as = alphas();
     double CL = CsL(as);
     double CD = CsD(as);
+    std::cout << "Sail CL, Cd, as: " << CL << " " << CD << " " << as << std::endl;
     Vector3d va = vas();
     double lambdas = .5 * rhoair * Ss;
     Vector3d Fs = -lambdas * (CD - CL * std::tan(as)) * va.norm() * va +
@@ -112,6 +117,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     double CL = CrL(ar);
     double CD = CrD(ar);
     Vector3d va = var();
+    std::cout << "Rudder CL, Cd, as: " << CL << " " << CD << " " << ar << std::endl;
     double lambdar = .5 * rhowater * Sr;
     Vector3d Fr = -lambdar * (CD - CL * std::tan(ar)) * va.norm() * va +
                   lambdar * CL / std::cos(ar) * va.squaredNorm() * jr();
@@ -120,8 +126,8 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Vector3d taur() { return GGr().cross(Fr()); }
   Vector3d Fk() {
     double ak = alphak();
-    double CL = CrL(ak);
-    double CD = CrD(ak);
+    double CL = CkL(ak);
+    double CD = CkD(ak);
     Vector3d va = vak();
     double lambdak = .5 * rhowater * Sk;
     Vector3d Fk = -lambdak * (CD - CL * std::tan(ak)) * va.norm() * va +
@@ -141,9 +147,11 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   };
 
   // Restoring forces from Gravity/Buoyancy.
-  Vector3d FBuoy() { return nabla * rhowater * k0(); }
-  Vector3d Fres() { return -m0 * g * k0() + FBuoy(); }
-  Vector3d taures() { return FBuoy().cross(B); }
+  Vector3d FBuoy() { return nabla * rhowater * g * k0(); }
+  // TODO(james): Dynamically set nabla to prevent blowup from a constant
+  // vertical force; with the current nabla, Fres() will evaluate to 0 anyways.
+  Vector3d Fres() { return Vector3d::Zero();}//-m0 * g * k0() + FBuoy(); }
+  Vector3d taures() { return (RBI * B_B).cross(FBuoy()); }
 
   // Coefficients for Equations of motion
   Matrix6d MRB() {
@@ -153,11 +161,12 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     out(2, 2) = m0;
     out.block(3, 3, 3, 3) = J0;
     return out;
-  };
+  }
   Matrix6d CRB() {
     Matrix6d out = Matrix6d::Zero();
-    out.block(0, 0, 3, 3).diagonal() = m0 * omegaB();
-    out.block(3, 3, 3, 3).diagonal() = -J0 * omegaB();
+    Vector3d wb = omegaB();
+    out.block(0, 0, 3, 3) = m0 * Skew(wb);
+    out.block(3, 3, 3, 3) = -Skew(J0 * wb);
     return out;
   }
   Matrix6d CA() {
@@ -166,9 +175,9 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     Matrix3d A12 = MA.block(0, 3, 3, 3); // Approximately 0
     Matrix3d A21 = MA.block(3, 0, 3, 3); // Approximately 0
     Matrix3d A22 = MA.block(3, 3, 3, 3);
-    out.block(3, 3, 3, 3).diagonal() = -(A21 * vB() + A22 * omegaB());
-    out.block(0, 3, 3, 3).diagonal() = -(A11 * vB() + A12 * omegaB());
-    out.block(3, 0, 3, 3).diagonal() = out.block(0, 3, 3, 3);
+    out.block(3, 3, 3, 3) = -Skew(A21 * vB() + A22 * omegaB());
+    out.block(0, 3, 3, 3) = -Skew(A11 * vB() + A12 * omegaB());
+    out.block(3, 0, 3, 3) = out.block(0, 3, 3, 3);
     return out;
   }
   Matrix6d MT() { return MRB() + MA; }
@@ -176,9 +185,17 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Vector6d nudot() {
     Matrix6d MTinv = MT().inverse();
     Vector3d Fnet = Fd() + Fres() + Fs() + Fr() + Fk();
+    std::cout << "Fd: " << Fd().transpose() << " Fres: " << Fres().transpose()
+              << " Fs: " << Fs().transpose() << " Fr: " << Fr().transpose()
+              << " Fk: " << Fk().transpose() << std::endl;
     Vector3d taunet = taud() + taures() + taus() + taur() + tauk();
-    Vector3d FnetB = RBI * Fnet;
-    Vector3d taunetB = RBI * taunet;
+    std::cout << "td: " << taud().transpose()
+              << " tres: " << taures().transpose()
+              << " ts: " << taus().transpose() << " tr: " << taur().transpose()
+              << " tk: " << tauk().transpose()
+              << " tnetB: " << (RBI * taunet).transpose() << std::endl;
+    Vector3d FnetB = RBI.inverse() * Fnet;
+    Vector3d taunetB = RBI.inverse() * taunet;
     Vector6d forces;
     forces << FnetB, taunetB;
     Vector6d nu;
@@ -188,11 +205,13 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   void Update() {
     deltas += deltasdot * dt;
     deltar += deltardot * dt;
-    Vector6d vdot = nudot();
-    Vector3d vbody = vB() + vdot.block(0, 0, 3, 1);
-    Vector3d omegabody = omegaB() + vdot.block(3, 0, 3, 1);
-    Matrix3d wx;
-    wx.diagonal() = omegabody;
+    std::cout << "dr: " << deltar << " ds: " << deltas
+              << " vw: " << vw.transpose() << " vas: " << vas().transpose()
+              << " vwa: " << (vw - v).transpose() << std::endl;
+    Vector6d deltanu = nudot() * dt;
+    Vector3d vbody = vB() + deltanu.block(0, 0, 3, 1);
+    Vector3d omegabody = omegaB() + deltanu.block(3, 0, 3, 1);
+    Matrix3d wx = Skew(omegabody);
     // Do actual update of v, omega:
     v = RBI * vbody;
     omega = RBI * omegabody;
@@ -200,6 +219,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     // Do update of x, RBI:
     x += v * dt;
     RBI += RBI * wx * dt;
+    RBI = Orthogonalize(RBI);
   }
 
   std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) {
@@ -217,10 +237,11 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Matrix3d get_RBI() { return RBI; }
   double get_deltas() { return deltas; }
   double get_deltar() { return deltar; }
+  void set_wind(Vector3d wind) { vw = wind; }
 
  private:
   static constexpr double g = 9.8; // m/s^2
-  double dt = 0.001; // Timestep.
+  const double dt; // Timestep.
   // Parameters, same as Saoud article. All in SI units.
   const double ls; // Lateral distance of CoE of sail from mast (sort of "radius" of sail)
   const double lr; // Lateral distance of CoE of rudder from rotation ("radius" of rudder)
@@ -241,7 +262,9 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   double CDparam(double c0, double c1, double alpha) {
     return c0 + 2 * c1 * std::pow(std::sin(alpha), 2);
   }
-  double CLparam(double c1, double alpha) { return c1 * std::sin(2*alpha); }
+  double CLparam(double c1, double alpha) {
+    return (std::abs(alpha) < 1) * c1 * std::sin(2 * alpha);
+  }
   // Lift & Drag coefficients of sail
   double CsL(double alpha) { return CLparam(c1s, alpha); }
   double CsD(double alpha) { return CDparam(c0s, c1s, alpha); }
@@ -257,7 +280,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   double nabla; // Water volume displacement
   Matrix3d J0; // Boat Moment of Inertia
   Matrix6d MA; // ``Added'' inertia matrix.
-  Vector3d /*M,*/ B; // Boat metacenter and center of buoyancy, wrt body frame.
+  Vector3d /*M,*/ B_B; // Boat metacenter and center of buoyancy, wrt body frame.
   // Non-written variables:
   // G: Boat CoM, wrt inertial frame
   // Gs, Gr, Gk: Centers of pressures of sail/rudder/keel, wrt body frame

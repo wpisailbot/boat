@@ -44,5 +44,9 @@ There are a few tests/examples that I have throughout the code:
 - Separate out ping, pong, and log examples into separate location
 - Set up infrastructure for log replay
   - Actually replaying the logs
-  - Faking passage of time
 - Take a closer look at Boost's implementation of queues
+
+## Notes
+- We are using proto2, not proto3, because I (James) observed some oddities
+  where ParseFromArray would Clear the message and force re-allocation of
+  internal sub-messages. Still not 100% sure why proto2 is working better than 3.

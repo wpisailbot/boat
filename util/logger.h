@@ -2,8 +2,8 @@
 
 #include "node.h"
 #include "ipc/queue.hpp"
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <fcntl.h>
+#include <fstream>
 #include <mutex>
 
 namespace sailbot {
@@ -23,23 +23,26 @@ class Logger : public Node {
  public:
   // TODO(james): Parameterize file name, figure out more reasonable Node
   // period.
-  Logger() : Node(1.), out_(open("/tmp/logfilename", O_CREAT | O_WRONLY)) {
-    out_.SetCloseOnDelete(true);
+  Logger() : Node(1.), out_("/tmp/logfilename") {
     for (const QueueInfo& i : queue_index) {
       RegisterLogHandler(i.name);
     }
   }
 
+  ~Logger();
+
   static constexpr size_t MAX_BUF = 128;
  private:
   void Iterate() {
     std::unique_lock<std::mutex> lck(out_lock_);
-    out_.Flush();
+    out_.flush();
   };
   void RegisterLogHandler(const char* info);
   void RunLogHandler(const char* info);
-  google::protobuf::io::FileOutputStream out_;
+  std::ofstream out_;
   std::mutex out_lock_;
+
+  std::vector<std::thread> threads_;
 };
 
 void ReadFile(const char *name);

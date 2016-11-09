@@ -4,6 +4,7 @@ cc_library(
   name="queue",
   srcs=["queue.cc"],
   hdrs=["queue.hpp", "message_queue.hpp"],
+  deps=["//util:msg_proto", "//util:clock"],
   linkopts=["-lrt", "-pthread", "-lglog"],
 )
 cc_proto_library(

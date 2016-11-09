@@ -9,24 +9,20 @@ namespace sim {
 
 class SimulatorNode : public Node {
  public:
-  SimulatorNode()
-      : Node(.001),
-        sdot_(0),
-        rdot_(0),
-        state_queue_("boat_state"),
-        state_msg_(AllocateMessage<msg::BoatState>()) {
-    RegisterHandler<msg::SailCmd>(
-        "sail_cmd",
-        std::bind(&SimulatorNode::ProcessSail, this, std::placeholders::_1));
-    RegisterHandler<msg::RudderCmd>(
-        "rudder_cmd",
-        std::bind(&SimulatorNode::ProcessRudder, this, std::placeholders::_1));
+  SimulatorNode();
+
+  void set_wind(float src_dir, float speed /*m/s*/) {
+    impl_.set_wind(
+        Vector3d(speed * std::cos(src_dir), speed * std::sin(src_dir), 0));
   }
+
  private:
-  void Iterate();
+  void Iterate() override;
 
   void ProcessSail(const msg::SailCmd& cmd);
   void ProcessRudder(const msg::RudderCmd& cmd);
+
+  static constexpr double dt = 0.001;
   SimulatorSaoud2013 impl_;
   double sdot_, rdot_;
 

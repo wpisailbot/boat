@@ -7,8 +7,13 @@
 #include <boost/interprocess/sync/named_semaphore.hpp>
 #include <cstring>
 #include <array>
+#include <mutex>
 
 #include "glog/logging.h"
+#include "google/protobuf/arena.h"
+
+#include "util/msg.pb.h"
+#include "util/clock.h"
 
 namespace sailbot {
 
@@ -90,12 +95,33 @@ class ProtoQueue {
   // TODO(james): Parameterize number of messages.
   // @param name name of the queue to use.
   ProtoQueue(const char *name)
-      : impl_(name, 10 /*number of messages*/, BUF_SIZE) {}
+      : impl_(name, 10 /*number of messages*/, BUF_SIZE) {
+    arena_settings_.start_block_size = 10000;
+    arena_settings_.max_block_size = 0;
+    arena_.reset(new google::protobuf::Arena(arena_settings_));
+    msg_header_ = google::protobuf::Arena::CreateMessage<msg::LogEntry>(arena_.get());
+    receive_header_ =
+        google::protobuf::Arena::CreateMessage<msg::LogEntry>(arena_.get());
+    field_ = msg_header_->GetDescriptor()->FindFieldByName(name);
+    if (field_ == nullptr) {
+      LOG(FATAL) << "Queue \"" << name << "\" does not exist...";
+    }
+    field_content_ = msg_header_->GetReflection()->MutableMessage(msg_header_, field_);
+  }
 
   void send(const T *msg);
   void receive(T *msg);
  private:
   Queue impl_;
+  msg::LogEntry *msg_header_;
+  msg::LogEntry *receive_header_;
+  const google::protobuf::FieldDescriptor *field_;
+  google::protobuf::Message* field_content_;
+  std::mutex receive_mutex_;
+
+  // TODO(james): Maybe a separate/cleaner arena for all queues?
+  google::protobuf::ArenaOptions arena_settings_;
+  ::std::unique_ptr<google::protobuf::Arena> arena_;
 
   //! Buffer to be used when writing out to queues.
   static constexpr size_t BUF_SIZE = 128;
@@ -104,8 +130,14 @@ class ProtoQueue {
 
 template <typename T>
 void ProtoQueue<T>::send(const T *msg) {
-  if (msg->SerializeToArray(buffer_, BUF_SIZE)) {
-    impl_.send(buffer_, msg->ByteSize());
+  field_content_->CopyFrom(*msg);
+  auto time = util::monotonic_clock::now().time_since_epoch();
+  auto secs = std::chrono::duration_cast<std::chrono::seconds>(time);
+  auto nsecs = std::chrono::nanoseconds(time - secs);
+  msg_header_->mutable_time()->set_seconds(secs.count());
+  msg_header_->mutable_time()->set_nanos(nsecs.count());
+  if (msg_header_->SerializeToArray(buffer_, BUF_SIZE)) {
+    impl_.send(buffer_, msg_header_->ByteSize());
   } else {
     LOG(FATAL) << "Failed to serialize message";
   }
@@ -113,9 +145,11 @@ void ProtoQueue<T>::send(const T *msg) {
 
 template <typename T>
 void ProtoQueue<T>::receive(T* msg) {
+  std::unique_lock<std::mutex> lck(receive_mutex_);
   size_t rcvd;
   impl_.receive(buffer_, BUF_SIZE, rcvd);
-  msg->ParseFromArray(buffer_, rcvd);
+  receive_header_->ParseFromArray(buffer_, rcvd);
+  msg->CopyFrom(receive_header_->GetReflection()->GetMessage(*receive_header_, field_));
 }
 
 } // namespace sailbot

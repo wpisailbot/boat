@@ -5,50 +5,35 @@
 
 namespace sailbot {
 
+Logger::~Logger() {
+  for (auto &thread : threads_) {
+    thread.detach();
+  }
+}
+
 void Logger::RegisterLogHandler(const char *name) {
-  ::std::thread handler(&Logger::RunLogHandler, this, name);
-  handler.detach();
+  threads_.emplace_back(&Logger::RunLogHandler, this, name);
 }
 
 void Logger::RunLogHandler(const char *name) {
   Queue q(name);
   char buf[MAX_BUF];
   size_t rcvd;
-  LogEntry *entry = AllocateMessage<LogEntry>();
-  const google::protobuf::FieldDescriptor *field =
-      entry->GetDescriptor()->FindFieldByName(name);
-  google::protobuf::Message *sub_msg;
-  // TODO(james): Shutdown cleanly.
-  while (true) {
+  // TODO(james): Figure out a way to shutdown while queue receiving.
+  // Maybe send message out to all queues on terminate?
+  while (!IsShutdown()) {
     q.receive(buf, MAX_BUF, rcvd);
-    timespec t = Time();
-    entry->mutable_time()->set_seconds(t.tv_sec);
-    entry->mutable_time()->set_nanos(t.tv_nsec);
-    sub_msg = entry->GetReflection()->MutableMessage(entry, field);
-    sub_msg->ParseFromArray(buf, rcvd);
-
+    uint16_t n = rcvd;
     std::unique_lock<std::mutex> lck(out_lock_);
-    uint16_t len_write = entry->ByteSize();
-    while (true) {
-      void *data;
-      int data_size;
-      out_.Next(&data, &data_size);
-      if (data_size == 0) continue;
-      if (data_size == 1) {
-        out_.BackUp(1);
-      }
-      *(uint16_t*)data = len_write;
-      out_.BackUp(data_size - 2);
-      break;
-    }
-    entry->SerializeToZeroCopyStream(&out_);
+    out_.write((const char*)&n, 2);
+    out_.write(buf, rcvd);
   }
 }
 
 void ReadFile(const char *name) {
   std::ifstream file(name);
-  LogEntry entry;
-  PingMsg foo;
+  msg::LogEntry entry;
+  msg::PingMsg foo;
   while (!file.eof()) {
     int16_t len;
     file.read((char*)&len, 2);

@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include <set>
+#include "core.h"
 
 namespace sailbot {
 namespace util {
@@ -50,6 +51,8 @@ class ClockInstance {
   ClockInstance();
   inline monotonic_clock::time_point Time();
   void SleepUntil(monotonic_clock::time_point time);
+  void CleanUp() { lck_.unlock(); }
+
  private:
   static std::shared_timed_mutex m_;
   std::shared_lock<std::shared_timed_mutex> lck_;
@@ -75,6 +78,8 @@ class Loop {
  public:
   Loop(float period);
   void WaitForNext();
+  void Done() { clock_.CleanUp(); }
+
  private:
   ClockInstance clock_;
   monotonic_clock::duration period_;
