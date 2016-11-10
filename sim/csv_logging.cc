@@ -9,7 +9,7 @@ CsvLogger::CsvLogger(std::vector<std::pair<std::string, std::string>> data,
                      std::string fname, float dt)
     : Node(dt), file_(fname) {
   std::map<std::string, std::vector<std::string>> fields;
-  file_ << "Time";
+  file_ << "#Time";
   for (const auto& d : data) {
     std::string msg_name = d.first.substr(0, d.first.find('.'));
     fields[msg_name].push_back(d.first);
@@ -31,12 +31,12 @@ CsvLogger::~CsvLogger() {
 
 void CsvLogger::ProcessInput(const char* name,
                              std::vector<std::string> fields) {
-  Queue q(name);
+  Queue q(name, false);
   size_t BUF_LEN = 256;
   char buf[BUF_LEN];
   size_t rcvd;
   msg::LogEntry *entry = AllocateMessage<msg::LogEntry>();
-  while (!IsShutdown()) {
+  while (!util::IsShutdown()) {
     // TODO(james): Shutdown while receiving from queue.
     q.receive(buf, BUF_LEN, rcvd);
     entry->ParseFromArray(buf, rcvd);

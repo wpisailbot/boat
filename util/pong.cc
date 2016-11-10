@@ -7,7 +7,7 @@ namespace sailbot {
 
 class Pong : public Node {
  public:
-  Pong() : Node(0.1), queue_("pong") {
+  Pong() : Node(0.1), queue_("pong", true) {
     msg_ = AllocateMessage<msg::PongMsg>();
     RegisterHandler<msg::PingMsg>("ping", [this](const msg::PingMsg &msg) {
       msg_->set_b(2);

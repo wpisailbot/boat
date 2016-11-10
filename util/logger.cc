@@ -16,12 +16,12 @@ void Logger::RegisterLogHandler(const char *name) {
 }
 
 void Logger::RunLogHandler(const char *name) {
-  Queue q(name);
+  Queue q(name, false);
   char buf[MAX_BUF];
   size_t rcvd;
   // TODO(james): Figure out a way to shutdown while queue receiving.
   // Maybe send message out to all queues on terminate?
-  while (!IsShutdown()) {
+  while (!util::IsShutdown()) {
     q.receive(buf, MAX_BUF, rcvd);
     uint16_t n = rcvd;
     std::unique_lock<std::mutex> lck(out_lock_);

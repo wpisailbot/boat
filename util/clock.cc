@@ -1,6 +1,7 @@
 #include "clock.h"
 
 #include <stdio.h>
+#include <signal.h>
 
 #include "glog/logging.h"
 
@@ -53,6 +54,7 @@ void monotonic_clock::sleep_until(time_point time,
         next_wakeup_ = std::min(next_wakeup_, len);
       }
     }
+    tick_.notify_all();
     tick_.wait(l, [&]() { return len <= time_ || IsShutdown(); });
   }
 }
@@ -68,14 +70,35 @@ void ClockInstance::SleepUntil(monotonic_clock::time_point time) {
 }
 
 void ClockManager::Run() {
+  bool first_run = true;
   if (monotonic_clock::is_fake()) {
+    std::unique_lock<std::shared_timed_mutex> lck(ClockInstance::m_);
     while (!IsShutdown()) {
-      std::unique_lock<std::shared_timed_mutex> lck(ClockInstance::m_);
-      monotonic_clock::set_time(monotonic_clock::next_wakeup_);
+      if (!first_run) monotonic_clock::tick_.wait(lck);
+      first_run = false;
+      monotonic_clock::set_time(monotonic_clock::next_wakeup_, lck);
     }
-    monotonic_clock::set_time(monotonic_clock::next_wakeup_);
+    monotonic_clock::set_time(monotonic_clock::next_wakeup_, lck);
   }
 }
+
+namespace {
+  std::atomic<bool> done{false};
+}
+
+void SignalHandler(int signum) {
+  done = true;
+  util::monotonic_clock::tick_.notify_all();
+}
+
+void Init() {
+  if (signal(SIGINT, &SignalHandler) == SIG_ERR) {
+    LOG(FATAL) << "Failed to create signal handler";
+  }
+}
+
+bool IsShutdown() { return done; }
+void RaiseShutdown() { done = true; }
 
 }  // util
 }  // sailbot

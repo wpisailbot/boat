@@ -9,7 +9,7 @@ SimulatorNode::SimulatorNode()
       impl_(dt),
       sdot_(0),
       rdot_(0),
-      state_queue_("boat_state"),
+      state_queue_("boat_state", true),
       state_msg_(AllocateMessage<msg::BoatState>()) {
     RegisterHandler<msg::SailCmd>(
         "sail_cmd",
@@ -29,7 +29,7 @@ void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
 
 void SimulatorNode::Iterate() {
   static float time = 0;
-  std::cout << "Time: " << (time += dt) << std::endl;;
+  LOG(INFO) << "Time: " << (time += dt);
   //if (time > .05) std::exit(0);
   impl_.Update(sdot_, rdot_);
   Eigen::Vector3d omega = impl_.get_omega();
@@ -62,6 +62,7 @@ void SimulatorNode::Iterate() {
   state_msg_->mutable_internal()->set_rudder(impl_.get_deltar());
 
   state_queue_.send(state_msg_);
+  return;
   // TODO: Display/show results of simulation.
 
   Eigen::Matrix3d R = impl_.get_RBI();

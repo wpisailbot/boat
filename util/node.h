@@ -8,7 +8,6 @@
 #include "ipc/queue.hpp"
 #include <thread>
 #include <atomic>
-#include "core.h"
 
 #include "google/protobuf/arena.h"
 
@@ -69,11 +68,11 @@ T *Node::AllocateMessage() {
 template <typename T>
 void Node::RunHandlerCaller(const char *queue_name,
                             ::std::function<void(const T &)> callback) {
-  ProtoQueue<T> q(queue_name);
+  ProtoQueue<T> q(queue_name, false);
   T* buffer = AllocateMessage<T>();
   // TODO(james): Shutdown cleanly; currently won't handle shutdown while
   // waiting on queue receive.
-  while (!IsShutdown()) {
+  while (!util::IsShutdown()) {
     q.receive(buffer);
     callback(*buffer);
   }

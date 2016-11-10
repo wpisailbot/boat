@@ -104,7 +104,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     double as = alphas();
     double CL = CsL(as);
     double CD = CsD(as);
-    std::cout << "Sail CL, Cd, as: " << CL << " " << CD << " " << as << std::endl;
+    //std::cout << "Sail CL, Cd, as: " << CL << " " << CD << " " << as << std::endl;
     Vector3d va = vas();
     double lambdas = .5 * rhoair * Ss;
     Vector3d Fs = -lambdas * (CD - CL * std::tan(as)) * va.norm() * va +
@@ -117,7 +117,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     double CL = CrL(ar);
     double CD = CrD(ar);
     Vector3d va = var();
-    std::cout << "Rudder CL, Cd, as: " << CL << " " << CD << " " << ar << std::endl;
+    //std::cout << "Rudder CL, Cd, as: " << CL << " " << CD << " " << ar << std::endl;
     double lambdar = .5 * rhowater * Sr;
     Vector3d Fr = -lambdar * (CD - CL * std::tan(ar)) * va.norm() * va +
                   lambdar * CL / std::cos(ar) * va.squaredNorm() * jr();
@@ -185,15 +185,19 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Vector6d nudot() {
     Matrix6d MTinv = MT().inverse();
     Vector3d Fnet = Fd() + Fres() + Fs() + Fr() + Fk();
+    /*
     std::cout << "Fd: " << Fd().transpose() << " Fres: " << Fres().transpose()
               << " Fs: " << Fs().transpose() << " Fr: " << Fr().transpose()
               << " Fk: " << Fk().transpose() << std::endl;
+              */
     Vector3d taunet = taud() + taures() + taus() + taur() + tauk();
+    /*
     std::cout << "td: " << taud().transpose()
               << " tres: " << taures().transpose()
               << " ts: " << taus().transpose() << " tr: " << taur().transpose()
               << " tk: " << tauk().transpose()
               << " tnetB: " << (RBI * taunet).transpose() << std::endl;
+              */
     Vector3d FnetB = RBI.inverse() * Fnet;
     Vector3d taunetB = RBI.inverse() * taunet;
     Vector6d forces;
@@ -205,9 +209,11 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   void Update() {
     deltas += deltasdot * dt;
     deltar += deltardot * dt;
+    /*
     std::cout << "dr: " << deltar << " ds: " << deltas
               << " vw: " << vw.transpose() << " vas: " << vas().transpose()
               << " vwa: " << (vw - v).transpose() << std::endl;
+              */
     Vector6d deltanu = nudot() * dt;
     Vector3d vbody = vB() + deltanu.block(0, 0, 3, 1);
     Vector3d omegabody = omegaB() + deltanu.block(3, 0, 3, 1);

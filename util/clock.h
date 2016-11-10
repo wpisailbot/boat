@@ -9,7 +9,6 @@
 #include <shared_mutex>
 #include <atomic>
 #include <set>
-#include "core.h"
 
 namespace sailbot {
 namespace util {
@@ -38,12 +37,16 @@ class monotonic_clock {
   static rep next_wakeup_;
   static std::mutex wakeup_time_mutex_;
 
-  static void set_time(rep time) {
+  static void set_time(rep time,
+                       std::unique_lock<std::shared_timed_mutex>& unlock_lock) {
     time_ = time;
+    // TODO(james): Locking structure still isn't correct.
+    //unlock_lock.unlock();
     tick_.notify_all();
   }
 
   friend class ClockManager;
+  friend void SignalHandler(int);
 };
 
 class ClockInstance {
@@ -85,6 +88,11 @@ class Loop {
   monotonic_clock::duration period_;
   monotonic_clock::time_point last_trigger_;
 };
+
+// Should be called at the start of every PROCESS (not Node).
+void Init();
+bool IsShutdown();
+void RaiseShutdown();
 
 }  // util
 }  // sailbot

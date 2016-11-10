@@ -33,10 +33,12 @@ class Queue {
    * @brief Construct a Queue, initializing shared memory as necessary.
    *
    * @param name The name to use for the memory mapped file for the queue.
+   * @param writer Whether or not this queue will be sending messages.
    * @param queue_len The maximum number of messages allowed in the queue.
    * @param msg_size The mazimum size that a message will be.
    */
-  Queue(const char *name, size_t queue_len=10, size_t msg_size=128);
+  Queue(const char *name, bool writer, size_t queue_len = 10,
+        size_t msg_size = 128);
 
   /**
    * @brief Cleans up shared memory as necessary.
@@ -75,6 +77,9 @@ class Queue {
   //! The name to be used for the shared memory queue itself.
   const char *name_;
 
+  //! Whether or not this queue will be doing any writing.
+  bool writer_;
+
   //! @brief The boost queue object to use.
   //!
   //! This is a pointer so as to allow us to destroy queue_ before calling
@@ -94,8 +99,8 @@ class ProtoQueue {
  public:
   // TODO(james): Parameterize number of messages.
   // @param name name of the queue to use.
-  ProtoQueue(const char *name)
-      : impl_(name, 10 /*number of messages*/, BUF_SIZE) {
+  ProtoQueue(const char *name, bool writer)
+      : impl_(name, writer, 10 /*number of messages*/, BUF_SIZE) {
     arena_settings_.start_block_size = 10000;
     arena_settings_.max_block_size = 0;
     arena_.reset(new google::protobuf::Arena(arena_settings_));

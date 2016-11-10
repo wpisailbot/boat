@@ -17,7 +17,7 @@ Node::~Node() {
 
 void Node::Run() {
   // TODO(james): Shutdown cleanly.
-  while (!IsShutdown()) {
+  while (!util::IsShutdown()) {
     loop_.WaitForNext();
     Iterate();
   }

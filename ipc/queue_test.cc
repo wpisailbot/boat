@@ -33,7 +33,7 @@ class QueueTest : public ::testing::Test {
 };
 
 TEST_F(QueueTest, UpDown) {
-  ProtoQueue<QueueTestMsg> data(name);
+  ProtoQueue<QueueTestMsg> data(name, true);
   QueueTestMsg send, rcv;
   send.set_foo(10);
   rcv.set_foo(99);
@@ -50,7 +50,7 @@ TEST_F(QueueTest, MultipleProcess) {
   if (pid == 0) {
     // Child process; receive.
     {
-      ProtoQueue<QueueTestMsg> data(name);
+      ProtoQueue<QueueTestMsg> data(name, false);
       QueueTestMsg rcv;
       data.receive(&rcv);
       ASSERT_EQ(send.foo(), rcv.foo());
@@ -58,7 +58,7 @@ TEST_F(QueueTest, MultipleProcess) {
     exit(0);
   } else if (pid > 0) {
     // Parent process
-    ProtoQueue<QueueTestMsg> data(name);
+    ProtoQueue<QueueTestMsg> data(name, true);
     data.send(&send);
     // Don't conclude till child exits.
     // Otherwise, data may be destroyed before the child starts.
