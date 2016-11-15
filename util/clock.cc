@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "glog/logging.h"
+#include "gflags.h"
 
 namespace sailbot {
 namespace util {
@@ -91,10 +92,13 @@ void SignalHandler(int signum) {
   util::monotonic_clock::tick_.notify_all();
 }
 
-void Init() {
+void Init(int argc, char *argv[]) {
   if (signal(SIGINT, &SignalHandler) == SIG_ERR) {
     LOG(FATAL) << "Failed to create signal handler";
   }
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
 }
 
 bool IsShutdown() { return done; }

@@ -4,7 +4,9 @@ cc_library(
   name="clock",
   srcs=["clock.cc"],
   hdrs=["clock.h"],
-  linkopts = ["-lglog"],
+  #linkopts = ["-lglog -lgflags"],
+  deps = ["@glog//:glog",
+          "@gflags//:gflags"],
 )
 cc_library(
   name="node",

@@ -2,7 +2,7 @@ cc_library(
   name="sim_physics",
   srcs=["sim_physics.cc"],
   hdrs=["sim_physics.h", "util.h"],
-  deps=["//control:actuator_cmd_proto"],
+  deps=["//control:actuator_cmd_proto", "//util:clock"],
 )
 cc_library(
   name="sim_inter",

@@ -16,26 +16,26 @@
 #ifndef BOOST_INTERPROCESS_MESSAGE_QUEUE_HPP
 #define BOOST_INTERPROCESS_MESSAGE_QUEUE_HPP
 
-#include <boost/interprocess/detail/config_begin.hpp>
-#include <boost/interprocess/detail/workaround.hpp>
+#include "boost/interprocess/detail/config_begin.hpp"
+#include "boost/interprocess/detail/workaround.hpp"
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/detail/managed_open_or_create_impl.hpp>
-#include <boost/interprocess/sync/interprocess_condition.hpp>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
-#include <boost/interprocess/detail/utilities.hpp>
-#include <boost/interprocess/offset_ptr.hpp>
-#include <boost/interprocess/creation_tags.hpp>
-#include <boost/interprocess/exceptions.hpp>
-#include <boost/interprocess/permissions.hpp>
-#include <boost/detail/no_exceptions_support.hpp>
-#include <boost/interprocess/detail/type_traits.hpp>
-#include <boost/intrusive/pointer_traits.hpp>
-#include <boost/type_traits/make_unsigned.hpp>
-#include <boost/type_traits/alignment_of.hpp>
-#include <boost/intrusive/pointer_traits.hpp>
-#include <boost/assert.hpp>
+#include "boost/interprocess/shared_memory_object.hpp"
+#include "boost/interprocess/detail/managed_open_or_create_impl.hpp"
+#include "boost/interprocess/sync/interprocess_condition.hpp"
+#include "boost/interprocess/sync/interprocess_mutex.hpp"
+#include "boost/interprocess/sync/scoped_lock.hpp"
+#include "boost/interprocess/detail/utilities.hpp"
+#include "boost/interprocess/offset_ptr.hpp"
+#include "boost/interprocess/creation_tags.hpp"
+#include "boost/interprocess/exceptions.hpp"
+#include "boost/interprocess/permissions.hpp"
+#include "boost/detail/no_exceptions_support.hpp"
+#include "boost/interprocess/detail/type_traits.hpp"
+#include "boost/intrusive/pointer_traits.hpp"
+#include "boost/type_traits/make_unsigned.hpp"
+#include "boost/type_traits/alignment_of.hpp"
+#include "boost/intrusive/pointer_traits.hpp"
+#include "boost/assert.hpp"
 #include <algorithm> //std::lower_bound
 #include <cstddef>   //std::size_t
 #include <cstring>   //memcpy

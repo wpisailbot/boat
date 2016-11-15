@@ -90,7 +90,7 @@ class Loop {
 };
 
 // Should be called at the start of every PROCESS (not Node).
-void Init();
+void Init(int argc, char *argv[]);
 bool IsShutdown();
 void RaiseShutdown();
 
