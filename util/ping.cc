@@ -26,7 +26,8 @@ class Ping : public Node {
 
 }  // sailbot
 
-int main() {
+int main(int argc, char *argv[]) {
+  sailbot::util::Init(argc, argv);
   sailbot::Ping ping;
   ping.Run();
 }

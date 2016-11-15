@@ -26,7 +26,8 @@ class Pong : public Node {
 
 }  // sailbot
 
-int main() {
+int main(int argc, char *argv[]) {
+  sailbot::util::Init(argc, argv);
   sailbot::Pong pong;
   pong.Run();
 }

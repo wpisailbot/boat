@@ -19,8 +19,6 @@ Unfortunately, I have not yet integrated all of the dependencies with bazel and
 there are almost certainly prerequisites missing beyond that which I list here:
 
 - A C++ compiler that bazel will recognize/locate (I assume gcc and clang both work)
-- [`glog`](https://github.com/google/glog) (available on debian/ubuntu through `apt`)
-- The Boost C++ libraries
 - Probably some other things I'm missing
 
 ### Tests and Examples
@@ -40,7 +38,7 @@ There are a few tests/examples that I have throughout the code:
 - More unit testing
 - Validate system more thoroughly
 - Get started on hardware-specific libraries
-- Set up cross-compilation for BBB
+- Set up cross-compilation for BBB (Mostly done)
 - Separate out ping, pong, and log examples into separate location
 - Set up infrastructure for log replay
   - Actually replaying the logs

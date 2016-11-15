@@ -1,4 +1,5 @@
 licenses(["notice"])
+# Originally copied from https://github.com/google/glog/issues/61 and modified appropriately.
 
 cc_library(
     visibility = ["//visibility:public"],
@@ -41,7 +42,7 @@ cc_library(
         "-DHAVE_SYS_TYPES_H",
         "-DHAVE_SYS_UCONTEXT_H",
         "-DHAVE_SYS_UTSNAME_H",
-        "-DHAVE_SYS_SYSCALL_H",
+        "-DHAVE_SYS_SYSCALL_H", # Syscall lines had to be added
         "-DHAVE_UNISTD_H",
         "-DHAVE_SYSCALL_H",
         "-DHAVE_USING_OPERATOR",

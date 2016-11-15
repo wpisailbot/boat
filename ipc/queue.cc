@@ -8,9 +8,9 @@ Queue::Queue(const char *name, bool writer, size_t queue_len, size_t msg_size)
 
   semaphore_ = new bst::named_semaphore(bst::open_or_create, name, 0/*Initial Value*/);
   if (writer) {
-    semaphore_->post();
     queue_ =
         new bst::message_queue(bst::open_or_create, name_, queue_len, msg_size);
+    semaphore_->post();
   } else {
     // Wait for a writer to start up before doing anything.
     semaphore_->wait();
