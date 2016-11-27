@@ -38,7 +38,7 @@ class Queue {
    * @param msg_size The mazimum size that a message will be.
    */
   Queue(const char *name, bool writer, size_t queue_len = 10,
-        size_t msg_size = 128);
+        size_t msg_size = 1024);
 
   /**
    * @brief Cleans up shared memory as necessary.
@@ -129,7 +129,7 @@ class ProtoQueue {
   ::std::unique_ptr<google::protobuf::Arena> arena_;
 
   //! Buffer to be used when writing out to queues.
-  static constexpr size_t BUF_SIZE = 128;
+  static constexpr size_t BUF_SIZE = 1024;
   char buffer_[BUF_SIZE];
 };
 

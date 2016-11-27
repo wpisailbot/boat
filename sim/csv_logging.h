@@ -19,7 +19,7 @@ class CsvLogger : public Node {
  private:
   void Iterate() override;
 
-  void ProcessInput(const char *name, std::vector<std::string> fields);
+  void ProcessInput(const std::string name, std::vector<std::string> fields);
 
   double GetField(const msg::LogEntry &msg, const std::string &field);
 

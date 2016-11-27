@@ -7,3 +7,9 @@ cc_proto_library(
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )
+cc_library(
+  name="simple_control",
+  srcs=["simple.cc"],
+  hdrs=["simple.h"],
+  deps=[":actuator_cmd_proto", "//util:node"],
+)

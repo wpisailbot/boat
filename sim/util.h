@@ -1,8 +1,11 @@
 #pragma once
 #include <eigen3/Eigen/Core>
+#include "sim/sim_debug.pb.h"
 
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
+
+constexpr double PI = 3.14159265358979323846264338;
 
 // Transforms a vector x using rotation matrix R and origin.
 inline Vector3d Trans(const Vector3d& x, const Matrix3d& R, const Vector3d& o) {
@@ -27,4 +30,11 @@ inline Matrix3d Orthogonalize(const Matrix3d&R) {
   Rn.row(1) *= .5 * (3 - Rn.row(1).squaredNorm());
   Rn.row(2) *= .5 * (3 - Rn.row(2).squaredNorm());
   return Rn;
+}
+
+inline void EigenToProto(const Eigen::Vector3d &ve,
+                         sailbot::msg::Vector3f *msg) {
+  msg->set_x(ve(0, 0));
+  msg->set_y(ve(1, 0));
+  msg->set_z(ve(2, 0));
 }

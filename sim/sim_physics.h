@@ -1,22 +1,85 @@
 #pragma once
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
+#include <eigen3/Eigen/Geometry>
 #include "util.h"
 #include <iostream>
+#include "ipc/queue.hpp"
+#include "sim/sim_debug.pb.h"
 
 class SimulatorDynamics {
  public:
-  virtual std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> Update(
-      double sdot, double rdot) = 0;
+  typedef Eigen::Vector3d Vector3d;
+  typedef Eigen::Matrix3d Matrix3d;
+  typedef Eigen::Matrix<double, 6, 6> Matrix6d;
+  typedef Eigen::Matrix<double, 6, 1> Vector6d;
+  virtual std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) = 0;
+  virtual Vector3d get_x() = 0;
+  virtual Vector3d get_v() = 0;
+  virtual Matrix3d get_RBI() = 0;
+  virtual Vector3d get_omega() = 0;
+  virtual double get_deltas() = 0;
+  virtual double get_deltar() = 0;
+  virtual void set_wind(Vector3d wind) = 0;
+};
+
+class TrivialDynamics : public SimulatorDynamics {
+ public:
+  TrivialDynamics(float _dt);
+  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot);
+  Vector3d get_x() { return x;}
+  Vector3d get_v() { return v; }
+  Matrix3d get_RBI() { return RBI; }
+  Vector3d get_omega() { return omega; }
+  double get_deltas() { return deltas; }
+  double get_deltar() { return deltar; }
+  void set_wind(Vector3d wind) { this->wind = wind; }
+ private:
+  // All forces/torques calculated in frame of sailboat body.
+  Vector3d SailForces();
+  Vector3d RudderForces();
+  Vector3d KeelForces();
+  Vector3d HullForces();
+  // For some torques, pass in the result of the XXXForces() function.
+  Vector3d SailTorques(const Vector3d& f);
+  Vector3d RudderTorques(const Vector3d& f);
+  Vector3d KeelTorques(const Vector3d& f);
+  Vector3d HullTorques();
+  Vector3d RightingTorques(); // Buoyancy/Gravity.
+
+  Vector3d AeroForces(Vector3d v, const float delta, const float rho,
+                      const float A, const float mindrag = .05,
+                      const float maxdrag = 1.5, const float maxlift = 1.5);
+
+  const float dt;
+  // Note on Coord systems:
+  // The origin for the body frame of the boat is located on the vertical plane
+  // cutting straight down the long axis of the hull. Intuitively, it should be
+  // roughly on the deck vertically and in the middle of the boat front-to-back.
+  const double rr; // X position of back of rudder post wrt origin (generally negative)
+  const double rs; // X position of mast wrt origin of boat
+  const double rk; // X position of keel wrt origin of boat
+  const double ls; // Lateral distance of CoE of sail from mast (sort of "radius" of sail)
+  const double lr; // Lateral distance of CoE of rudder from rotation ("radius" of rudder)
+  const double hs; // Vertical distance of CoE of sail from origin (sort of "height" of sail)
+  const double hr; // Vertical distance of CoE of rudder from origin ("height" of rudder). Will be a negative number.
+  const double hk;  // Vertical distance of CoE of keel from origin ("height" of
+                    // keel). Will be a negative number.
+  const Vector3d CoM; // Center of mass
+  const float mass;
+  Matrix3d J;
+
+  double deltas, deltar;
+  Vector3d x, v;
+  Matrix3d RBI;
+  Vector3d omega;
+  Vector3d wind;
+
+  sailbot::ProtoQueue<sailbot::msg::SimDebugMsg> debug_queue_;
 };
 
 class SimulatorSaoud2013 : public SimulatorDynamics {
  public:
-  typedef Eigen::Vector3d Vector3d;
-  typedef Eigen::Matrix3d Matrix3d;
-  typedef Eigen::Matrix<double, 3, 4> Matrix34d;
-  typedef Eigen::Matrix<double, 6, 6> Matrix6d;
-  typedef Eigen::Matrix<double, 6, 1> Vector6d;
   // See Hadi Saoud, Minh-Duc Hua, Frederic Plumet, and Faiz Ben Amar. Modeling and control design of a robotic sailboat. In Robotic Sailing 2013, pages 95–110. Springer, 2014.
   // Outstanding questions (TODO(james)):
   // -What is the deal with the component of the lift pointing in the direction of the wind?
@@ -228,7 +291,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     RBI = Orthogonalize(RBI);
   }
 
-  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) {
+  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) override {
     deltasdot = sdot;
     deltardot = rdot;
     Update();
@@ -237,12 +300,12 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     return {nu, RBI};
   }
 
-  Vector3d get_x() { return x; }
-  Vector3d get_v() { return v; }
-  Vector3d get_omega() { return omega; }
-  Matrix3d get_RBI() { return RBI; }
-  double get_deltas() { return deltas; }
-  double get_deltar() { return deltar; }
+  Vector3d get_x() override { return x; }
+  Vector3d get_v() override { return v; }
+  Vector3d get_omega() override { return omega; }
+  Matrix3d get_RBI() override { return RBI; }
+  double get_deltas() override { return deltas; }
+  double get_deltar() override { return deltar; }
   void set_wind(Vector3d wind) { vw = wind; }
 
  private:

@@ -19,7 +19,8 @@ CsvLogger::CsvLogger(std::vector<std::pair<std::string, std::string>> data,
   }
   file_ << std::endl;
   for (const auto& p : fields) {
-    threads_.emplace_back(&CsvLogger::ProcessInput, this, p.first.c_str(), p.second);
+    threads_.emplace_back(&CsvLogger::ProcessInput, this, p.first,
+                          p.second);
   }
 }
 
@@ -29,10 +30,10 @@ CsvLogger::~CsvLogger() {
   }
 }
 
-void CsvLogger::ProcessInput(const char* name,
+void CsvLogger::ProcessInput(const std::string name,
                              std::vector<std::string> fields) {
-  Queue q(name, false);
-  size_t BUF_LEN = 256;
+  Queue q(name.c_str(), false);
+  size_t BUF_LEN = 1024;
   char buf[BUF_LEN];
   size_t rcvd;
   msg::LogEntry *entry = AllocateMessage<msg::LogEntry>();

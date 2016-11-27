@@ -2,6 +2,7 @@
 #include "util/msg.pb.h"
 #include "ipc/queue.hpp"
 #include "glog/logging.h"
+#include <map>
 
 namespace sailbot {
 

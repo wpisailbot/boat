@@ -1,8 +1,17 @@
+package(default_visibility = ['//visibility:public'])
+load("@protobuf//:protobuf.bzl", "cc_proto_library")
+cc_proto_library(
+  name="sim_debug_proto",
+  srcs=["sim_debug.proto"],
+  deps=["//control:actuator_cmd_proto"],
+  protoc="@protobuf//:protoc",
+  default_runtime="@protobuf//:protobuf",
+)
 cc_library(
   name="sim_physics",
   srcs=["sim_physics.cc"],
   hdrs=["sim_physics.h", "util.h"],
-  deps=["//control:actuator_cmd_proto", "//util:clock"],
+  deps=["//control:actuator_cmd_proto", "//util:clock", ":sim_debug_proto", "//ipc:queue"],
 )
 cc_library(
   name="sim_inter",
@@ -19,5 +28,5 @@ cc_library(
 cc_binary(
   name="basic_sim_main",
   srcs=["basic_sim_main.cc"],
-  deps=[":sim_inter", ":csv_logger"],
+  deps=[":sim_inter", ":csv_logger", "//control:simple_control"],
 )

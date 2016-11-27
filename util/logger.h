@@ -31,7 +31,7 @@ class Logger : public Node {
 
   ~Logger();
 
-  static constexpr size_t MAX_BUF = 128;
+  static constexpr size_t MAX_BUF = 1024;
  private:
   void Iterate() {
     std::unique_lock<std::mutex> lck(out_lock_);

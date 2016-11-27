@@ -1,0 +1,20 @@
+syntax = "proto2";
+import "control/actuator_cmd.proto";
+
+package sailbot.msg;
+
+option cc_enable_arenas = true;
+
+message SimDebugMsg {
+  optional Vector3f fs = 1;
+  optional Vector3f fr = 2;
+  optional Vector3f fk = 3;
+  optional Vector3f fh = 4;
+  optional Vector3f fnet = 5;
+  optional Vector3f taus = 6;
+  optional Vector3f taur = 7;
+  optional Vector3f tauk = 8;
+  optional Vector3f tauh = 9;
+  optional Vector3f tauright = 10;
+  optional Vector3f taunet = 11;
+}

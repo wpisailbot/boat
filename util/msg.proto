@@ -1,5 +1,6 @@
 syntax = "proto2";
 import "google/protobuf/timestamp.proto";
+import "sim/sim_debug.proto";
 import "control/actuator_cmd.proto";
 
 package sailbot.msg;
@@ -24,8 +25,11 @@ message LogEntry {
   optional BoatState boat_state = 500;
   optional SailCmd sail_cmd = 501;
   optional RudderCmd rudder_cmd = 502;
+  optional Vector3f wind = 503;
 
   // Test Messages
   optional PingMsg ping = 2000;
   optional PongMsg pong = 2001;
+
+  optional SimDebugMsg sim_debug = 3000;
 }
