@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   sailbot::util::ClockManager::SetFakeClock(true);
   sailbot::sim::SimulatorNode sim;
   sailbot::control::SimpleControl ctrl;
-  sim.set_wind(-.7, 3);
+  sim.set_wind(-M_PI / 2, 6);
 #define LOG_VECTOR(path, name)                                                 \
   { path ".x", name " X" }                                                     \
   , {path ".y", name " Y"}, {                                                  \
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
                           LOG_VECTOR("sim_debug.tauright", "Righting Moment"),
                           LOG_VECTOR("sim_debug.taunet", "Net Torque"),
                          },
-                         FLAGS_csv_file);
+                         FLAGS_csv_file, .01);
 #undef LOG_VECTOR
 
   std::thread clock(&sailbot::util::ClockManager::Run);

@@ -3,7 +3,7 @@ import transformations
 import numpy
 from matplotlib import pyplot as plt
 
-def plot_vec(d, starti, name, ax, maxy=5):
+def plot_vec(d, starti, name, ax, maxy=50):
   t = data[:, 0]
   x = data[:, starti+0]
   y = data[:, starti+1]
@@ -16,7 +16,7 @@ def plot_vec(d, starti, name, ax, maxy=5):
   plt.ylim(-maxy, maxy)
   plt.legend()
 
-data = numpy.genfromtxt("basic_sim_data.csv", delimiter=',')
+data = numpy.genfromtxt("basic_sim_data.csv", delimiter=',')[1:]
 x = []
 y = []
 vx = []
@@ -32,6 +32,9 @@ alphaw = []
 alphasail = []
 goalr = []
 for row in data:
+  for i in range(len(row)):
+    if abs(row[i]) > 1e5:
+      row[i] = float("nan")
   t.append(row[0])
   sail.append(row[1])
   rudder.append(row[2])
@@ -75,7 +78,7 @@ plt.plot(t, rudder, label="Rudder")
 plt.plot(t, yaw_true, label="yaw")
 plt.plot(t, alphaw, label="Apparent Wind")
 plt.plot(t, alphasail, label="Sail AoA")
-plt.plot(t, goalr, label="rudder goal")
+#plt.plot(t, goalr, label="rudder goal")
 plt.legend()
 plot_vec(data, 13, "Sail Force", ax)
 plot_vec(data, 16, "Rudder Force", ax)

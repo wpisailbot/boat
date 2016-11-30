@@ -23,9 +23,9 @@ inline Matrix3d Skew(const Vector3d& x) {
 inline Matrix3d Orthogonalize(const Matrix3d&R) {
   double err = R.row(0).dot(R.row(1));
   Matrix3d Rn;
-  Rn.row(0) = R.row(0) - err/2 * R.row(1);
-  Rn.row(1) = R.row(1) - err/2 * R.row(0);
-  Rn.row(2) = Rn.row(0).cross(Rn.row(1));
+  Rn.row(2) = R.row(2) - err/2 * R.row(1);
+  Rn.row(1) = R.row(1) - err/2 * R.row(2);
+  Rn.row(0) = Rn.row(2).cross(Rn.row(1));
   Rn.row(0) *= .5 * (3 - Rn.row(0).squaredNorm());
   Rn.row(1) *= .5 * (3 - Rn.row(1).squaredNorm());
   Rn.row(2) *= .5 * (3 - Rn.row(2).squaredNorm());
@@ -37,4 +37,12 @@ inline void EigenToProto(const Eigen::Vector3d &ve,
   msg->set_x(ve(0, 0));
   msg->set_y(ve(1, 0));
   msg->set_z(ve(2, 0));
+}
+
+inline float norm_angle(float a) {
+  while (a > M_PI)
+    a -= 2 * M_PI;
+  while (a < -M_PI)
+    a += 2 * M_PI;
+  return a;
 }

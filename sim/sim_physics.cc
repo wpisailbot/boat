@@ -82,6 +82,8 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   VLOG(1) << "sdot, rdot: " << sdot << ", " << rdot;
   deltas += sdot * dt;
   deltar += rdot * dt;
+  deltas = norm_angle(deltas);
+  deltar = norm_angle(deltar);
   Vector3d Fs = SailForces();
   Vector3d Fr = RudderForces();
   Vector3d Fk = KeelForces();
@@ -95,7 +97,6 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   Vector3d tau = taus + taur + tauk + tauh + tauright;
   tau(1, 0) = 0;
   Fnet = RBI * Fnet;
-  tau = RBI * tau;
   // Ignore any coriolis/centripetal junk.
   omega += J.inverse() * tau * dt;
   omega(1, 0) = 0;
@@ -125,9 +126,22 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   VLOG(1) << "tau: " << tau.transpose();
   VLOG(1) << "omega: " << omega.transpose();
 
-
-  RBI += RBI * Skew(omega) * dt;
-  RBI = Orthogonalize(RBI);
+  Eigen::Quaterniond rotquat(RBI);
+  Eigen::Quaterniond omegaquat;
+  omegaquat.w() = 0;
+  omegaquat.vec() = RBI * omega * dt;
+  VLOG(2) << "omegaquat: " << omegaquat.w() << " " << omegaquat.x() << " "
+          << omegaquat.y() << " " << omegaquat.z()
+          << " rotquat: " << rotquat.w() << " " << rotquat.x() << " "
+          << rotquat.y() << " " << rotquat.z();
+  rotquat.coeffs() += (omegaquat * rotquat).coeffs();// * .5 * dt;
+  VLOG(2) << "rotquat: " << rotquat.w() << " " << rotquat.x() << " "
+          << rotquat.y() << " " << rotquat.z();
+  rotquat.normalize();
+  RBI = rotquat.toRotationMatrix();
+  //VLOG(2) << "RBI-undone:\n" << RBI;
+  //RBI = Orthogonalize(RBI);
+  VLOG(2) << "RBI:\n" << RBI;
   if (std::isnan(RBI(0, 0))) {
     LOG(FATAL) << "Found NaN";
   }
@@ -144,7 +158,7 @@ Vector3d TrivialDynamics::AeroForces(Vector3d v, const float delta,
                                      const float maxlift) {
   // If alpha is negative, then lift follows [0 1; -1 0] * v
   // If alpha is positive, then lift follows [0 -1; 1 0] * v
-  float alphasigned = std::atan2(-v(1), -v(0)) - delta;
+  float alphasigned = norm_angle(std::atan2(-v(1), -v(0)) - delta);
   if (std::isnan(alphasigned))
     alphasigned = 0;
   const float alpha = std::abs(alphasigned);

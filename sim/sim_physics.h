@@ -72,7 +72,7 @@ class TrivialDynamics : public SimulatorDynamics {
   double deltas, deltar;
   Vector3d x, v;
   Matrix3d RBI;
-  Vector3d omega;
+  Vector3d omega; // w.r.t. hull frame
   Vector3d wind;
 
   sailbot::ProtoQueue<sailbot::msg::SimDebugMsg> debug_queue_;

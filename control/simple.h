@@ -12,6 +12,7 @@ class SimpleControl : public Node {
 
   void Iterate() override;
  private:
+  constexpr static float dt = 0.01;
   msg::SailCmd *sail_msg_;
   msg::RudderCmd *rudder_msg_;
   msg::BoatState *boat_state_;
@@ -19,6 +20,10 @@ class SimpleControl : public Node {
   std::atomic<float> wind_x_{0}, wind_y_{0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
+
+  // Various useful bits
+  float last_goal_ = 0;
+  float goal_cost_ = 0;
 };
 
 }  // control

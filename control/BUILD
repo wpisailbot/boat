@@ -11,5 +11,5 @@ cc_library(
   name="simple_control",
   srcs=["simple.cc"],
   hdrs=["simple.h"],
-  deps=[":actuator_cmd_proto", "//util:node"],
+  deps=[":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
