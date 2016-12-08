@@ -1,0 +1,50 @@
+syntax = "proto2";
+
+package sailbot.msg.can;
+
+option cc_enable_arenas = true;
+
+message SystemTime {
+  optional uint32 SID = 1;
+  optional uint32 date = 4; // 2 bytes, days since epoch
+  optional uint32 time = 5; // 4 bytes, seconds since midnight
+}
+
+message VesselHeading {
+  optional uint32 SID = 1;
+  optional float heading = 2; // radians
+  optional float deviation = 3; // radians
+  optional float variation = 4; // radians
+}
+
+message RateOfTurn {
+  optional uint32 SID = 1;
+  optional double rate = 2; // radians / sec
+}
+
+message Attitude {
+  optional uint32 SID = 1;
+  optional float yaw = 2; // radians
+  optional float pitch = 3; // radians
+  optional float roll = 4; // radians
+}
+
+message PosRapidUpdate {
+  optional double lat = 1; // degrees
+  optional double lon = 2; // degrees
+}
+
+message WindData {
+  optional uint32 SID = 1;
+  optional float wind_speed = 2; // m/s
+  optional float wind_angle = 3; // radians
+}
+
+message CANMaster {
+  optional SystemTime sys_tme = 126992;
+  optional VesselHeading heading = 127250;
+  optional RateOfTurn rate_turn = 127251;
+  optional Attitude attitude = 127257;
+  optional PosRapidUpdate pos_rapid_update = 129025;
+  optional WindData wind_data = 130306;
+}

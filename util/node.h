@@ -46,6 +46,7 @@ class Node {
   template <typename T>
   void RunHandlerCaller(const char *queue_name,
                         ::std::function<void(const T &)> callback);
+  double period_;
   util::Loop loop_;
 
   google::protobuf::ArenaOptions arena_settings_;

@@ -1,0 +1,20 @@
+package(default_visibility = ['//visibility:public'])
+load("@protobuf//:protobuf.bzl", "cc_proto_library")
+cc_proto_library(
+  name="can_proto",
+  srcs=["can.proto"],
+  deps=["@protobuf//:cc_wkt_protos"],
+  protoc="@protobuf//:protoc",
+  default_runtime = "@protobuf//:protobuf",
+)
+cc_library(
+  name="can",
+  srcs=["can.cc"],
+  hdrs=["can.h", "canboat-pgn.h", "pgn.h"],
+  deps=[":can_proto", "//util:node"],
+)
+cc_binary(
+  name="can-dump",
+  srcs=["can-dump.cc"],
+  deps=[":can"],
+)

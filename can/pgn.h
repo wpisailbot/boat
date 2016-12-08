@@ -1,6 +1,9 @@
 #pragma once
 #include <inttypes.h>
 
+namespace sailbot {
+namespace can {
+
 struct CANID {
   /* CANID structure:
    * It will generally be represented as a 32 bit number when using SocketCAN.
@@ -13,9 +16,10 @@ struct CANID {
    */
   uint8_t __unused : 3;
   uint8_t priority : 3;
-  uint8_t __reserved : 2;
-  uint8_t dataA;
-  uint8_t dataB;
+  uint8_t __reserved : 1;
+  uint8_t DP : 1;
+  uint8_t PF;
+  uint8_t PS;
   uint8_t source;
 };
 
@@ -32,3 +36,9 @@ CANID RetrieveID(uint32_t raw_id) {
   return *(CANID*)&raw_id;
 }
 
+uint32_t GetPGN(CANID id) {
+  return (id.DP << 16) + (id.PF << 8) + (id.PF < 240 ? 0 : id.PS);
+}
+
+}  // namespace sailbot
+}  // namespace can

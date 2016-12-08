@@ -2,6 +2,7 @@ syntax = "proto2";
 import "google/protobuf/timestamp.proto";
 import "sim/sim_debug.proto";
 import "control/actuator_cmd.proto";
+import "sensor/sbus.proto";
 
 package sailbot.msg;
 
@@ -32,4 +33,5 @@ message LogEntry {
   optional PongMsg pong = 2001;
 
   optional SimDebugMsg sim_debug = 3000;
+  optional SBUS sbus_value = 3500;
 }

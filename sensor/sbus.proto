@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package sailbot.msg;
+
+option cc_enable_arenas = true;
+
+message SBUS {
+  repeated int32 channel = 1;
+  optional bool ch17 = 2;
+  optional bool ch18 = 3;
+  optional bool frame_lost = 4;
+  optional bool failsafe = 5;
+}
