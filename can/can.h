@@ -35,7 +35,8 @@ class CanNode : public Node {
   // Storage for the raw message contents.
   std::map<uint32_t, CANMessage> msgs_;
   void DecodeAndSend(const CANMessage* msg);
-  double ExtractNumberField(const Field * f, const uint8_t *data, size_t start_bit);
+  int64_t ExtractNumberField(const Field *f, const uint8_t *data,
+                             size_t start_bit, int64_t *maxval);
 };
 
 }  // namespace sailbot

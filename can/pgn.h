@@ -14,18 +14,14 @@ struct CANID {
    * Next byte is either lower order byte of PGN or destination address.
    * Next/Last byte is source address.
    */
+  // Note that due to endianness, byte order is reversed from above.
+  uint8_t source;
+  uint8_t PS;
+  uint8_t PF;
   uint8_t __unused : 3;
   uint8_t priority : 3;
   uint8_t __reserved : 1;
   uint8_t DP : 1;
-  uint8_t PF;
-  uint8_t PS;
-  uint8_t source;
-};
-
-union CAN_ID_converter {
-  CANID structured;
-  uint32_t raw;
 };
 
 uint32_t ConstructID(CANID can_id) {
@@ -37,7 +33,8 @@ CANID RetrieveID(uint32_t raw_id) {
 }
 
 uint32_t GetPGN(CANID id) {
-  return (id.DP << 16) + (id.PF << 8) + (id.PF < 240 ? 0 : id.PS);
+  return ((uint32_t)id.DP << 16) + ((uint32_t)id.PF << 8) +
+         (id.PF < 240 ? 0 : id.PS);
 }
 
 }  // namespace sailbot

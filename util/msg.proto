@@ -3,6 +3,7 @@ import "google/protobuf/timestamp.proto";
 import "sim/sim_debug.proto";
 import "control/actuator_cmd.proto";
 import "sensor/sbus.proto";
+import "can/can.proto";
 
 package sailbot.msg;
 
@@ -34,4 +35,11 @@ message LogEntry {
 
   optional SimDebugMsg sim_debug = 3000;
   optional SBUS sbus_value = 3500;
+
+  optional can.CANMaster can126992 = 126992;
+  optional can.CANMaster can127250 = 127250;
+  optional can.CANMaster can127251 = 127251;
+  optional can.CANMaster can127257 = 127257;
+  optional can.CANMaster can129025 = 129025;
+  optional can.CANMaster can130306 = 130306;
 }
