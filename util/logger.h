@@ -8,24 +8,17 @@
 
 namespace sailbot {
 
-struct QueueInfo {
-  const char *name;
-  int id;
-};
-
-// Once we start creating logs, we can not change what messages correspond
-// to which number (the number is arbitrary, it is just used for identification
-// in the message).
-// TODO(james): Put this in a better place
-static std::vector<QueueInfo> queue_index = {{"ping", 1311}, {"ping", 1312}};
-
 class Logger : public Node {
  public:
   // TODO(james): Parameterize file name, figure out more reasonable Node
   // period.
   Logger() : Node(1.), out_("/tmp/logfilename") {
-    for (const QueueInfo& i : queue_index) {
-      RegisterLogHandler(i.name);
+    uint64_t start_time = util::monotonic_clock::now().time_since_epoch().count();
+    out_.write((const char*)&start_time, 8);
+    msg::LogEntry tmp;
+    const google::protobuf::Descriptor* desc = tmp.GetDescriptor();
+    for (int i = 0; i < desc->field_count(); ++i) {
+      RegisterLogHandler(desc->field(i)->lowercase_name().c_str());
     }
   }
 

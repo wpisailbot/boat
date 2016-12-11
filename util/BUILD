@@ -30,6 +30,18 @@ cc_library(
     "@protobuf//:protobuf",
   ]
 )
+cc_library(
+  name="log_replay",
+  srcs=["log-replay.cc"],
+  hdrs=["log-replay.h"],
+  deps = [
+    ":node",
+    ":logger",
+    "//ipc:queue",
+    ":msg_proto",
+    "@gflags//:gflags",
+  ],
+)
 cc_binary(
   name="logger_main",
   srcs=["logger_main.cc"],

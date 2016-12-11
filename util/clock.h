@@ -29,6 +29,7 @@ class monotonic_clock {
                           std::shared_lock<std::shared_timed_mutex>& l);
 
   static bool is_fake() { return fake_clock; }
+  static rep next_wakeup() { return next_wakeup_; }
 
  private:
   static bool fake_clock;
@@ -37,10 +38,11 @@ class monotonic_clock {
   static rep next_wakeup_;
   static std::mutex wakeup_time_mutex_;
 
-  static void set_time(rep time,
-                       std::unique_lock<std::shared_timed_mutex>& unlock_lock) {
+  static void set_time(rep time/*,
+                       std::unique_lock<std::shared_timed_mutex>& unlock_lock*/) {
     time_ = time;
     // TODO(james): Locking structure still isn't correct.
+    // TODO(james): Figure out if the above comment still applies.
     //unlock_lock.unlock();
     tick_.notify_all();
   }
@@ -52,7 +54,7 @@ class monotonic_clock {
 class ClockInstance {
  public:
   ClockInstance();
-  inline monotonic_clock::time_point Time();
+  monotonic_clock::time_point Time();
   void SleepUntil(monotonic_clock::time_point time);
   void CleanUp() { lck_.unlock(); }
 
@@ -68,7 +70,7 @@ class ClockManager {
   static void SetFakeClock(bool is_fake) {
     monotonic_clock::fake_clock = is_fake;
   }
-  static void Run();
+  static void Run(monotonic_clock::rep start_time);
 };
 
 /**

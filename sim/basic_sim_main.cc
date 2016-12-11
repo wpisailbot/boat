@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
                          FLAGS_csv_file, .01);
 #undef LOG_VECTOR
 
-  std::thread clock(&sailbot::util::ClockManager::Run);
+  std::thread clock(&sailbot::util::ClockManager::Run, 0);
   clock.detach();
 
   std::thread t(&sailbot::CsvLogger::Run, &csv);

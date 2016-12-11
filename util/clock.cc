@@ -12,7 +12,7 @@ namespace util {
 bool monotonic_clock::fake_clock = false;
 std::atomic<monotonic_clock::rep> monotonic_clock::time_;
 std::condition_variable_any monotonic_clock::tick_;
-monotonic_clock::rep monotonic_clock::next_wakeup_;
+monotonic_clock::rep monotonic_clock::next_wakeup_ = 0;
 std::mutex monotonic_clock::wakeup_time_mutex_;
 
 std::shared_timed_mutex ClockInstance::m_;
@@ -70,16 +70,18 @@ void ClockInstance::SleepUntil(monotonic_clock::time_point time) {
   monotonic_clock::sleep_until(time, lck_);
 }
 
-void ClockManager::Run() {
+void ClockManager::Run(monotonic_clock::rep start_time) {
   bool first_run = true;
+  monotonic_clock::set_time(start_time);
   if (monotonic_clock::is_fake()) {
     std::unique_lock<std::shared_timed_mutex> lck(ClockInstance::m_);
     while (!IsShutdown()) {
       if (!first_run) monotonic_clock::tick_.wait(lck);
       first_run = false;
-      monotonic_clock::set_time(monotonic_clock::next_wakeup_, lck);
+      monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
     }
-    monotonic_clock::set_time(monotonic_clock::next_wakeup_, lck);
+    // TODO(james): This probably should be set_time(+Infinity), not next_wakeup.
+    monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
   }
 }
 

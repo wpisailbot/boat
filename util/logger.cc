@@ -5,6 +5,14 @@
 
 namespace sailbot {
 
+/**
+ * Log file format:
+ * First 8 bytes: little-endian start time in nanoseconds since epoch.
+ * All following bytes are the following, repeated until EOF:
+ * 2 little-endian bytes for length of message
+ * the above number of data bytes, to be parsed as a msg::LogEntry protobuf.
+ */
+
 Logger::~Logger() {
   for (auto &thread : threads_) {
     thread.detach();
@@ -19,8 +27,9 @@ void Logger::RunLogHandler(const char *name) {
   Queue q(name, false);
   char buf[MAX_BUF];
   size_t rcvd;
-  // TODO(james): Figure out a way to shutdown while queue receiving.
-  // Maybe send message out to all queues on terminate?
+  // TODO(james): Figure out how to make log message be written in order (by time)--
+  // currently messages for each individual queue will be in order, but messages
+  // from different queues could arrive at different times.
   while (!util::IsShutdown()) {
     q.receive(buf, MAX_BUF, rcvd);
     uint16_t n = rcvd;
@@ -35,7 +44,7 @@ void ReadFile(const char *name) {
   msg::LogEntry entry;
   msg::PingMsg foo;
   while (!file.eof()) {
-    int16_t len;
+    uint16_t len;
     file.read((char*)&len, 2);
     if (file.eof()) break;
     char buf[Logger::MAX_BUF];
