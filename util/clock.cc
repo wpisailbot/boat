@@ -90,8 +90,7 @@ namespace {
 }
 
 void SignalHandler(int signum) {
-  done = true;
-  util::monotonic_clock::tick_.notify_all();
+  RaiseShutdown();
 }
 
 void Init(int argc, char *argv[]) {
@@ -104,7 +103,10 @@ void Init(int argc, char *argv[]) {
 }
 
 bool IsShutdown() { return done; }
-void RaiseShutdown() { done = true; }
+void RaiseShutdown() {
+  done = true;
+  util::monotonic_clock::tick_.notify_all();
+}
 
 }  // util
 }  // sailbot

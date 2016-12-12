@@ -88,3 +88,8 @@ cc_binary(
     ":msg_proto",
   ],
 )
+cc_binary(
+  name="log_replay_test",
+  srcs=["log-replay-main.cc"],
+  deps=[":log_replay"],
+)

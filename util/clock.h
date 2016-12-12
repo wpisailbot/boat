@@ -48,7 +48,7 @@ class monotonic_clock {
   }
 
   friend class ClockManager;
-  friend void SignalHandler(int);
+  friend void RaiseShutdown();
 };
 
 class ClockInstance {

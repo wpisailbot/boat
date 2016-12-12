@@ -22,6 +22,7 @@ void LogReplay::Init() {
   std::thread clock_thread(&util::ClockManager::Run, start_time);
   CHECK(util::monotonic_clock::next_wakeup() == 0)
       << "All nodes should be initialized before running them.";
+  clock_thread.detach();
 }
 
 void LogReplay::Run() {
@@ -34,6 +35,7 @@ void LogReplay::Run() {
     int n = ReadLogMessage(&entry, msg_buffer, Logger::MAX_BUF);
     if (n < 0) {
       util::RaiseShutdown();
+      return;
     }
     std::vector<const google::protobuf::FieldDescriptor*> fields;
     entry.GetReflection()->ListFields(entry, &fields);
