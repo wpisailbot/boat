@@ -21,7 +21,7 @@ there are almost certainly prerequisites missing beyond that which I list here:
 - A C++ compiler that bazel will recognize/locate (I assume gcc and clang both work)
 - Probably some other things I'm missing
 
-In order to compile for the BBB, use `bazel build --crosstool_top=//tools/arm_compiler:toolchain --cpu=armeabi-v7a //some/target:here`
+In order to compile for the BBB, use `bazel build --cpu=bbb //some/target:here`
 
 ### Tests and Examples
 

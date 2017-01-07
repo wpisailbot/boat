@@ -97,6 +97,11 @@ void Init(int argc, char *argv[]) {
   if (signal(SIGINT, &SignalHandler) == SIG_ERR) {
     LOG(FATAL) << "Failed to create signal handler";
   }
+  /*
+  struct sigaction sig_handler;
+  sig_handler.sa_handler = SignalHandler;
+  PCHECK(sigaction(SIGINT, &sig_handler, NULL) != -1) << "Failed to create signal handler";
+  */
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();

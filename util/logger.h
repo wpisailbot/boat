@@ -10,17 +10,8 @@ namespace sailbot {
 
 class Logger : public Node {
  public:
-  // TODO(james): Parameterize file name, figure out more reasonable Node
-  // period.
-  Logger() : Node(1.), out_("/tmp/logfilename") {
-    uint64_t start_time = util::monotonic_clock::now().time_since_epoch().count();
-    out_.write((const char*)&start_time, 8);
-    msg::LogEntry tmp;
-    const google::protobuf::Descriptor* desc = tmp.GetDescriptor();
-    for (int i = 0; i < desc->field_count(); ++i) {
-      RegisterLogHandler(desc->field(i)->lowercase_name().c_str());
-    }
-  }
+  // TODO(james): figure out more reasonable Node period.
+  Logger();
 
   ~Logger();
 

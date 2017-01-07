@@ -2,6 +2,10 @@
 #include "ipc/queue.hpp"
 #include "util/msg.pb.h"
 #include <fstream>
+#include "gflags.h"
+
+DEFINE_string(logfilename, "/tmp/logfilename",
+              "The name of the file to log to");
 
 namespace sailbot {
 
@@ -12,6 +16,16 @@ namespace sailbot {
  * 2 little-endian bytes for length of message
  * the above number of data bytes, to be parsed as a msg::LogEntry protobuf.
  */
+
+Logger::Logger() : Node(1.), out_(FLAGS_logfilename) {
+  uint64_t start_time = util::monotonic_clock::now().time_since_epoch().count();
+  out_.write((const char*)&start_time, 8);
+  msg::LogEntry tmp;
+  const google::protobuf::Descriptor* desc = tmp.GetDescriptor();
+  for (int i = 0; i < desc->field_count(); ++i) {
+    RegisterLogHandler(desc->field(i)->lowercase_name().c_str());
+  }
+}
 
 Logger::~Logger() {
   for (auto &thread : threads_) {

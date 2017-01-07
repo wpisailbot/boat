@@ -12,6 +12,7 @@ namespace term_nm {
 namespace sailbot {
 
 void ReadSBUS::Init() {
+  VLOG(3) << "Initializing";
   // Set Baud rate to 100000: Lots of complicate
   fd = open(port_name_, O_RDONLY); // change!
   PCHECK(fd != -1) << "Error opening serial port " << port_name_;

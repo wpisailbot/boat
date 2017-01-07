@@ -85,11 +85,20 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
 
   strcpy(ifr.ifr_name, "can0"); // TODO(james): Settable name.
   PCHECK(ioctl(s_, SIOCGIFINDEX, &ifr) == 0) << "ioctl IFINDEX set failed";
+  /*
   int block = 1; // We want blocking I/O.
   PCHECK(ioctl(s_, FIONBIO, &ifr, &block) == 0) << "ioctl set to nonblocking failed";
+  */
 
   addr.can_family = AF_CAN;
   addr.can_ifindex = ifr.ifr_ifindex;
+
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
+  PCHECK(setsockopt(s_, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
+                    sizeof(timeout)) == 0)
+      << "Failed to set timeout on can socket receive";
 
   int flags = fcntl(s_, F_GETFL, 0);
   PCHECK(flags != -1) << "Failed to receive flags";
@@ -101,8 +110,18 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
 
 void CanNode::Iterate() {
   can_frame frame;
-  int n = read(s_, &frame, sizeof(can_frame));
-  PCHECK(n > 0) << "Read error";
+  while (!util::IsShutdown()) {
+    int n = read(s_, &frame, sizeof(can_frame));
+    if (n < 0) {
+      if (errno == EAGAIN) {
+        PLOG(ERROR) << "Timeout on read--not getting any CAN data";
+      } else {
+        PLOG(FATAL) << "Read failed for some reason";
+      }
+    } else {
+      break;
+    }
+  }
 
   CANID id = RetrieveID(frame.can_id);
   uint32_t pgn = GetPGN(id);
