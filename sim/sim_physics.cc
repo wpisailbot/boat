@@ -64,8 +64,8 @@ SimulatorSaoud2013::SimulatorSaoud2013(float _dt)
 
 TrivialDynamics::TrivialDynamics(float _dt)
     : dt(_dt), rr(-1), rs(.25), rk(0), ls(.5), lr(.1), hs(2), hr(-.5), hk(-.7),
-      CoM(0, 0, -1), mass(25), deltas(1.3), deltar(0),
-      debug_queue_("sim_debug", true) {
+      lm(1), mm(30), CoM(0, 0, -1), mass(25), deltas(1.3), deltar(0),
+      deltab(0), debug_queue_("sim_debug", true) {
   J << 25, 0, 0,
        0, 25, 0,
        0, 0, 5;
@@ -93,13 +93,21 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   Vector3d taur = RudderTorques(Fr);
   Vector3d tauk = KeelTorques(Fk);
   Vector3d tauh = HullTorques();
-  Vector3d tauright = RightingTorques();
+  Vector3d tauright = RightingTorques(std::asin(RBI(2, 1))/*heel*/);
   Vector3d tau = taus + taur + tauk + tauh + tauright;
-  tau(1, 0) = 0;
+  //tau(1, 0) = 0;
   Fnet = RBI * Fnet;
   // Ignore any coriolis/centripetal junk.
   omega += J.inverse() * tau * dt;
-  omega(1, 0) = 0;
+  // Technically, should also do omega(0, 0), but that is only an issue
+  // if the below ever fails.
+  // Essentially, we are making sure that it is only rotating in the heel/yaw
+  // axes. Assuming that there is never any pitch, then arbitrary rotations in
+  // omega(0) (the heel axis) are fine.
+  // In order to remove the pitch rotation component (about the y-axis), we keep
+  // the y-rotation times sin(heel) and the z-rotation times cos(heel).
+  omega(1, 0) *= RBI(2, 1);
+  omega(2, 0) *= RBI(2, 2);
   v += Fnet / mass * dt;
   v(2, 0) = 0;
 
@@ -152,6 +160,56 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   return {nu, RBI};
 }
 
+Eigen::Matrix<double, kNumXStates, 1>
+TrivialDynamics::CalcXdot(double /*t*/, Eigen::Matrix<double, kNumXStates, 1> X,
+                          Eigen::Matrix<double, kNumUInputs, 1> U) {
+  // First, break everything out into named variables.
+  double heel = X(0, 1);
+  double yaw = X(1, 1);
+  v << X(2, 1), X(3, 1), 0;
+  omega = X.block(4, 0, 3, 1);
+  deltas = X(7, 1);
+  deltab = X(8, 1);
+  double deltabdot = X(9, 1);
+  double deltasdot = U(0, 0);
+  double uballast = U(1, 0);
+  double ch = std::cos(heel);
+  double sh = std::sin(heel);
+  double cy = std::cos(yaw);
+  double sy = std::sin(yaw);
+  RBI << cy, -sy * ch, sy * sh
+      , sy, ch * cy , -cy * sh
+      , 0 , sh      , ch;
+  Vector3d Fs = SailForces();
+  Vector3d Fr = RudderForces();
+  Vector3d Fk = KeelForces();
+  Vector3d Fh = HullForces();
+  Vector3d Fnet = Fs + Fr + Fk + Fh;
+
+  Vector3d taus = SailTorques(Fs);
+  Vector3d taur = RudderTorques(Fr);
+  Vector3d tauk = KeelTorques(Fk);
+  Vector3d tauh = HullTorques();
+  Vector3d tauright = RightingTorques(heel);
+  Vector3d tau = taus + taur + tauk + tauh + tauright;
+
+  Fnet(2, 0) = 0;
+  omegadot = J.inverse() * tau;
+  vdot = RBI * Fnet / mass;
+  double yawdot = sy * omega(1, 0) + cy * omega(2, 0);
+  double heeldot = sh * omega(1, 0) + ch * omega(2, 0);
+
+  const double kBballast = 1; // TODO(james): Figure out ballast velocity damping.
+  double deltabddot = uballast / (mm * lm * lm) - kBballast * deltabdot;
+
+  Eigen::Matrix<double, kNumXStates, 1> xdot;
+  xdot << heeldot, yawdot
+       , vdot(0, 0), vdot(1, 0)
+       , omegadot
+       , deltasdot, deltabdot, deltabddot;
+  return xdot;
+}
+
 Vector3d TrivialDynamics::AeroForces(Vector3d v, const float delta,
                                      const float rho, const float A,
                                      const float mindrag, const float maxdrag,
@@ -178,10 +236,11 @@ Vector3d TrivialDynamics::AeroForces(Vector3d v, const float delta,
   VLOG(3) << alphasigned << " Cl: " << Cl << " Cd: " << Cd;
   const float true_area =
       A * RBI(2, 2);  // Calculate the area that is vertical.
+  const float sqNorm = v.squaredNorm();
   const float s =
       .5 * rho * true_area *
       v.squaredNorm();  // Calculates the common components to lift/dag.
-  if (v.squaredNorm() > .005) v.normalize();
+  if (sqNorm > .005) v.normalize();
   const Vector3d lift = Cl * s * liftrot * v;
   const Vector3d drag = Cd * s * v;
   return lift + drag;
@@ -239,7 +298,13 @@ Vector3d TrivialDynamics::HullTorques() {
        0, 0, 150;
   return -c * omega;
 }
-Vector3d TrivialDynamics::RightingTorques() {
+Vector3d TrivialDynamics::RightingTorques(double heel) {
   const float kMaxTorque = mass * 10 * CoM(2, 0); // ~15kg * ~9.8m/s^2 * ~1m lever arm
+  // Add in movable ballast.
+  // Note that the movable ballast will be on a slope to increase authority
+  // while heeled. This means including some factor for the slope.
+  const double kMovableSlope = .3333;
+  double tauballast =
+      mm * lm * g * std::sin(deltab) * std::cos(heel + kMovableSlop * deltab);
   return Vector3d(RBI(2, 1) * kMaxTorque, 0, 0);
 }

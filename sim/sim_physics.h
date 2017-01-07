@@ -25,6 +25,15 @@ class SimulatorDynamics {
 
 class TrivialDynamics : public SimulatorDynamics {
  public:
+  // States:
+  // heel, yaw, vx, vy, omega[wx,wy,wz], deltas, deltab (ballast), deltabdot
+  constexpr int kNumXStates = 10;
+  // Inputs:
+  // deltasdot, deltabddot
+  constexpr int kNumUInputs = 2;
+  typedef Eigen::Matrix<double, kNumXStates, 1> VectorStates;
+  typedef Eigen::Matrix<double, kNumUInputs, 1> VectorInputs;
+
   TrivialDynamics(float _dt);
   std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot);
   Vector3d get_x() { return x;}
@@ -34,6 +43,21 @@ class TrivialDynamics : public SimulatorDynamics {
   double get_deltas() { return deltas; }
   double get_deltar() { return deltar; }
   void set_wind(Vector3d wind) { this->wind = wind; }
+
+  // Note: CalcXdot does make use of most parameters that aren't explicitly
+  // mentioned as part of X/U, although it assumes that those are all constant.
+  // CalcXdot WILL butcher the state of this.
+  VectorStates CalcXdot(double /*t*/, VectorStates X, VectorInputs U);
+  // Integrates using CalcXdot by passing it each subsequent U as an input every
+  // dt. Once it runs out of Us, it simply simulates every dt using simple_ctrl
+  // to calculate a U.
+  template <int N>
+  double
+  ObjectiveFun(Eigen::Matrix<double, kNumUInputs, N> U, VectorStates X,
+               double dt, double horizon,
+               std::function<VectorInputs(VectorStates)> simple_ctrl,
+               std::function<double(VectorStates, VectorInputs)> StepCost,
+               std::function<double(VectorStates)> EndCost) {
  private:
   // All forces/torques calculated in frame of sailboat body.
   Vector3d SailForces();
@@ -45,7 +69,7 @@ class TrivialDynamics : public SimulatorDynamics {
   Vector3d RudderTorques(const Vector3d& f);
   Vector3d KeelTorques(const Vector3d& f);
   Vector3d HullTorques();
-  Vector3d RightingTorques(); // Buoyancy/Gravity.
+  Vector3d RightingTorques(); // Buoyancy/Gravity/Ballast.
 
   Vector3d AeroForces(Vector3d v, const float delta, const float rho,
                       const float A, const float mindrag = .05,
@@ -65,11 +89,13 @@ class TrivialDynamics : public SimulatorDynamics {
   const double hr; // Vertical distance of CoE of rudder from origin ("height" of rudder). Will be a negative number.
   const double hk;  // Vertical distance of CoE of keel from origin ("height" of
                     // keel). Will be a negative number.
+  const double lm;  // Radius of movable ballast (m).
+  const double mm;  // Mass of movable ballast (kg).
   const Vector3d CoM; // Center of mass
   const float mass;
   Matrix3d J;
 
-  double deltas, deltar;
+  double deltas, deltar, deltab; // Sail, Rudder, movable Ballast
   Vector3d x, v;
   Matrix3d RBI;
   Vector3d omega; // w.r.t. hull frame
@@ -77,6 +103,29 @@ class TrivialDynamics : public SimulatorDynamics {
 
   sailbot::ProtoQueue<sailbot::msg::SimDebugMsg> debug_queue_;
 };
+
+template <int N>
+double ObjectiveFun(Eigen::Matrix<double, kNumUInputs, N> U, VectorStates X,
+                    double dt, double horizon,
+                    std::function<VectorInputs(VectorStates)> simple_ctrl,
+                    std::function<double(VectorStates, VectorInputs)> StepCost,
+                    std::function<double(VectorStates)> EndCost) {
+  double cost = 0;
+  int i;
+  VectorInputs curU;
+  for (i = 0; i*dt < horizon; ++i) {
+    if (i < N) {
+      curU = U.col(i);
+    } else {
+      curU = cimple_ctrl(X);
+    }
+    RungeKutta4(std::bind(&TrivialDynamics::CalcXdot, this,
+                          std::placeholders::_1, std::placeholders::_2, curU),
+                X, 0, dt);
+    cost += StepCost(X, curU);
+  }
+  cost += EndCost(X);
+}
 
 class SimulatorSaoud2013 : public SimulatorDynamics {
  public:

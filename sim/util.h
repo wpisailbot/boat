@@ -1,5 +1,6 @@
 #pragma once
 #include <eigen3/Eigen/Core>
+#include <functional>
 #include "sim/sim_debug.pb.h"
 
 using Eigen::Vector3d;
@@ -46,3 +47,13 @@ inline float norm_angle(float a) {
     a += 2 * M_PI;
   return a;
 }
+
+template <typename M>
+void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
+  M k1 = f(t0, y);
+  M k2 = f(t0 + h / 2, y + k1 * h / 2);
+  M k3 = f(t0 + h / 2, y + k2 * h / 2);
+  M k4 = f(t0 + h, y + k3 * h);
+  y += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+}
+
