@@ -13,17 +13,23 @@ Node::~Node() {
   for (auto& thread : threads_) {
     thread.detach();
   }
+  if (run_thread_) {
+    run_thread_->join();
+  }
 }
 
 void Node::Run() {
   // TODO(james): Shutdown cleanly.
-  while (!util::IsShutdown()) {
-    if (period_ > 0) {
-      loop_.WaitForNext();
+  auto run_fun = [this]() {
+    while (!util::IsShutdown()) {
+      if (period_ > 0) {
+        loop_.WaitForNext();
+      }
+      Iterate();
     }
-    Iterate();
-  }
-  loop_.Done();
+    loop_.Done();
+  };
+  run_thread_.reset(new std::thread(run_fun));
 }
 
 }  // sailbot

@@ -8,7 +8,7 @@ cc_library(
     "include/**/*.h",
     "src/*.h"
     ]),
-  copts = ["-Iexternal/gtest/include"],
+  includes = ["gtest/include", "include"],
   linkopts = ["-pthread"],
   visibility = ["//visibility:public"],
 )

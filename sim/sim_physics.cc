@@ -130,7 +130,7 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
           << RudderTorques(Fr).transpose() << " tauk "
           << KeelTorques(Fk).transpose() << " tauh "
           << HullTorques().transpose() << " tauright "
-          << RightingTorques().transpose();
+          << "not calc'd";//RightingTorques().transpose();
   VLOG(1) << "tau: " << tau.transpose();
   VLOG(1) << "omega: " << omega.transpose();
 
@@ -160,17 +160,18 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   return {nu, RBI};
 }
 
-Eigen::Matrix<double, kNumXStates, 1>
-TrivialDynamics::CalcXdot(double /*t*/, Eigen::Matrix<double, kNumXStates, 1> X,
-                          Eigen::Matrix<double, kNumUInputs, 1> U) {
+Eigen::Matrix<double, TrivialDynamics::kNumXStates, 1>
+TrivialDynamics::CalcXdot(
+    double /*t*/, Eigen::Matrix<double, TrivialDynamics::kNumXStates, 1> X,
+    Eigen::Matrix<double, TrivialDynamics::kNumUInputs, 1> U) {
   // First, break everything out into named variables.
-  double heel = X(0, 1);
-  double yaw = X(1, 1);
-  v << X(2, 1), X(3, 1), 0;
+  double heel = X(0, 0);
+  double yaw = X(1, 0);
+  v << X(2, 0), X(3, 0), 0;
   omega = X.block(4, 0, 3, 1);
-  deltas = X(7, 1);
-  deltab = X(8, 1);
-  double deltabdot = X(9, 1);
+  deltas = X(7, 0);
+  deltab = X(8, 0);
+  double deltabdot = X(9, 0);
   double deltasdot = U(0, 0);
   double uballast = U(1, 0);
   double ch = std::cos(heel);
@@ -194,12 +195,13 @@ TrivialDynamics::CalcXdot(double /*t*/, Eigen::Matrix<double, kNumXStates, 1> X,
   Vector3d tau = taus + taur + tauk + tauh + tauright;
 
   Fnet(2, 0) = 0;
-  omegadot = J.inverse() * tau;
-  vdot = RBI * Fnet / mass;
+  Vector3d omegadot = J.inverse() * tau;
+  Vector3d vdot = RBI * Fnet / mass;
   double yawdot = sy * omega(1, 0) + cy * omega(2, 0);
   double heeldot = sh * omega(1, 0) + ch * omega(2, 0);
 
-  const double kBballast = 1; // TODO(james): Figure out ballast velocity damping.
+  const double kBballast =
+      100 /*approx max U*/ / (mm * lm * lm * 5 /*approx max dbdot*/);
   double deltabddot = uballast / (mm * lm * lm) - kBballast * deltabdot;
 
   Eigen::Matrix<double, kNumXStates, 1> xdot;
@@ -210,13 +212,13 @@ TrivialDynamics::CalcXdot(double /*t*/, Eigen::Matrix<double, kNumXStates, 1> X,
   return xdot;
 }
 
-Vector3d TrivialDynamics::AeroForces(Vector3d v, const float delta,
+Vector3d TrivialDynamics::AeroForces(Vector3d va, const float delta,
                                      const float rho, const float A,
                                      const float mindrag, const float maxdrag,
                                      const float maxlift) {
-  // If alpha is negative, then lift follows [0 1; -1 0] * v
-  // If alpha is positive, then lift follows [0 -1; 1 0] * v
-  float alphasigned = norm_angle(std::atan2(-v(1), -v(0)) - delta);
+  // If alpha is negative, then lift follows [0 1; -1 0] * va
+  // If alpha is positive, then lift follows [0 -1; 1 0] * va
+  float alphasigned = norm_angle(std::atan2(-va(1), -va(0)) - delta);
   if (std::isnan(alphasigned))
     alphasigned = 0;
   const float alpha = std::abs(alphasigned);
@@ -236,13 +238,13 @@ Vector3d TrivialDynamics::AeroForces(Vector3d v, const float delta,
   VLOG(3) << alphasigned << " Cl: " << Cl << " Cd: " << Cd;
   const float true_area =
       A * RBI(2, 2);  // Calculate the area that is vertical.
-  const float sqNorm = v.squaredNorm();
+  const float sqNorm = va.squaredNorm();
   const float s =
       .5 * rho * true_area *
-      v.squaredNorm();  // Calculates the common components to lift/dag.
-  if (sqNorm > .005) v.normalize();
-  const Vector3d lift = Cl * s * liftrot * v;
-  const Vector3d drag = Cd * s * v;
+      va.squaredNorm();  // Calculates the common components to lift/dag.
+  if (sqNorm > .005) va.normalize();
+  const Vector3d lift = Cl * s * liftrot * va;
+  const Vector3d drag = Cd * s * va;
   return lift + drag;
 }
 
@@ -299,12 +301,13 @@ Vector3d TrivialDynamics::HullTorques() {
   return -c * omega;
 }
 Vector3d TrivialDynamics::RightingTorques(double heel) {
-  const float kMaxTorque = mass * 10 * CoM(2, 0); // ~15kg * ~9.8m/s^2 * ~1m lever arm
+  const float g = 9.8;
+  const float kMaxTorque = mass * g * CoM(2, 0); // ~15kg * ~9.8m/s^2 * ~1m lever arm
   // Add in movable ballast.
   // Note that the movable ballast will be on a slope to increase authority
   // while heeled. This means including some factor for the slope.
   const double kMovableSlope = .3333;
   double tauballast =
-      mm * lm * g * std::sin(deltab) * std::cos(heel + kMovableSlop * deltab);
-  return Vector3d(RBI(2, 1) * kMaxTorque, 0, 0);
+      mm * lm * g * std::sin(deltab) * std::cos(heel + kMovableSlope * deltab);
+  return Vector3d(RBI(2, 1) * kMaxTorque + tauballast, 0, 0);
 }

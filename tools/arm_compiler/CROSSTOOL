@@ -166,6 +166,7 @@ toolchain {
   abi_version: "local"
   builtin_sysroot: ""
   compiler: "compiler"
+  compiler_flag: "-fdiagnostics-color=always"
   compiler_flag: "-U_FORTIFY_SOURCE"
   compiler_flag: "-D_FORTIFY_SOURCE=2"
   compiler_flag: "-fstack-protector"

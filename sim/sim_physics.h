@@ -6,6 +6,7 @@
 #include <iostream>
 #include "ipc/queue.hpp"
 #include "sim/sim_debug.pb.h"
+#include "dlib/dlib/optimization/optimization_bobyqa.h"
 
 class SimulatorDynamics {
  public:
@@ -27,10 +28,11 @@ class TrivialDynamics : public SimulatorDynamics {
  public:
   // States:
   // heel, yaw, vx, vy, omega[wx,wy,wz], deltas, deltab (ballast), deltabdot
-  constexpr int kNumXStates = 10;
+  // Notes: omega has 3 elements but is 2-DOF
+  static constexpr int kNumXStates = 10;
   // Inputs:
   // deltasdot, deltabddot
-  constexpr int kNumUInputs = 2;
+  static constexpr int kNumUInputs = 2;
   typedef Eigen::Matrix<double, kNumXStates, 1> VectorStates;
   typedef Eigen::Matrix<double, kNumUInputs, 1> VectorInputs;
 
@@ -43,6 +45,10 @@ class TrivialDynamics : public SimulatorDynamics {
   double get_deltas() { return deltas; }
   double get_deltar() { return deltar; }
   void set_wind(Vector3d wind) { this->wind = wind; }
+  double get_alpha_sail() {
+    Vector3d wa = RBI.transpose() * (wind - v);
+    return norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
+  }
 
   // Note: CalcXdot does make use of most parameters that aren't explicitly
   // mentioned as part of X/U, although it assumes that those are all constant.
@@ -53,11 +59,12 @@ class TrivialDynamics : public SimulatorDynamics {
   // to calculate a U.
   template <int N>
   double
-  ObjectiveFun(Eigen::Matrix<double, kNumUInputs, N> U, VectorStates X,
+  ObjectiveFun(dlib::matrix<double, kNumUInputs * N, 1> U, VectorStates X,
                double dt, double horizon,
                std::function<VectorInputs(VectorStates)> simple_ctrl,
                std::function<double(VectorStates, VectorInputs)> StepCost,
-               std::function<double(VectorStates)> EndCost) {
+               std::function<double(VectorStates)> EndCost);
+
  private:
   // All forces/torques calculated in frame of sailboat body.
   Vector3d SailForces();
@@ -69,7 +76,7 @@ class TrivialDynamics : public SimulatorDynamics {
   Vector3d RudderTorques(const Vector3d& f);
   Vector3d KeelTorques(const Vector3d& f);
   Vector3d HullTorques();
-  Vector3d RightingTorques(); // Buoyancy/Gravity/Ballast.
+  Vector3d RightingTorques(double heel); // Buoyancy/Gravity/Ballast.
 
   Vector3d AeroForces(Vector3d v, const float delta, const float rho,
                       const float A, const float mindrag = .05,
@@ -105,26 +112,31 @@ class TrivialDynamics : public SimulatorDynamics {
 };
 
 template <int N>
-double ObjectiveFun(Eigen::Matrix<double, kNumUInputs, N> U, VectorStates X,
-                    double dt, double horizon,
-                    std::function<VectorInputs(VectorStates)> simple_ctrl,
-                    std::function<double(VectorStates, VectorInputs)> StepCost,
-                    std::function<double(VectorStates)> EndCost) {
+double TrivialDynamics::ObjectiveFun(
+    dlib::matrix<double, kNumUInputs * N, 1> U, VectorStates X, double dt,
+    double horizon, std::function<VectorInputs(VectorStates)> simple_ctrl,
+    std::function<double(VectorStates, VectorInputs)> StepCost,
+    std::function<double(VectorStates)> EndCost) {
   double cost = 0;
   int i;
   VectorInputs curU;
   for (i = 0; i*dt < horizon; ++i) {
     if (i < N) {
-      curU = U.col(i);
+      curU << U(2 * i, 0), U(2 * i + 1, 0);
     } else {
-      curU = cimple_ctrl(X);
+      curU = simple_ctrl(X);
     }
-    RungeKutta4(std::bind(&TrivialDynamics::CalcXdot, this,
-                          std::placeholders::_1, std::placeholders::_2, curU),
-                X, 0, dt);
+    std::function<VectorStates(double, VectorStates)> f =
+        std::bind(&TrivialDynamics::CalcXdot, this, std::placeholders::_1,
+                  std::placeholders::_2, curU);
+    RungeKutta4(f, X, 0, dt);
     cost += StepCost(X, curU);
   }
   cost += EndCost(X);
+  LOG(INFO) << "X: " << X;
+  LOG(INFO) << "U: " << U;
+  LOG(INFO) << "cost: " << cost;
+  return cost;
 }
 
 class SimulatorSaoud2013 : public SimulatorDynamics {
