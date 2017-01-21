@@ -71,18 +71,20 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
   const google::protobuf::Descriptor *descriptor = tmp->GetDescriptor();
   for (unsigned i = 0; i < pgnListSize; ++i) {
     const Pgn *p = &pgnList[i];
-    if (!descriptor->FindFieldByNumber(p->pgn)) {
+    int pgn = p->pgn;
+    if (!descriptor->FindFieldByNumber(pgn)) {
       // The message isn't going to be sent out, so don't process it.
       continue;
     }
     char queue_name[16]; // TODO: Figure this out.
-    snprintf(queue_name, 16, "can%u", p->pgn);
-    msgs_[p->pgn] =
+    snprintf(queue_name, 16, "can%u", pgn);
+    msgs_[pgn] =
         CANMessage(p, queue_name, AllocateMessage<msg::can::CANMaster>());
 
     RegisterHandler<msg::can::CANMaster>(
-        queue_name,
-        [this, p](const msg::can::CANMaster &msg) { SendMessage(msg, p->pgn); });
+        queue_name, [this, pgn](const msg::can::CANMaster &msg) {
+          SendMessage(msg, pgn);
+        });
   }
   PCHECK(s_ >= 0) << "Socket open failed";
   ifreq ifr;
@@ -315,7 +317,7 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
   CANID can_id;
   SetPGN(&can_id, pgn);
   can_id.priority = 0x7; // TODO(james): Parametrize to allow variation
-  can_id.source = 0; // TODO(james): Use real source ID.
+  can_id.source = 123; // TODO(james): Use real source ID.
   frame.can_id = ConstructID(can_id);
   write(s_, &frame, sizeof(can_frame));
 }

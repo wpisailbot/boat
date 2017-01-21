@@ -75,7 +75,7 @@ class Queue {
 
  private:
   //! The name to be used for the shared memory queue itself.
-  const char *name_;
+  char name_[128];
 
   //! Whether or not this queue will be doing any writing.
   bool writer_;

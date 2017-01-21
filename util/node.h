@@ -43,8 +43,9 @@ class Node {
   virtual void Iterate() = 0;
 
  private:
+  // Note: takes ownership of queue.
   template <typename T>
-  void RunHandlerCaller(const char *queue_name,
+  void RunHandlerCaller(std::unique_ptr<ProtoQueue<T>> queue,
                         ::std::function<void(const T &)> callback);
   double period_;
   util::Loop loop_;
@@ -59,7 +60,9 @@ class Node {
 template <typename T>
 void Node::RegisterHandler(const char *queue_name,
                            ::std::function<void(const T &)> callback) {
-  threads_.emplace_back(&Node::RunHandlerCaller<T>, this, queue_name, callback);
+  threads_.emplace_back(&Node::RunHandlerCaller<T>, this,
+                        std::make_unique<ProtoQueue<T>>(queue_name, false),
+                        callback);
 }
 
 template <typename T>
@@ -68,14 +71,13 @@ T *Node::AllocateMessage() {
 }
 
 template <typename T>
-void Node::RunHandlerCaller(const char *queue_name,
+void Node::RunHandlerCaller(std::unique_ptr<ProtoQueue<T>> q,
                             ::std::function<void(const T &)> callback) {
-  ProtoQueue<T> q(queue_name, false);
   T* buffer = AllocateMessage<T>();
   // TODO(james): Shutdown cleanly; currently won't handle shutdown while
   // waiting on queue receive.
   while (!util::IsShutdown()) {
-    q.receive(buffer);
+    q->receive(buffer);
     callback(*buffer);
   }
 }

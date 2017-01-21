@@ -18,3 +18,8 @@ cc_binary(
   srcs=["can-dump.cc"],
   deps=[":can"],
 )
+cc_binary(
+  name="can-ping",
+  srcs=["can-ping.cc"],
+  deps=[":can"],
+)

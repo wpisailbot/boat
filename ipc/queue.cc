@@ -3,10 +3,11 @@
 namespace sailbot {
 
 Queue::Queue(const char *name, bool writer, size_t queue_len, size_t msg_size)
-    : name_(name), writer_(writer) {
+    : writer_(writer) {
+  strncpy(name_, name, sizeof(name_));
   namespace bst = boost::interprocess;
 
-  semaphore_ = new bst::named_semaphore(bst::open_or_create, name, 0/*Initial Value*/);
+  semaphore_ = new bst::named_semaphore(bst::open_or_create, name_, 0/*Initial Value*/);
   if (writer) {
     queue_ =
         new bst::message_queue(bst::open_or_create, name_, queue_len, msg_size);
