@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/wpisailbot/boat.svg?branch=master)](https://travis-ci.org/wpisailbot/boat)
+
 This repository contains the code meant to run on the boat for the WPI Sailbot
 in the 2016-2017 school year.
 

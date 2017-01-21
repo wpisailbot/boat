@@ -214,9 +214,9 @@ toolchain {
   unfiltered_cxx_flag: "-D__TIMESTAMP__=\"redacted\""
   unfiltered_cxx_flag: "-D__TIME__=\"redacted\""
   tool_path {name: "ar" path: "/usr/bin/ar" }
-  tool_path {name: "cpp" path: "/usr/bin/cpp" }
+  tool_path {name: "cpp" path: "/usr/bin/cpp-5" }
   tool_path {name: "dwp" path: "/usr/bin/dwp" }
-  tool_path {name: "gcc" path: "/usr/bin/gcc" }
+  tool_path {name: "gcc" path: "/usr/bin/gcc-5" }
   tool_path {name: "gcov" path: "/usr/bin/gcov" }
   tool_path {name: "ld" path: "/usr/bin/ld" }
   tool_path {name: "nm" path: "/usr/bin/nm" }

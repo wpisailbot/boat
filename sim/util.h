@@ -1,5 +1,5 @@
 #pragma once
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 #include <functional>
 #include "sim/sim_debug.pb.h"
 

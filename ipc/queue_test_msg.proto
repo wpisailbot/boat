@@ -1,3 +1,4 @@
+syntax = "proto2";
 package sailbot.test;
 
 message QueueTestMsg {

@@ -11,7 +11,7 @@ cc_library(
   name="sim_util",
   srcs=["util.cc"],
   hdrs=["util.h"],
-  deps=[":sim_debug_proto"],
+  deps=[":sim_debug_proto", "@eigen//:eigen"],
 )
 cc_library(
   name="sim_physics",
@@ -22,7 +22,7 @@ cc_library(
         ":sim_util",
         ":sim_debug_proto",
         "//ipc:queue",
-        "//dlib:dlib"],
+        ],
 )
 cc_library(
   name="sim_inter",
@@ -40,14 +40,4 @@ cc_binary(
   name="basic_sim_main",
   srcs=["basic_sim_main.cc"],
   deps=[":sim_inter", ":csv_logger", "//control:simple_control"],
-)
-cc_test(
-  name="mpc_test",
-  srcs=["mpc_test.cc"],
-  deps=["@gtest//:main",
-        ":sim_inter",
-        ":csv_logger",
-        "//control:simple_control",
-        ":sim_physics",
-        "//dlib:dlib"],
 )

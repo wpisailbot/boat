@@ -1,5 +1,5 @@
 #include "sim_inter.h"
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Geometry>
 
 namespace sailbot {
 namespace sim {

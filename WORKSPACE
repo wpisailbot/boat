@@ -40,3 +40,10 @@ new_http_archive(
   type = "zip",
   strip_prefix = "boost_1_62_0/",
 )
+
+new_http_archive(
+  name = "eigen",
+  url = "http://bitbucket.org/eigen/eigen/get/3.3.2.tar.bz2",
+  build_file = "third_party/eigen.BUILD",
+  strip_prefix = "eigen-eigen-da9b4e14c255/",
+)

@@ -1,12 +1,11 @@
 #pragma once
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/LU>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Core>
+#include <Eigen/LU>
+#include <Eigen/Geometry>
 #include "util.h"
 #include <iostream>
 #include "ipc/queue.hpp"
 #include "sim/sim_debug.pb.h"
-#include "dlib/dlib/optimization/optimization_bobyqa.h"
 
 class SimulatorDynamics {
  public:
@@ -54,16 +53,6 @@ class TrivialDynamics : public SimulatorDynamics {
   // mentioned as part of X/U, although it assumes that those are all constant.
   // CalcXdot WILL butcher the state of this.
   VectorStates CalcXdot(double /*t*/, VectorStates X, VectorInputs U);
-  // Integrates using CalcXdot by passing it each subsequent U as an input every
-  // dt. Once it runs out of Us, it simply simulates every dt using simple_ctrl
-  // to calculate a U.
-  template <int N>
-  double
-  ObjectiveFun(dlib::matrix<double, kNumUInputs * N, 1> U, VectorStates X,
-               double dt, double horizon,
-               std::function<VectorInputs(VectorStates)> simple_ctrl,
-               std::function<double(VectorStates, VectorInputs)> StepCost,
-               std::function<double(VectorStates)> EndCost);
 
  private:
   // All forces/torques calculated in frame of sailboat body.
@@ -110,34 +99,6 @@ class TrivialDynamics : public SimulatorDynamics {
 
   sailbot::ProtoQueue<sailbot::msg::SimDebugMsg> debug_queue_;
 };
-
-template <int N>
-double TrivialDynamics::ObjectiveFun(
-    dlib::matrix<double, kNumUInputs * N, 1> U, VectorStates X, double dt,
-    double horizon, std::function<VectorInputs(VectorStates)> simple_ctrl,
-    std::function<double(VectorStates, VectorInputs)> StepCost,
-    std::function<double(VectorStates)> EndCost) {
-  double cost = 0;
-  int i;
-  VectorInputs curU;
-  for (i = 0; i*dt < horizon; ++i) {
-    if (i < N) {
-      curU << U(2 * i, 0), U(2 * i + 1, 0);
-    } else {
-      curU = simple_ctrl(X);
-    }
-    std::function<VectorStates(double, VectorStates)> f =
-        std::bind(&TrivialDynamics::CalcXdot, this, std::placeholders::_1,
-                  std::placeholders::_2, curU);
-    RungeKutta4(f, X, 0, dt);
-    cost += StepCost(X, curU);
-  }
-  cost += EndCost(X);
-  LOG(INFO) << "X: " << X;
-  LOG(INFO) << "U: " << U;
-  LOG(INFO) << "cost: " << cost;
-  return cost;
-}
 
 class SimulatorSaoud2013 : public SimulatorDynamics {
  public:

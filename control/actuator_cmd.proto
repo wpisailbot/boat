@@ -12,6 +12,10 @@ message RudderCmd {
   optional float vel = 11;
 }
 
+message HeadingCmd {
+  optional float heading = 9;
+}
+
 message Vector3f {
   optional float x = 1;
   optional float y = 2;
