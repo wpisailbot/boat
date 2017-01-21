@@ -2,6 +2,7 @@
 
 #include "ipc/queue.hpp"
 #include "util/msg.pb.h"
+#include "util/proto_util.h"
 
 namespace sailbot {
 
@@ -70,33 +71,7 @@ double CsvLogger::GetField(const msg::LogEntry& msg, const std::string& field) {
   if (val_field == nullptr) {
     LOG(FATAL) << "Didn't find field \"" << field << "\" in message";
   }
-  const google::protobuf::Reflection& reflect = *submsg->GetReflection();
-  switch (val_field->type()) {
-    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
-      return reflect.GetDouble(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
-      return reflect.GetFloat(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_BOOL:
-      return reflect.GetBool(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return reflect.GetEnumValue(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_INT32:
-    case google::protobuf::FieldDescriptor::TYPE_SINT32:
-    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
-      return reflect.GetInt32(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_INT64:
-    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
-    case google::protobuf::FieldDescriptor::TYPE_SINT64:
-      return reflect.GetInt64(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_UINT32:
-    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
-      return reflect.GetUInt32(*submsg, val_field);
-    case google::protobuf::FieldDescriptor::TYPE_UINT64:
-    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
-      return reflect.GetUInt64(*submsg, val_field);
-    default:
-      return 0;
-  }
+  return util::GetProtoNumberField(val_field, submsg);
 }
 
 void CsvLogger::Iterate() {

@@ -34,7 +34,7 @@ cc_library(
   name="csv_logger",
   srcs=["csv_logging.cc"],
   hdrs=["csv_logging.h"],
-  deps=["//util:node"],
+  deps=["//util:node", "//util:proto_util"],
 )
 cc_binary(
   name="basic_sim_main",

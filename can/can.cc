@@ -1,5 +1,6 @@
 #include "can.h"
 #include "util/node.h"
+#include "util/proto_util.h"
 #include "pgn.h"
 #include "canboat-pgn.h"
 #include <linux/can.h>
@@ -78,6 +79,10 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
     snprintf(queue_name, 16, "can%u", p->pgn);
     msgs_[p->pgn] =
         CANMessage(p, queue_name, AllocateMessage<msg::can::CANMaster>());
+
+    RegisterHandler<msg::can::CANMaster>(
+        queue_name,
+        [this, p](const msg::can::CANMaster &msg) { SendMessage(msg, p->pgn); });
   }
   PCHECK(s_ >= 0) << "Socket open failed";
   ifreq ifr;
@@ -175,7 +180,7 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
   }
   char debugbuf[128];
   size_t debug_size = 128;
-  for (int i = 0; i < msg->len_; ++i) {
+  for (size_t i = 0; i < msg->len_; ++i) {
     debug_size -=
         snprintf(debugbuf + 128 - debug_size, debug_size, "0x%x ", data[i]);
   }
@@ -211,7 +216,7 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
           int32_t int_val;
           memcpy(&int_val, data + (cur_bit / 8), 8);
           val = (double)int_val * RES_LAT_LONG_64;
-          int64_t max = -1 ^ (1 << 63);
+          int64_t max = -1 ^ ((int64_t)1 << 63);
           reserved = IsReserved(int_val, max);
         }
         if (!reserved) SetProtoNumberField(pgn_msg, i+1, val);
@@ -230,6 +235,7 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
     }
     cur_bit += f->size;
   }
+  msg->store_msg_->set_outgoing(false);
   msg->queue_->send(msg->store_msg_);
 }
 
@@ -264,5 +270,55 @@ int64_t CanNode::ExtractNumberField(const Field *f, const uint8_t *data,
   }
   return retval;
 }
+
+void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
+  if (!msg.outgoing()) {
+    // If the message isn't outgoing, than we probably received it, so don't
+    // send it out again.
+    return;
+  }
+  const CANMessage *msg_info = &msgs_[pgn];
+
+  const google::protobuf::Descriptor* descriptor = msg.GetDescriptor();
+  const google::protobuf::Reflection* reflection = msg.GetReflection();
+  const google::protobuf::FieldDescriptor *field_desc =
+      descriptor->FindFieldByNumber(pgn);
+  if (field_desc == nullptr) {
+    LOG(ERROR) << "Unable to find message for PGN " << pgn;
+    return;
+  }
+  const google::protobuf::Message &pgn_msg =
+      reflection->GetMessage(msg, field_desc);
+
+  can_frame frame;
+  frame.can_dlc = 0;
+  if (msg_info->pgn->size > 8) {
+    LOG(ERROR) << "Sending multi-packet messages is currently unsupported";
+  }
+  for (int i = 0; msg_info->pgn->fieldList[i].name /*ie, f exists*/; ++i) {
+    const Field *f = msg_info->pgn->fieldList + i;
+    if (f->size % 8 != 0) {
+      LOG(ERROR) << "Attempting to send message with non-byte-aligned fields";
+      return;
+    }
+    // For now, only work with fields that are simple numbers and have byte alignment.
+    if (f->resolution > 0) {
+      float x = util::GetProtoNumberFieldById(&pgn_msg, i+1);
+      uint32_t n_wire = x / f->resolution;
+      memcpy((void*)(frame.data + frame.can_dlc), (void*)&n_wire, f->size / 8);
+    } else {
+      LOG(WARNING) << "Attempting to write field with undefined resolution";
+    }
+    frame.can_dlc += f->size / 8;
+  }
+
+  CANID can_id;
+  SetPGN(&can_id, pgn);
+  can_id.priority = 0x7; // TODO(james): Parametrize to allow variation
+  can_id.source = 0; // TODO(james): Use real source ID.
+  frame.can_id = ConstructID(can_id);
+  write(s_, &frame, sizeof(can_frame));
+}
+
 }  // namespace sailbot
 }  // namespace can

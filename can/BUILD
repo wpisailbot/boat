@@ -11,7 +11,7 @@ cc_library(
   name="can",
   srcs=["can.cc"],
   hdrs=["can.h", "canboat-pgn.h", "pgn.h"],
-  deps=[":can_proto", "//util:node"],
+  deps=[":can_proto", "//util:proto_util", "//util:node"],
 )
 cc_binary(
   name="can-dump",

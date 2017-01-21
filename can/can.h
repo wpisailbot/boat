@@ -37,6 +37,7 @@ class CanNode : public Node {
   void DecodeAndSend(const CANMessage* msg);
   int64_t ExtractNumberField(const Field *f, const uint8_t *data,
                              size_t start_bit, int64_t *maxval);
+  void SendMessage(const msg::can::CANMaster &msg, const int pgn);
 };
 
 }  // namespace sailbot

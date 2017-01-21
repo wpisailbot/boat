@@ -69,6 +69,14 @@ cc_proto_library(
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )
+cc_library(
+  name="proto_util",
+  srcs=["proto_util.cc"],
+  hdrs=["proto_util.h"],
+  deps = [":msg_proto",
+          "@glog//:glog",
+          "@gflags//:gflags"],
+)
 
 cc_binary(
   name="pong",

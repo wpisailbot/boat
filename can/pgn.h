@@ -37,5 +37,16 @@ uint32_t GetPGN(CANID id) {
          (id.PF < 240 ? 0 : id.PS);
 }
 
+void SetPGN(CANID *id, int32_t pgn) {
+  uint8_t low = pgn & 0xFF;
+  pgn >>= 8;
+  id->PF = pgn & 0xFF;
+  pgn >>= 8;
+  id->DP = pgn & 0x01;
+  if (id->PF < 240) {
+    id->PS = low;
+  }
+}
+
 }  // namespace sailbot
 }  // namespace can

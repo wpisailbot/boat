@@ -41,6 +41,7 @@ message WindData {
 }
 
 message CANMaster {
+  optional bool outgoing = 1 [default = false]; // Whether to send out over wire
   optional SystemTime sys_tme = 126992;
   optional VesselHeading heading = 127250;
   optional RateOfTurn rate_turn = 127251;

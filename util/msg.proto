@@ -28,6 +28,7 @@ message LogEntry {
   optional SailCmd sail_cmd = 501;
   optional RudderCmd rudder_cmd = 502;
   optional Vector3f wind = 503;
+  optional HeadingCmd heading_cmd = 504;
 
   // Test Messages
   optional PingMsg ping = 2000;
