@@ -34,8 +34,6 @@ before_install:
 script:
   - |
     bazel \
-      --output_base=$HOME/.cache/bazel \
-      --batch \
       build \
       --verbose_failures \
       --test_output=errors \
@@ -45,7 +43,7 @@ script:
   - |
     bazel \
       test \
-      --test_strategy=standalone \
+      --spawn_strategy=standalone \
       //...
 notifications:
   email: false
