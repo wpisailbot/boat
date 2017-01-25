@@ -14,6 +14,7 @@
 
 #include "util/msg.pb.h"
 #include "util/clock.h"
+#include "test_queue.h"
 
 namespace sailbot {
 
@@ -73,12 +74,17 @@ class Queue {
    */
   static void remove(const char *name);
 
+  static void set_testing(bool testing) { testing_ = testing; }
+
  private:
   //! The name to be used for the shared memory queue itself.
   char name_[128];
 
   //! Whether or not this queue will be doing any writing.
   bool writer_;
+
+  //! Whether or not we are testing (ie, use SHM or TestQueue)
+  static bool testing_;
 
   //! @brief The boost queue object to use.
   //!
@@ -88,6 +94,9 @@ class Queue {
 
   //! @brief Semaphore to keep track of number of Queue objects using the queue.
   boost::interprocess::named_semaphore *semaphore_;
+
+  //! The testing implementaiton (for use instead of the boost stuff).
+  std::unique_ptr<testing::TestQueue> test_impl_;
 };
 
 /**
@@ -109,7 +118,7 @@ class ProtoQueue {
         google::protobuf::Arena::CreateMessage<msg::LogEntry>(arena_.get());
     field_ = msg_header_->GetDescriptor()->FindFieldByName(name);
     if (field_ == nullptr) {
-      LOG(FATAL) << "Queue \"" << name << "\" does not exist...";
+      LOG(FATAL) << "Queue \"" << name << "\" does not exist in the LogEntry proto...";
     }
     field_content_ = msg_header_->GetReflection()->MutableMessage(msg_header_, field_);
   }

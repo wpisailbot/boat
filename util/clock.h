@@ -95,6 +95,7 @@ class Loop {
 void Init(int argc, char *argv[]);
 bool IsShutdown();
 void RaiseShutdown();
+void SetCurrentThreadRealtimePriority(int priority);
 
 }  // util
 }  // sailbot

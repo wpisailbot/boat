@@ -65,7 +65,12 @@ cc_test(
 cc_proto_library(
   name="msg_proto",
   srcs=["msg.proto"],
-  deps=["@protobuf//:cc_wkt_protos", "//control:actuator_cmd_proto", "//sim:sim_debug_proto", "//sensor:sbus_proto", "//can:can_proto"],
+  deps=["@protobuf//:cc_wkt_protos",
+        "//control:actuator_cmd_proto",
+        "//sim:sim_debug_proto",
+        "//sensor:sbus_proto",
+        "//can:can_proto",
+        "//ipc:queue_test_msg",],
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )

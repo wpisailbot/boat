@@ -76,6 +76,7 @@ void SimulatorNode::Iterate() {
             << " BackE: " << eulerInv << "\nX: " << x.transpose()
             << "\nV: " << v.transpose() << "\nW: " << omega.transpose()
             << std::endl;
+
   //if (R(2, 2) < .5) std::exit(0);
   if (std::isnan(v(0, 0))) std::exit(0);
 }

@@ -41,11 +41,13 @@ void CsvLogger::ProcessInput(const std::string name,
   while (!util::IsShutdown()) {
     // TODO(james): Shutdown while receiving from queue.
     q.receive(buf, BUF_LEN, rcvd);
+    if (util::IsShutdown())
+      return;
     entry->ParseFromArray(buf, rcvd);
     for (const auto& item : fields) {
       double val = GetField(*entry, item);
       std::unique_lock<std::mutex> lck(data_mutex_);
-      data_[data_indices_[item]] = val;
+      data_.at(data_indices_.at(item)) = val;
     }
   }
 }

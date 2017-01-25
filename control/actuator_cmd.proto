@@ -16,6 +16,16 @@ message HeadingCmd {
   optional float heading = 9;
 }
 
+message Waypoint {
+  optional float x = 1;
+  optional float y = 2;
+  optional float theta = 3;
+}
+
+message WaypointList {
+  repeated Waypoint points = 1;
+}
+
 message Vector3f {
   optional float x = 1;
   optional float y = 2;

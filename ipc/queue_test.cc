@@ -25,16 +25,12 @@ class QueueTest : public ::testing::Test {
       bst::named_semaphore(bst::create_only, name, 0);
     }
     Queue::remove(name);
-    /*
-    bst::message_queue::remove(name);
-    bst::message_queue::remove(name);
-    */
   }
 };
 
 TEST_F(QueueTest, UpDown) {
-  ProtoQueue<QueueTestMsg> data(name, true);
-  QueueTestMsg send, rcv;
+  ProtoQueue<msg::test::QueueTestMsg> data(name, true);
+  msg::test::QueueTestMsg send, rcv;
   send.set_foo(10);
   rcv.set_foo(99);
   data.send(&send);
@@ -45,20 +41,20 @@ TEST_F(QueueTest, UpDown) {
 TEST_F(QueueTest, MultipleProcess) {
   pid_t pid = fork();
   // Now in separate processes.
-  QueueTestMsg send;
+  msg::test::QueueTestMsg send;
   send.set_foo(10);
   if (pid == 0) {
     // Child process; receive.
     {
-      ProtoQueue<QueueTestMsg> data(name, false);
-      QueueTestMsg rcv;
+      ProtoQueue<msg::test::QueueTestMsg> data(name, false);
+      msg::test::QueueTestMsg rcv;
       data.receive(&rcv);
       ASSERT_EQ(send.foo(), rcv.foo());
     }
     exit(0);
   } else if (pid > 0) {
     // Parent process
-    ProtoQueue<QueueTestMsg> data(name, true);
+    ProtoQueue<msg::test::QueueTestMsg> data(name, true);
     data.send(&send);
     // Don't conclude till child exits.
     // Otherwise, data may be destroyed before the child starts.

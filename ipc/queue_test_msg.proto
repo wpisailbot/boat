@@ -1,5 +1,5 @@
 syntax = "proto2";
-package sailbot.test;
+package sailbot.msg.test;
 
 message QueueTestMsg {
   optional float foo = 1;

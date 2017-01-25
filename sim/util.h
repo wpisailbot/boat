@@ -41,10 +41,12 @@ inline void EigenToProto(const Eigen::Vector3d &ve,
 }
 
 inline float norm_angle(float a) {
-  while (a > M_PI)
-    a -= 2 * M_PI;
-  while (a < -M_PI)
-    a += 2 * M_PI;
+  double tau = 2. * M_PI;
+  if (a > M_PI) {
+    a -= int(a / tau + .5) * tau;
+  } else if (a < -M_PI) {
+    a -= int(a / tau - .5) * tau;
+  }
   return a;
 }
 

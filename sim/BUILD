@@ -39,5 +39,5 @@ cc_library(
 cc_binary(
   name="basic_sim_main",
   srcs=["basic_sim_main.cc"],
-  deps=[":sim_inter", ":csv_logger", "//control:simple_control"],
+  deps=[":sim_inter", ":csv_logger", "//control:simple_control", "//control:line_tacking"],
 )

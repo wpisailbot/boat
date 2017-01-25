@@ -20,16 +20,19 @@ Node::~Node() {
 
 void Node::Run() {
   // TODO(james): Shutdown cleanly.
-  auto run_fun = [this]() {
+//  auto run_fun = [this]() {
     while (!util::IsShutdown()) {
       if (period_ > 0) {
         loop_.WaitForNext();
       }
+      if (util::IsShutdown()) {
+        return;
+      }
       Iterate();
     }
     loop_.Done();
-  };
-  run_thread_.reset(new std::thread(run_fun));
+ // };
+ // run_thread_.reset(new std::thread(run_fun));
 }
 
 }  // sailbot

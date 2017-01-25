@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 #include "glog/logging.h"
 #include "gflags.h"
@@ -17,11 +19,14 @@ std::mutex monotonic_clock::wakeup_time_mutex_;
 
 std::shared_timed_mutex ClockInstance::m_;
 
-Loop::Loop(float period) : period_(monotonic_clock::rep(period * 1e9)) {}
+Loop::Loop(float period)
+    : period_(monotonic_clock::rep(period * 1e9)),
+      last_trigger_(clock_.Time()) {}
 
 void Loop::WaitForNext() {
   monotonic_clock::time_point time;
   do {
+    // TODO(james): Avoid potential infinite loop.
     time = clock_.Time();
     last_trigger_ += period_;
   } while (time > last_trigger_);
@@ -105,6 +110,20 @@ void Init(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
+}
+
+void SetCurrentThreadRealtimePriority(int priority) {
+  // Limit runtime of any single thread
+  struct rlimit rlim;
+  getrlimit(RLIMIT_RTTIME, &rlim);
+  rlim.rlim_cur = 500000; // half a second
+  setrlimit(RLIMIT_RTTIME, &rlim);
+
+  struct sched_param param;
+  param.sched_priority = priority;
+  PCHECK(sched_setscheduler(0, SCHED_FIFO, &param) != -1)
+      << "sched_setscheduler failed with SCHED_FIFO and priority = "
+      << priority;
 }
 
 bool IsShutdown() { return done; }

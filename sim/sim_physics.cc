@@ -298,6 +298,9 @@ Vector3d TrivialDynamics::HullTorques() {
   c << 50, 0, 0,
        0, 0, 0,
        0, 0, 150;
+  c << 50, 0, 0,
+       0, 0, 0,
+       0, 0, 15;
   return -c * omega;
 }
 Vector3d TrivialDynamics::RightingTorques(double heel) {

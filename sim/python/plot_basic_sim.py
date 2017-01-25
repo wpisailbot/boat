@@ -31,6 +31,7 @@ yaw_true = []
 alphaw = []
 alphasail = []
 goalr = []
+goalh = []
 for row in data:
   for i in range(len(row)):
     if abs(row[i]) > 1e5:
@@ -55,6 +56,7 @@ for row in data:
   alphaw.append(numpy.arctan2(vy[-1] - windy, vx[-1] - windx) - yaw_true[-1])
   alphasail.append(alphaw[-1] - sail[-1])
   goalr.append(numpy.clip(yaw_true[-1] - .1, -.4, .4))
+  goalh.append(row[46])
 plt.plot(x, y, 'o')
 plt.figure()
 ax = plt.subplot(111)
@@ -78,6 +80,7 @@ plt.plot(t, rudder, label="Rudder")
 plt.plot(t, yaw_true, label="yaw")
 plt.plot(t, alphaw, label="Apparent Wind")
 plt.plot(t, alphasail, label="Sail AoA")
+plt.plot(t, goalh, label="Goal Heading")
 #plt.plot(t, goalr, label="rudder goal")
 plt.legend()
 plot_vec(data, 13, "Sail Force", ax)
