@@ -64,7 +64,7 @@ class Queue {
    *
    * @param buffer The buffer to fill the the new message.
    */
-  void receive(void *buffer, size_t size, size_t &rcvd);
+  bool receive(void *buffer, size_t size, size_t &rcvd);
 
   /**
    * @brief removes everything in shared memory. Call when doing global init.
@@ -124,7 +124,7 @@ class ProtoQueue {
   }
 
   void send(const T *msg);
-  void receive(T *msg);
+  bool receive(T *msg);
  private:
   Queue impl_;
   msg::LogEntry *msg_header_;
@@ -158,12 +158,15 @@ void ProtoQueue<T>::send(const T *msg) {
 }
 
 template <typename T>
-void ProtoQueue<T>::receive(T* msg) {
+bool ProtoQueue<T>::receive(T* msg) {
   std::unique_lock<std::mutex> lck(receive_mutex_);
   size_t rcvd;
-  impl_.receive(buffer_, BUF_SIZE, rcvd);
-  receive_header_->ParseFromArray(buffer_, rcvd);
-  msg->CopyFrom(receive_header_->GetReflection()->GetMessage(*receive_header_, field_));
+  if (impl_.receive(buffer_, BUF_SIZE, rcvd)) {
+    receive_header_->ParseFromArray(buffer_, rcvd);
+    msg->CopyFrom(receive_header_->GetReflection()->GetMessage(*receive_header_, field_));
+    return true;
+  }
+  return false;
 }
 
 } // namespace sailbot

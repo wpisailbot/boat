@@ -10,13 +10,14 @@ namespace control {
 constexpr int LineTacker::N_WAYPOINTS;
 
 LineTacker::LineTacker()
-    : Node(0.01), kCloseHaul(M_PI / 5), kWindTol(0.1), wind_dir_(0),
+    : Node(0.01), kCloseHaul(M_PI / 4), kWindTol(0.1), wind_dir_(0),
       cur_pos_({0, 0}), cur_theta_(0),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {
     wind_dir_ = std::atan2(msg.y(), msg.x());
   });
+  // TODO(james): Thread-safeness.
   RegisterHandler<msg::BoatState>("boat_state",
                                   [this](const msg::BoatState &msg) {
     Eigen::Quaternionf orientation(msg.orientation().w(), msg.orientation().x(),
@@ -30,11 +31,20 @@ LineTacker::LineTacker()
 
   waypoints_[0] = {0, 0};
   waypoints_[1] = {0, 100};
+  way_len_ = 2;
+
+  RegisterHandler<msg::WaypointList>("waypoints",
+                                     [this](const msg::WaypointList &msg) {
+    for (int i = 0; i < std::min(msg.points_size(), N_WAYPOINTS); ++i) {
+      waypoints_[i] = {msg.points(i).x(), msg.points(i).y()};
+    }
+    i_ = 0;
+    way_len_ = msg.points_size();
+  });
 }
 
 void LineTacker::Iterate() {
   double gh = GoalHeading();
-  LOG(INFO) << "Goal heading: " << gh;
   heading_msg_->set_heading(gh);
   heading_cmd_.send(heading_msg_);
 }
@@ -54,19 +64,23 @@ float LineTacker::GoalHeading() {
   float upwind = norm_angle(wind_dir_ - M_PI);
   float min_closehaul = norm_angle(upwind - kCloseHaul);
   float max_closehaul = norm_angle(upwind + kCloseHaul);
-  float nominal_heading = std::atan2(end.y - cur_pos_.y, end.x - cur_pos_.x);
+  float dy = end.y - cur_pos_.y;
+  float dx = end.x - cur_pos_.x;
+  float nominal_heading = std::atan2(dy, dx);
+  float dist = std::sqrt(dy * dy + dx * dx);
   float goal_wind_diff = norm_angle(nominal_heading - upwind);
+  if (dist < 2 && i_ < way_len_ - 1) {
+    ++i_;
+  }
 
   if (std::abs(goal_wind_diff) > kCloseHaul + kWindTol) {
     // It is worth it to go ahead and go straight there.
-    LOG(INFO) << "No tacking needed";
     return nominal_heading;
   }
 
   float dist_to_line = DistanceFromLine(start, end, cur_pos_);
 
   if (std::abs(dist_to_line) >= bounds_[i_]) {
-    LOG(INFO) << "OUt of bounds, nom: " << nominal_heading;
     // Too far from the path, so go back.
     if (norm_angle(wind_dir_ - nominal_heading) > 0) {
       return max_closehaul;
@@ -74,7 +88,6 @@ float LineTacker::GoalHeading() {
       return min_closehaul;
     }
   } else {
-    LOG(INFO) << "In bounds, tacking";
     // Close enough to the line, so go wherever is closest.
     if (ApparentWind() > 0) {
       return max_closehaul;

@@ -15,6 +15,7 @@ class LineTacker : public Node {
   };
 
   LineTacker();
+  Point cur_pos_;
  private:
   void Iterate() override;
   const float kCloseHaul; // How close we can sail to the wind (positive num, ~PI/4)
@@ -28,11 +29,11 @@ class LineTacker : public Node {
   float ApparentWind();
 
   Point waypoints_[N_WAYPOINTS];
-  float bounds_[N_WAYPOINTS] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+  float bounds_[N_WAYPOINTS] = {20, 20, 20, 20, 10, 10, 10, 10, 10, 10};
   int i_ = 0;
+  int way_len_ = 0;
 
   std::atomic<float> wind_dir_;
-  Point cur_pos_;
   std::atomic<float> cur_theta_;
 
   msg::HeadingCmd* heading_msg_;

@@ -13,13 +13,13 @@ class TestQueue {
   TestQueue(const std::string &name, size_t max_size)
       : name_(name), max_size_(max_size) {}
   void send(const void *msg, size_t size);
-  void receive(void *msg, size_t size, size_t &rcvd);
+  bool receive(void *msg, size_t size, size_t &rcvd);
  private:
   struct QueueData {
     std::condition_variable_any cond;
     std::unique_ptr<uint8_t[]> data;
-    size_t data_len;
-    int inc;
+    size_t data_len = 0;
+    int inc = 0;
   };
   static std::shared_timed_mutex map_lock_;
   static std::map<std::string, QueueData> conditions_;
@@ -27,7 +27,7 @@ class TestQueue {
   std::string name_;
   const size_t max_size_;
   // Assumes that last_inc_ is called in only one thread.
-  int last_inc_;
+  int last_inc_ = 0;
 };
 
 }  // testing

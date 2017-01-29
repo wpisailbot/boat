@@ -27,7 +27,7 @@ CsvLogger::CsvLogger(std::vector<std::pair<std::string, std::string>> data,
 
 CsvLogger::~CsvLogger() {
   for (auto& thread : threads_) {
-    thread.detach();
+    thread.join();
   }
 }
 
@@ -40,7 +40,9 @@ void CsvLogger::ProcessInput(const std::string name,
   msg::LogEntry *entry = AllocateMessage<msg::LogEntry>();
   while (!util::IsShutdown()) {
     // TODO(james): Shutdown while receiving from queue.
-    q.receive(buf, BUF_LEN, rcvd);
+    if (!q.receive(buf, BUF_LEN, rcvd)) {
+      continue;
+    }
     if (util::IsShutdown())
       return;
     entry->ParseFromArray(buf, rcvd);

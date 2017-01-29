@@ -81,7 +81,12 @@ void ClockManager::Run(monotonic_clock::rep start_time) {
   if (monotonic_clock::is_fake()) {
     std::unique_lock<std::shared_timed_mutex> lck(ClockInstance::m_);
     while (!IsShutdown()) {
-      if (!first_run) monotonic_clock::tick_.wait(lck);
+      if (!first_run) {
+        // Allow the clockmanager to shut down.
+        monotonic_clock::tick_.wait_for(lck, std::chrono::milliseconds(100));
+        if (IsShutdown())
+          break;
+      }
       first_run = false;
       monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
     }

@@ -63,9 +63,9 @@ SimulatorSaoud2013::SimulatorSaoud2013(float _dt)
 }
 
 TrivialDynamics::TrivialDynamics(float _dt)
-    : dt(_dt), rr(-1), rs(.25), rk(0), ls(.5), lr(.1), hs(2), hr(-.5), hk(-.7),
-      lm(1), mm(30), CoM(0, 0, -1), mass(25), deltas(1.3), deltar(0),
-      deltab(0), debug_queue_("sim_debug", true) {
+    : dt(_dt), rr(-1), rs(.25), rk(0), ls(.5), lr(.03), hs(2), hr(-.2), hk(-.7),
+      lm(1), mm(30), CoM(0, 0, -1.5), mass(30), deltas(1.3), deltar(0),
+      deltab(0), yaw(0), heel(0), debug_queue_("sim_debug", true) {
   J << 25, 0, 0,
        0, 25, 0,
        0, 0, 5;
@@ -98,18 +98,27 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   //tau(1, 0) = 0;
   Fnet = RBI * Fnet;
   // Ignore any coriolis/centripetal junk.
-  omega += J.inverse() * tau * dt;
-  // Technically, should also do omega(0, 0), but that is only an issue
-  // if the below ever fails.
-  // Essentially, we are making sure that it is only rotating in the heel/yaw
-  // axes. Assuming that there is never any pitch, then arbitrary rotations in
-  // omega(0) (the heel axis) are fine.
-  // In order to remove the pitch rotation component (about the y-axis), we keep
-  // the y-rotation times sin(heel) and the z-rotation times cos(heel).
-  omega(1, 0) *= RBI(2, 1);
-  omega(2, 0) *= RBI(2, 2);
+  Vector3d omegadot = J.inverse() * tau * dt;
+  omega += omegadot;
+  VLOG(1) << "omega: " << omega.transpose();
+  double yawdot = (RBI * omega)(2, 0);
+  VLOG(1) << "yawdot: " << omega.transpose();
+  VLOG(1) << "heel: " << heel << " yaw: " << yaw;
+  heel += omega(0, 0) * dt;
+  yaw += yawdot * dt;
+  heel = norm_angle(heel);
+  yaw = norm_angle(yaw);
+  double ch = std::cos(heel);
+  double sh = std::sin(heel);
+  double cy = std::cos(yaw);
+  double sy = std::sin(yaw);
+  omega(1, 0) = yawdot * sh;
+  omega(2, 0) = yawdot * ch;
   v += Fnet / mass * dt;
   v(2, 0) = 0;
+  RBI << cy, -sy * ch, sy * sh
+       , sy, ch * cy , -cy * sh
+       , 0 , sh      , ch;
 
   EigenToProto(Fs, msg.mutable_fs());
   EigenToProto(Fr, msg.mutable_fr());
@@ -134,6 +143,7 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   VLOG(1) << "tau: " << tau.transpose();
   VLOG(1) << "omega: " << omega.transpose();
 
+  /*
   Eigen::Quaterniond rotquat(RBI);
   Eigen::Quaterniond omegaquat;
   omegaquat.w() = 0;
@@ -147,6 +157,7 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
           << rotquat.y() << " " << rotquat.z();
   rotquat.normalize();
   RBI = rotquat.toRotationMatrix();
+  */
   //VLOG(2) << "RBI-undone:\n" << RBI;
   //RBI = Orthogonalize(RBI);
   VLOG(2) << "RBI:\n" << RBI;
@@ -260,14 +271,14 @@ Vector3d TrivialDynamics::RudderForces() {
   // For now, assuming 0 water current.
   Vector3d va = RBI.transpose() * -v;
   va(2, 0) = 0;
-  return AeroForces(va, deltar, 1000 /*rhowater,kg/m^3*/, .1 /*Rudder area,m^2*/);
+  return AeroForces(va, deltar, 1000 /*rhowater,kg/m^3*/, .1 /*Rudder area,m^2*/);//, 0.05, 1, 2);
 }
 Vector3d TrivialDynamics::KeelForces() {
   VLOG(3) << "Keel Alpha: ";
   // For now, assuming 0 water current.
   Vector3d va = RBI.transpose() * -v;
   va(2, 0) = 0;
-  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .3 /*Keel area,m^2*/);
+  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .3 /*Keel area,m^2*/, 0.05, 1);
 }
 Vector3d TrivialDynamics::HullForces() {
   VLOG(3) << "Hull Alpha: ";
@@ -275,7 +286,7 @@ Vector3d TrivialDynamics::HullForces() {
   Vector3d va = RBI.transpose() * -v;
   va(2, 0) = 0;
   // For hull, assume no lift, quadratic drag.
-  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .1 /*Hull area,m^2*/, .01, 1,
+  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .1 /*Hull area,m^2*/, .01, 0.5,
                     0);
 }
 Vector3d TrivialDynamics::SailTorques(const Vector3d& f) {
@@ -298,9 +309,9 @@ Vector3d TrivialDynamics::HullTorques() {
   c << 50, 0, 0,
        0, 0, 0,
        0, 0, 150;
-  c << 50, 0, 0,
+  c << 100, 0, 0,
        0, 0, 0,
-       0, 0, 15;
+       0, 0, 100;
   return -c * omega;
 }
 Vector3d TrivialDynamics::RightingTorques(double heel) {
@@ -312,5 +323,6 @@ Vector3d TrivialDynamics::RightingTorques(double heel) {
   const double kMovableSlope = .3333;
   double tauballast =
       mm * lm * g * std::sin(deltab) * std::cos(heel + kMovableSlope * deltab);
-  return Vector3d(RBI(2, 1) * kMaxTorque + tauballast, 0, 0);
+  const float kAccountForPitch = 0*-2000 * RBI(2, 0);
+  return Vector3d(RBI(2, 1) * kMaxTorque + tauballast, kAccountForPitch, 0);
 }

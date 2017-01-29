@@ -1,1 +1,2 @@
 build --cxxopt -std=c++1y --crosstool_top=//tools/arm_compiler:toolchain
+test --test_output errors

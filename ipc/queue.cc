@@ -69,11 +69,14 @@ void Queue::send(const void *msg, size_t size) {
   }
 }
 
-void Queue::receive(void *msg, size_t size, size_t &rcvd) {
+bool Queue::receive(void *msg, size_t size, size_t &rcvd) {
   if (!testing_) {
-    queue_->receive(msg, size, rcvd);
+    return queue_->timed_receive(
+        msg, size, rcvd, boost::date_time::microsec_clock<
+                             boost::posix_time::ptime>::universal_time() +
+                             boost::posix_time::milliseconds(1000));
   } else {
-    test_impl_->receive(msg, size, rcvd);
+    return test_impl_->receive(msg, size, rcvd);
   }
 }
 

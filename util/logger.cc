@@ -29,7 +29,7 @@ Logger::Logger() : Node(1.), out_(FLAGS_logfilename) {
 
 Logger::~Logger() {
   for (auto &thread : threads_) {
-    thread.detach();
+    thread.join();
   }
 }
 
@@ -45,11 +45,12 @@ void Logger::RunLogHandler(const char *name) {
   // currently messages for each individual queue will be in order, but messages
   // from different queues could arrive at different times.
   while (!util::IsShutdown()) {
-    q.receive(buf, MAX_BUF, rcvd);
-    uint16_t n = rcvd;
-    std::unique_lock<std::mutex> lck(out_lock_);
-    out_.write((const char*)&n, 2);
-    out_.write(buf, rcvd);
+    if (q.receive(buf, MAX_BUF, rcvd)) {
+      uint16_t n = rcvd;
+      std::unique_lock<std::mutex> lck(out_lock_);
+      out_.write((const char*)&n, 2);
+      out_.write(buf, rcvd);
+    }
   }
 }
 

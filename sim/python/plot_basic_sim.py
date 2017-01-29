@@ -13,7 +13,7 @@ def plot_vec(d, starti, name, ax, maxy=50):
   plt.plot(t, x, label=name+" x")
   plt.plot(t, y, label=name+" y")
   plt.plot(t, z, label=name+" z")
-  plt.ylim(-maxy, maxy)
+#  plt.ylim(-maxy, maxy)
   plt.legend()
 
 data = numpy.genfromtxt("basic_sim_data.csv", delimiter=',')[1:]

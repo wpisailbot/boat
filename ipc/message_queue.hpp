@@ -593,6 +593,7 @@ inline bool
                         return false;
                      break;
                   }
+                  m_cur_msg = p_hdr->m_cur_first_msg + 1;
                }
                while (p_hdr->is_empty());
             break;

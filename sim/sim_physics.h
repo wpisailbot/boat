@@ -93,6 +93,7 @@ class TrivialDynamics : public SimulatorDynamics {
 
   double deltas, deltar, deltab; // Sail, Rudder, movable Ballast
   Vector3d x, v;
+  double yaw, heel;
   Matrix3d RBI;
   Vector3d omega; // w.r.t. hull frame
   Vector3d wind;

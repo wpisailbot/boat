@@ -11,7 +11,7 @@ Node::Node(float loop_period)
 
 Node::~Node() {
   for (auto& thread : threads_) {
-    thread.detach();
+    thread.join();
   }
   if (run_thread_) {
     run_thread_->join();

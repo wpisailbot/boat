@@ -1,6 +1,7 @@
 #include "test_queue.h"
 #include "util/clock.h"
 #include <string.h>
+#include <iostream>
 
 namespace sailbot {
 namespace testing {
@@ -20,18 +21,19 @@ void TestQueue::send(const void *msg, size_t size) {
   data.cond.notify_all();
 }
 
-void TestQueue::receive(void *msg, size_t size, size_t &rcvd) {
-  std::shared_lock<std::shared_timed_mutex> lck_(map_lock_);
-  QueueData &data = conditions_[name_];
-  if (data.inc == last_inc_) {
+bool TestQueue::receive(void *msg, size_t size, size_t &rcvd) {
+  std::unique_lock<std::shared_timed_mutex> lck_(map_lock_);
+  // Construct in place if needed.
+  if (conditions_[name_].inc == last_inc_) {
     // Wait for the data...
-    while (!util::IsShutdown()) {
-      data.cond.wait_for(lck_, std::chrono::milliseconds(50));
+    while (conditions_[name_].inc == last_inc_ && !util::IsShutdown()) {
+      conditions_[name_].cond.wait_for(lck_, std::chrono::milliseconds(50));
     }
   }
-  rcvd = std::min(size, data.data_len);
-  memcpy(msg, data.data.get(), rcvd);
-  last_inc_ = data.inc;
+  rcvd = std::min(size, conditions_[name_].data_len);
+  memcpy(msg, conditions_[name_].data.get(), rcvd);
+  last_inc_ = conditions_[name_].inc;
+  return !util::IsShutdown();
 }
 
 }  // testing

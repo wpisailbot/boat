@@ -21,6 +21,10 @@ class SimulatorNode : public Node {
     wind_queue_.send(wind_msg_);
   }
 
+  //Eigen::Vector3d get_x() { return impl_->get_x(); }
+  float get_x() { return state_msg_->pos().x(); }
+  float get_y() { return impl_->get_x()(1, 0); }
+
  private:
   void Iterate() override;
 
@@ -28,7 +32,7 @@ class SimulatorNode : public Node {
   void ProcessRudder(const msg::RudderCmd& cmd);
 
   static constexpr double dt = 0.001;
-  std::unique_ptr<SimulatorDynamics> impl_;
+  std::unique_ptr<TrivialDynamics> impl_;
   std::atomic<double> sdot_, rdot_;
 
   ProtoQueue<msg::BoatState> state_queue_;

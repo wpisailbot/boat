@@ -80,8 +80,9 @@ void Node::RunHandlerCaller(std::unique_ptr<char[]> queue_name,
   // TODO(james): Shutdown cleanly; currently won't handle shutdown while
   // waiting on queue receive.
   while (!util::IsShutdown()) {
-    q.receive(buffer);
-    callback(*buffer);
+    if (q.receive(buffer) && !util::IsShutdown()) {
+      callback(*buffer);
+    }
   }
 }
 

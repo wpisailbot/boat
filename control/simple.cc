@@ -57,7 +57,8 @@ void SimpleControl::Iterate() {
   float wind_source_dir = std::atan2(-wind_y_, -wind_x_);
   float alphasail = alphaw - boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = alphaw > 0 ? .4 : -.4;
+  float goal = std::abs(alphaw) > 2.5 ? 1.5 : .4;
+  goal = alphaw > 0 ? goal : -goal;
   goal = std::abs(alphaw) < .4 ? 0 : goal;
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << alphasail
           << " goals: " << goal;
@@ -109,11 +110,11 @@ void SimpleControl::Iterate() {
     last_goal_ = goal_heading;
   }
 
-  //float vel = std::sqrt(vx * vx + vy * vy);
-  float max_rudder = 0.4;
+  float vel = std::sqrt(vx * vx + vy * vy);
+  float max_rudder = vel < 0 ? 0.1 : 0.4;
   //float boat_heading = std::atan2(vy, vx);
   float goal_rudder = std::min(
-      std::max(-(goal_heading - yaw/*boat_heading*/), -max_rudder), max_rudder);
+      std::max(-norm_angle(goal_heading - yaw/*boat_heading*/), -max_rudder), max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_vel(goal_rudder - boat_state_->internal().rudder());
   sail_cmd_.send(sail_msg_);
