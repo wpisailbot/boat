@@ -5,7 +5,7 @@ namespace sailbot {
 namespace can {
 
 struct CANID {
-  CANID() : __unused(0), __reserved(0) {}
+  CANID() : __unused(0), __reserved(0), __eff_ident(1) {}
   /* CANID structure:
    * It will generally be represented as a 32 bit number when using SocketCAN.
    * Highest/First 3 bits meaningless (CANIDs are only 29 bits).
@@ -22,7 +22,8 @@ struct CANID {
   uint8_t DP : 1;
   uint8_t __reserved : 1;
   uint8_t priority : 3;
-  uint8_t __unused : 3;
+  uint8_t __unused : 2; // Technically, flags for SocketCAN
+  uint8_t __eff_ident : 1; // Tells SocketCAN we are using 29 bit frames
 };
 
 uint32_t ConstructID(CANID can_id) {

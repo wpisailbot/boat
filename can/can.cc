@@ -140,7 +140,9 @@ void CanNode::Iterate() {
     return;
   }
   CANMessage *msg = &msgs_[pgn];
-  VLOG(2) << "Reading frame: pgn: " << pgn << " dlc: " << dlc;
+  VLOG(2) << "Reading frame: can_id: " << frame.can_id << " pgn: " << pgn
+          << " dlc: " << dlc << " source: " << (int)id.source;
+  VLOG(2) << "Last bytE: " << (int)frame.data[8];
   if (msg->is_long_) {
     uint8_t index = data[0] & 0x1F;
     uint8_t base = data[0] & 0xE0;
@@ -285,6 +287,7 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
   const google::protobuf::Reflection* reflection = msg.GetReflection();
   const google::protobuf::FieldDescriptor *field_desc =
       descriptor->FindFieldByNumber(pgn);
+  VLOG(3) << "Sending message with pgn " << pgn;
   if (field_desc == nullptr) {
     LOG(ERROR) << "Unable to find message for PGN " << pgn;
     return;
@@ -307,6 +310,7 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
     if (f->resolution > 0) {
       float x = util::GetProtoNumberFieldById(&pgn_msg, i+1);
       uint32_t n_wire = x / f->resolution;
+      VLOG(2) << "n_wire: " << n_wire;
       memcpy((void*)(frame.data + frame.can_dlc), (void*)&n_wire, f->size / 8);
     } else {
       LOG(WARNING) << "Attempting to write field with undefined resolution";
@@ -316,10 +320,18 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
 
   CANID can_id;
   SetPGN(&can_id, pgn);
-  can_id.priority = 0x7; // TODO(james): Parametrize to allow variation
-  can_id.source = 123; // TODO(james): Use real source ID.
+  can_id.priority = 0x2; // TODO(james): Parametrize to allow variation
+  can_id.source = 100; // TODO(james): Use real source ID.
   frame.can_id = ConstructID(can_id);
-  write(s_, &frame, sizeof(can_frame));
+  VLOG(2) << "ID: " << frame.can_id << " DLC: " << (int)frame.can_dlc
+          << " data: " << (int)frame.data[0] << ", " << (int)frame.data[1]
+          << ", " << (int)frame.data[2] << ", " << (int)frame.data[3] << ", "
+          << (int)frame.data[4];
+  for (; frame.can_dlc < 8; frame.can_dlc++) {
+    frame.data[frame.can_dlc] = 0xFF;
+  }
+  VLOG(2) << "CANID: DP: " << (int)can_id.DP;
+  PCHECK(write(s_, &frame, sizeof(can_frame)) > 0) << "Write failed";
 }
 
 }  // namespace sailbot
