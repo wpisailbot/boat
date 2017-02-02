@@ -84,6 +84,7 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   deltar += rdot * dt;
   deltas = norm_angle(deltas);
   deltar = norm_angle(deltar);
+  deltar = std::min(std::max(deltar, -0.6), 0.6);
   Vector3d Fs = SailForces();
   Vector3d Fr = RudderForces();
   Vector3d Fk = KeelForces();

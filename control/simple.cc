@@ -57,9 +57,11 @@ void SimpleControl::Iterate() {
   float wind_source_dir = std::atan2(-wind_y_, -wind_x_);
   float alphasail = alphaw - boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = std::abs(alphaw) > 2.5 ? 1.5 : .4;
-  goal = alphaw > 0 ? goal : -goal;
-  goal = std::abs(alphaw) < .4 ? 0 : goal;
+  static float goal = 0;
+  goal = std::abs(alphaw) > 2.5 ? 1.5 : .4;
+  if (std::abs(alphaw) < 2.8) {
+    goal = alphaw > 0 ? goal : -goal;
+  }
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << alphasail
           << " goals: " << goal;
   sail_msg_->set_vel(-norm_angle(goal - alphasail));

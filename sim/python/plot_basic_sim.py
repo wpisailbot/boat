@@ -25,6 +25,7 @@ t = []
 yaw = []
 heel = []
 pitch = []
+heading = []
 sail = []
 rudder = []
 yaw_true = []
@@ -43,6 +44,7 @@ for row in data:
   y.append(row[4])
   vx.append(row[5])
   vy.append(row[6])
+  heading.append(numpy.arctan2(vy[-1], vx[-1]));
   q = row[7:11]
   e = transformations.euler_from_quaternion(q, axes='rzxy')
   yaw.append(e[0])
@@ -57,7 +59,11 @@ for row in data:
   alphasail.append(alphaw[-1] - sail[-1])
   goalr.append(numpy.clip(yaw_true[-1] - .1, -.4, .4))
   goalh.append(row[46])
+
 plt.plot(x, y, 'o')
+plt.title("Boat Position (Wind is blowing left-to-right on screen)")
+plt.xlabel("X position (m)")
+plt.ylabel("Y position (m)")
 plt.figure()
 ax = plt.subplot(111)
 ax.plot(t, x, label='x')
@@ -81,7 +87,7 @@ plt.plot(t, yaw_true, label="yaw")
 plt.plot(t, alphaw, label="Apparent Wind")
 plt.plot(t, alphasail, label="Sail AoA")
 plt.plot(t, goalh, label="Goal Heading")
-#plt.plot(t, goalr, label="rudder goal")
+plt.plot(t, heading, label="true heading")
 plt.legend()
 plot_vec(data, 13, "Sail Force", ax)
 plot_vec(data, 16, "Rudder Force", ax)
