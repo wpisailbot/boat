@@ -36,5 +36,6 @@ cc_test(
         "line_tacking",
         "@gtest//:main",
         "//sim:sim_inter",
+        "//ui:server",
         "//sim:csv_logger"],
 )

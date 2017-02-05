@@ -3,6 +3,7 @@
 
 #include "simple.h"
 #include "util/node.h"
+#include "ui/server.h"
 #include "sim/sim_inter.h"
 #include "control/simple.h"
 #include "control/line_tacking.h"
@@ -19,6 +20,7 @@ class SimpleControlTest : public ::testing::Test {
     Queue::set_testing(true);
     sailbot::util::ClockManager::SetFakeClock(true);
 
+    server_.reset(new WebSocketServer());
 #define LOG_VECTOR(path, name)                                                 \
   { path ".x", name " X" }                                                     \
   , {path ".y", name " Y"}, { path ".z", name " Z" }
@@ -58,6 +60,7 @@ class SimpleControlTest : public ::testing::Test {
     tacker_.reset(new control::LineTacker());
 
     threads_.emplace_back(&sim::SimulatorNode::Run, simple_ctrl_.get());
+    threads_.emplace_back(&WebSocketServer::Run, server_.get());
     threads_.emplace_back(&CsvLogger::Run, csv_logger_.get());
     threads_.emplace_back(&control::SimpleControl::Run, sim_node_.get());
     threads_.emplace_back(&control::LineTacker::Run, tacker_.get());
@@ -72,6 +75,7 @@ class SimpleControlTest : public ::testing::Test {
       threads_[i].join();
     }
     csv_logger_.reset();
+    server_.reset();
     sim_node_.reset();
     simple_ctrl_.reset();
     tacker_.reset();
@@ -86,6 +90,7 @@ class SimpleControlTest : public ::testing::Test {
 
   std::unique_ptr<util::ClockInstance> clock_;
   std::unique_ptr<CsvLogger> csv_logger_;
+  std::unique_ptr<WebSocketServer> server_;
   std::unique_ptr<sailbot::sim::SimulatorNode> sim_node_;
   std::unique_ptr<sailbot::control::SimpleControl> simple_ctrl_;
   std::unique_ptr<sailbot::control::LineTacker> tacker_;

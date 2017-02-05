@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+
+    <script type="text/javascript">
+function WebSocketTest()
+{
+  if ("WebSocket" in window) { } else
+  {
+    // The browser doesn't support WebSocket
+    alert("WebSocket NOT supported by your Browser!");
+  }
+}
+    </script>
+
+    <script src="jquery-3.1.1.min.js"></script>
+    <script src="retrieve_data.js"></script>
+    <script src="sail_widget.js"></script>
+  </head>
+  <body>
+    <svg id="myCanvas" width="300" height="300">
+      <g transform="translate(150, 150)">
+        <g transform="rotate(0)" id="hull_rotate">
+          <path d="M 0 -10 q 50 -10 100 10 q -50 20 -100 10 l 0 -20 z" stroke="blue" stroke-width="3" fill="none" />
+          <path d="M 0 0 l -15 0" stroke="red" stroke-width="3" fill="none" transform="rotate(10)" id="rudder_path" />
+          <g transform="translate(50, 0)">
+            <path d="M 0 0 l -40 0" stroke="red" stroke-width="3" fill="none" transform="rotate(20)" id="sail_path" />
+          </g>
+        </g>
+      </g>
+
+      Try a different browser
+    </svg>
+    <div id="out" class="data_output" field="ping.a">
+    </div>
+
+  </body>
+</html>

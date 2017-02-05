@@ -9,7 +9,7 @@ new_http_archive(
 git_repository(
   name = "protobuf",
   remote = "https://github.com/google/protobuf.git",
-  tag = "v3.0.2",
+  tag = "v3.2.0",
   #commit = "e7982e409deab9cb4390dd574441604e846caf7f", # master on 20160727
 )
 
@@ -24,6 +24,13 @@ new_git_repository(
   remote = "https://github.com/google/glog.git",
   commit = "b6a5e0524c28178985f0d228e9eaa43808dbec3c",
   build_file = "third_party/glog.BUILD"
+)
+
+new_git_repository(
+  name="ws",
+  remote = "https://github.com/uWebSockets/uWebSockets.git",
+  tag = "v0.12.0",
+  build_file = "third_party/ws.BUILD"
 )
 
 new_http_archive(
@@ -46,4 +53,18 @@ new_http_archive(
   url = "http://bitbucket.org/eigen/eigen/get/3.3.2.tar.bz2",
   build_file = "third_party/eigen.BUILD",
   strip_prefix = "eigen-eigen-da9b4e14c255/",
+)
+
+new_git_repository(
+  name = 'zlib',
+  remote = 'https://github.com/madler/zlib.git',
+  commit = '50893291621658f355bc5b4d450a8d06a563053d',
+  build_file = 'third_party/zlib.BUILD',
+)
+
+new_git_repository(
+  name = 'uv',
+  remote = 'https://github.com/libuv/libuv.git',
+  tag = 'v1.11.0',
+  build_file = 'third_party/uv.BUILD',
 )
