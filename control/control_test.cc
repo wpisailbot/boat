@@ -115,7 +115,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_->set_wind(0, 6);
-  Sleep(150);
+  Sleep(75);
   ASSERT_TRUE(true);
 }
 
@@ -139,7 +139,7 @@ TEST_F(SimpleControlTest, Square) {
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_->set_wind(0, 6);
-  Sleep(300);
+  Sleep(200);
   ASSERT_TRUE(true);
 }
 
@@ -149,12 +149,12 @@ TEST_F(SimpleControlTest, StartInIrons) {
   msg::Waypoint* p2 = waypoints.add_points();
   p1->set_x(0);
   p1->set_y(0);
-  p2->set_x(150);
+  p2->set_x(15000);
   p2->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_->set_wind(M_PI, 6);
-  Sleep(50);
+  Sleep(20);
   EXPECT_TRUE(true);
  // std::cerr << "x: " << sim_node_->get_x() << std::endl;
  // std::cerr << "x: " << tacker_->cur_pos_.x << std::endl;
