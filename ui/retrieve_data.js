@@ -55,8 +55,7 @@ function processSocketReceive(evt) {
 }
 
 function sendRequests() {
-  if (ws.readyState != ws.OPEN) {
-    initializeWebsocket();
+  if (ws == null || ws.readyState != ws.OPEN) {
     return;
   }
   for (var f in fields) {
@@ -67,14 +66,23 @@ function sendRequests() {
 }
 
 function initializeWebsocket() {
-  ws = new WebSocket("ws://localhost:3000");
+  ws = new WebSocket("ws://manetheren.dyn.wpi.edu:3000");
   ws.onmessage = processSocketReceive;
+  // Avoid excessive polling; wait 1 sec before trying again.
+  ws.onclose = function() { setTimeout(initializeWebsocket, 1000); };
 }
+
+function periodic(method, timeout) {
+  method();
+  setTimeout(function() { periodic(method, timeout); }, timeout);
+}
+
+// schedule the first invocation:
 
 $(window).on('load', function() {
   registerFieldHandlers();
   initializeBoatHandlers();
-  var intervalID = setInterval(sendRequests, 100);
 
   initializeWebsocket();
+  periodic(sendRequests, 100);
 });
