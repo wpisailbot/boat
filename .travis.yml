@@ -28,7 +28,7 @@ before_install:
   - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update
-  - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y g++-5 gcc-5 python-numpy python3-numpy
+  - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y g++-5 gcc-5 python-numpy python3-numpy python3-scipy
   - g++ --version
 
 script:
