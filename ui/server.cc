@@ -20,6 +20,7 @@ WebSocketServer::WebSocketServer(int port) : port_(port) {
 
 WebSocketServer::~WebSocketServer() {
   hub_.getDefaultGroup<uWS::SERVER>().close();
+  usleep(1000000);
   for (auto &thread : threads_) {
     thread.join();
   }
@@ -27,7 +28,9 @@ WebSocketServer::~WebSocketServer() {
 
 void WebSocketServer::Run() {
   hub_.listen(port_);
-  threads_.emplace_back([this]() { hub_.run(); });
+  //threads_.emplace_back([this]() { hub_.run(); });
+  std::thread t([this]() { hub_.run(); });
+  t.detach();
 }
 
 void WebSocketServer::RegisterQueueHandler(const std::string name) {

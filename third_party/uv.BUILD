@@ -27,6 +27,8 @@ cc_library(
     "src/unix/tty.c",
     "src/unix/udp.c"]),
   hdrs = glob(["include/*.h"]),
+  # TODO(james): Actually handle assertion failures properly.
+  copts = ["-DNDEBUG"],
   includes = ["include/", "src/"],
   visibility = ["//visibility:public"],
 )
