@@ -18,3 +18,9 @@ cc_binary(
   srcs=["server_main.cc"],
   deps=[":server"],
 )
+genrule(
+  name="zip_site",
+  srcs=glob(["*.html", "*.js"]),
+  outs=["site.zip"],
+  cmd="zip -j $(location site.zip) $(SRCS)",
+)

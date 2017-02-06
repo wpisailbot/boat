@@ -5,6 +5,7 @@ genrule(
         "killall.sh",
         "//util:logger_main",
         "//can:can-dump",
+        "//ui:server_main",
         "//sensor:sbus-test-run",
         "//can:can-ping",
         "//util:ping",
@@ -15,6 +16,6 @@ genrule(
 sh_binary(
   name="deploy",
   srcs=["deploy.sh"],
-  data=["output.zip"],
-  args=["$(location output.zip)"],
+  data=["output.zip", "//ui:site.zip"],
+  args=["$(location output.zip) $(location //ui:site.zip)"],
 )

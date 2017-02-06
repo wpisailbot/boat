@@ -68,3 +68,10 @@ new_git_repository(
   tag = 'v1.11.0',
   build_file = 'third_party/uv.BUILD',
 )
+
+git_repository(
+  name = 'openssl',
+  remote = 'https://github.com/wpisailbot/bazel-openssl.git',
+  commit = 'e26e3c1e1a7bc3de5d0c1db7f71ef0fe83ad79f5',
+  init_submodules = True,
+)

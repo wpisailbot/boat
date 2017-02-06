@@ -23,11 +23,11 @@ WebSocketServer::WebSocketServer(int port) : port_(port) {
 }
 
 WebSocketServer::~WebSocketServer() {
-  hub_.getDefaultGroup<uWS::SERVER>().close();
-  usleep(1000000);
   for (auto &thread : threads_) {
     thread.join();
   }
+  hub_.getDefaultGroup<uWS::SERVER>().close();
+  usleep(1000000);
 }
 
 void WebSocketServer::Run() {

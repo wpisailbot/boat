@@ -80,7 +80,7 @@ function sendRequests() {
 }
 
 function initializeWebsocket() {
-  ws = new WebSocket("ws://manetheren.dyn.wpi.edu:3000");
+  ws = new WebSocket("ws://beaglebone:13000");
   ws.onmessage = processSocketReceive;
   // Avoid excessive polling; wait 1 sec before trying again.
   ws.onclose = function() { setTimeout(initializeWebsocket, 1000); };

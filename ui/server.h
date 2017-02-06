@@ -10,7 +10,7 @@ namespace sailbot {
 
 class WebSocketServer {
  public:
-  WebSocketServer(int port=3000);
+  WebSocketServer(int port=13000);
   ~WebSocketServer();
   void Run();
 
