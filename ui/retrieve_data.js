@@ -3,8 +3,8 @@ var data_class = "data_output";
 var ws = null;
 
 function registerFieldHandlers() {
-  $(".data_output").each(function(i, element) {
-    var field_name = $("#"+element.id).attr("field");
+  $("."+data_class).each(function(i, element) {
+    var field_name = element.getAttribute("field");
     tryInitField(field_name);
     addHandler(field_name, function() { updateFieldHandler(field_name); });
     fields[field_name].text_fields.push(element);
@@ -39,7 +39,7 @@ function updateFieldHandler(field_name) {
   tryInitField(field_name);
   var field = fields[field_name];
   for (var i in field.text_fields) {
-    field.text_fields[i].innerHTML = field.value;
+    field.text_fields[i].innerHTML = JSON.stringify(field.value);
   }
 }
 
@@ -54,15 +54,29 @@ function processSocketReceive(evt) {
   }
 }
 
+function sendMessage(queue, content) {
+  var request = '{"' + queue + '":' + JSON.stringify(content) + '}';
+  ws.send(request);
+}
+
+var a = 0;
 function sendRequests() {
   if (ws == null || ws.readyState != ws.OPEN) {
     return;
   }
+  sendMessage("ping", {a: ++a});
+  var request = "{";
   for (var f in fields) {
+    if (f === "time") {
+      continue;
+    }
     if (typeof f === "string") {
-      ws.send(f);
+      request += '"' + f + '":null,';
     }
   }
+  request.slice(0, -1);
+  request += "}";
+  ws.send(request);
 }
 
 function initializeWebsocket() {
@@ -77,9 +91,13 @@ function periodic(method, timeout) {
   setTimeout(function() { periodic(method, timeout); }, timeout);
 }
 
+
 // schedule the first invocation:
 
 $(window).on('load', function() {
+  if (!("WebSocket" in window)) {
+    alert("WebSocket not supported by your browser");
+  }
   registerFieldHandlers();
   initializeBoatHandlers();
 

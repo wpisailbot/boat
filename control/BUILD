@@ -32,6 +32,7 @@ cc_binary(
 cc_test(
   name="simple_control_test",
   srcs=["control_test.cc"],
+  timeout="eternal",
   deps=[":simple_control",
         "line_tacking",
         "@gtest//:main",

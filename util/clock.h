@@ -54,9 +54,16 @@ class monotonic_clock {
 class ClockInstance {
  public:
   ClockInstance();
+  ~ClockInstance() {
+    CleanUp();
+  }
   monotonic_clock::time_point Time();
   void SleepUntil(monotonic_clock::time_point time);
-  void CleanUp() { lck_.unlock(); }
+  void CleanUp() {
+    if (lck_) {
+      lck_.unlock();
+    }
+  }
 
  private:
   static std::shared_timed_mutex m_;
@@ -67,8 +74,11 @@ class ClockInstance {
 
 class ClockManager {
  public:
-  static void SetFakeClock(bool is_fake) {
+  static void SetFakeClock(bool is_fake, bool set_start_time=false) {
     monotonic_clock::fake_clock = is_fake;
+    if (set_start_time) {
+      monotonic_clock::set_time(0);
+    }
   }
   static void Run(monotonic_clock::rep start_time);
 };
@@ -94,6 +104,7 @@ class Loop {
 // Should be called at the start of every PROCESS (not Node).
 void Init(int argc, char *argv[]);
 bool IsShutdown();
+void CancelShutdown();
 void RaiseShutdown();
 void SetCurrentThreadRealtimePriority(int priority);
 

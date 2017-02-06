@@ -6,11 +6,11 @@
 namespace sailbot {
 namespace testing {
 
-std::shared_timed_mutex TestQueue::map_lock_;
+std::mutex TestQueue::map_lock_;
 std::map<std::string, TestQueue::QueueData> TestQueue::conditions_;
 
 void TestQueue::send(const void *msg, size_t size) {
-  std::unique_lock<std::shared_timed_mutex> lck_(map_lock_);
+  std::unique_lock<std::mutex> lck_(map_lock_);
   QueueData &data = conditions_[name_];
   data.inc++;
   if (!data.data) {
@@ -19,20 +19,31 @@ void TestQueue::send(const void *msg, size_t size) {
   memcpy(data.data.get(), msg, std::min(size, max_size_));
   data.data_len = std::min(size, max_size_);
   data.cond.notify_all();
+  //data.writer_cond.wait(lck_, [&data]() -> bool { return data.readers_waiting == 0; });
 }
 
 bool TestQueue::receive(void *msg, size_t size, size_t &rcvd) {
-  std::unique_lock<std::shared_timed_mutex> lck_(map_lock_);
+  std::unique_lock<std::mutex> lck_(map_lock_);
   // Construct in place if needed.
   if (conditions_[name_].inc == last_inc_) {
     // Wait for the data...
+    //conditions_[name_].readers_waiting++;
     while (conditions_[name_].inc == last_inc_ && !util::IsShutdown()) {
       conditions_[name_].cond.wait_for(lck_, std::chrono::milliseconds(50));
     }
+    /*
+    conditions_[name_].readers_waiting--;
+    conditions_[name_].writer_cond.notify_all();
+    */
   }
-  rcvd = std::min(size, conditions_[name_].data_len);
-  memcpy(msg, conditions_[name_].data.get(), rcvd);
-  last_inc_ = conditions_[name_].inc;
+  if (conditions_[name_].data) {
+    rcvd = std::min(size, conditions_[name_].data_len);
+    memcpy(msg, conditions_[name_].data.get(), rcvd);
+    last_inc_ = conditions_[name_].inc;
+  } else {
+    last_inc_ = conditions_[name_].inc;
+    return false;
+  }
   return !util::IsShutdown();
 }
 

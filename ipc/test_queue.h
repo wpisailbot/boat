@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <shared_mutex>
 #include <mutex>
+#include <atomic>
 #include <string>
 
 namespace sailbot {
@@ -16,12 +17,14 @@ class TestQueue {
   bool receive(void *msg, size_t size, size_t &rcvd);
  private:
   struct QueueData {
-    std::condition_variable_any cond;
+    std::condition_variable cond;
     std::unique_ptr<uint8_t[]> data;
+    std::atomic<int> readers_waiting{0};
+    std::condition_variable writer_cond;
     size_t data_len = 0;
     int inc = 0;
   };
-  static std::shared_timed_mutex map_lock_;
+  static std::mutex map_lock_;
   static std::map<std::string, QueueData> conditions_;
 
   std::string name_;

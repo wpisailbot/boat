@@ -1,0 +1,24 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <script src="jquery-3.1.1.min.js"></script>
+    <script src="retrieve_data.js"></script>
+    <script src="sail_widget.js"></script>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td>Sail: <span class="data_output" field="boat_state.internal.sail" /> </td>
+        <td>Rudder: <span class="data_output" field="boat_state.internal.rudder" /> </td>
+      </tr>
+      <tr>
+        <td>X Position: <span class="data_output" field="boat_state.pos.x" /> </td>
+        <td>Position: <span class="data_output" field="boat_state.pos" /> </td>
+      </tr>
+      <tr>
+        <td>Ping: <span class="data_output" field="ping" /> </td>
+        <td>Time: <span class="data_output" field="time" /> </td>
+      </tr>
+    </table>
+  </body>
+</html>

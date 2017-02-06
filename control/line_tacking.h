@@ -31,6 +31,7 @@ class LineTacker : public Node {
   Point waypoints_[N_WAYPOINTS];
   float bounds_[N_WAYPOINTS] = {20, 20, 20, 20, 10, 10, 10, 10, 10, 10};
   int i_ = 0;
+  int msg_i_offset_ = 0;
   int way_len_ = 0;
 
   std::atomic<float> wind_dir_;

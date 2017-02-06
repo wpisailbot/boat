@@ -61,7 +61,11 @@ void monotonic_clock::sleep_until(time_point time,
       }
     }
     tick_.notify_all();
-    tick_.wait(l, [&]() { return len <= time_ || IsShutdown(); });
+    tick_.wait(l, [&]() {
+//      std::unique_lock<std::mutex> l(wakeup_time_mutex_);
+//      next_wakeup_ = std::min(next_wakeup_, len);
+      return len <= time_ || IsShutdown();
+    });
   }
 }
 
@@ -101,6 +105,10 @@ namespace {
 
 void SignalHandler(int signum) {
   RaiseShutdown();
+}
+
+void CancelShutdown() {
+  done = false;
 }
 
 void Init(int argc, char *argv[]) {

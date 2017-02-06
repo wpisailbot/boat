@@ -24,6 +24,8 @@ message Waypoint {
 
 message WaypointList {
   repeated Waypoint points = 1;
+  // Whether or not to start these waypoints from the start.
+  optional bool restart = 2 [default = true];
 }
 
 message Vector3f {

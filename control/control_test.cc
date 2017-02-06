@@ -17,8 +17,9 @@ namespace testing {
 class SimpleControlTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    util::CancelShutdown();
     Queue::set_testing(true);
-    sailbot::util::ClockManager::SetFakeClock(true);
+    sailbot::util::ClockManager::SetFakeClock(true, true);
 
     server_.reset(new WebSocketServer());
 #define LOG_VECTOR(path, name)                                                 \
@@ -59,6 +60,7 @@ class SimpleControlTest : public ::testing::Test {
     simple_ctrl_.reset(new control::SimpleControl(false));
     tacker_.reset(new control::LineTacker());
 
+    threads_.clear();
     threads_.emplace_back(&sim::SimulatorNode::Run, simple_ctrl_.get());
     threads_.emplace_back(&WebSocketServer::Run, server_.get());
     threads_.emplace_back(&CsvLogger::Run, csv_logger_.get());

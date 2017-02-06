@@ -35,11 +35,15 @@ LineTacker::LineTacker()
 
   RegisterHandler<msg::WaypointList>("waypoints",
                                      [this](const msg::WaypointList &msg) {
-    for (int i = 0; i < std::min(msg.points_size(), N_WAYPOINTS); ++i) {
-      waypoints_[i] = {msg.points(i).x(), msg.points(i).y()};
+    // TODO(james): Thread-safety
+    int starti = msg.restart() ? 0 : msg_i_offset_ + i_;
+    int cnt = std::min(msg.points_size()-starti, N_WAYPOINTS);
+    for (int i = 0; i < cnt; ++i) {
+      waypoints_[i] = {msg.points(i + starti).x(), msg.points(i + starti).y()};
     }
     i_ = 0;
-    way_len_ = msg.points_size();
+    msg_i_offset_ = starti;
+    way_len_ = cnt;
   });
 }
 
@@ -69,7 +73,7 @@ float LineTacker::GoalHeading() {
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
   float goal_wind_diff = norm_angle(nominal_heading - upwind);
-  if (dist < 2 && i_ < way_len_ - 1) {
+  if (dist < 2 && i_ < way_len_ - 2) {
     ++i_;
   }
 
