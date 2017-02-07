@@ -106,3 +106,20 @@ cc_binary(
   srcs=["log-replay-main.cc"],
   deps=[":log_replay"],
 )
+
+cc_proto_library(
+  name="proto_util_test_proto",
+  srcs=["proto_util_test.proto"],
+  deps=["@protobuf//:cc_wkt_protos"],
+  protoc="@protobuf//:protoc",
+  default_runtime = "@protobuf//:protobuf",
+)
+cc_test(
+  name="proto_util_test",
+  srcs=["proto_util_test.cc"],
+  deps = [
+    "@gtest//:main",
+    ":proto_util",
+    ":proto_util_test_proto",
+  ],
+)
