@@ -254,8 +254,8 @@ int64_t CanNode::ExtractNumberField(const Field *f, const uint8_t *data,
 
   while (bits_left) {
     uint8_t byte_bits = std::min(8 - start_bit, bits_left);
-    size_t end_gap = 8 - byte_bits + start_bit;
-    uint16_t mask = ((uint16_t)0xFF >> start_bit) << end_gap;
+    size_t end_gap = 8 - byte_bits - start_bit;
+    uint8_t mask = ((uint16_t)0xFF >> start_bit) << end_gap;
     uint64_t cur_val = (uint64_t(mask & *data) >> end_gap) << magnitude;
     retval += cur_val;
 

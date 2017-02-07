@@ -9,6 +9,8 @@
 namespace sailbot {
 namespace can {
 
+namespace testing { class CanTest; }
+
 class CanNode : public Node {
   struct CANMessage {
     const Pgn* pgn;
@@ -34,10 +36,12 @@ class CanNode : public Node {
   int s_;
   // Storage for the raw message contents.
   std::map<uint32_t, CANMessage> msgs_;
-  void DecodeAndSend(const CANMessage* msg);
-  int64_t ExtractNumberField(const Field *f, const uint8_t *data,
-                             size_t start_bit, int64_t *maxval);
+  void DecodeAndSend(const CANMessage *msg);
+  static int64_t ExtractNumberField(const Field *f, const uint8_t *data,
+                                    size_t start_bit, int64_t *maxval);
   void SendMessage(const msg::can::CANMaster &msg, const int pgn);
+
+  friend sailbot::can::testing::CanTest;
 };
 
 }  // namespace sailbot

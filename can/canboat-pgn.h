@@ -617,6 +617,32 @@ Pgn pgnList[] =
   , { 0 }
   }
 }
+
+  /* http://www.maretron.com/support/manuals/GPS100UM_1.2.pdf */
+,
+{ "GNSS Position Data", 129029, true, 51, 3,
+  { { "SID", BYTES(1), 1, false, 0, "" }
+  , { "Date", BYTES(2), RES_DATE, false, "days", "Days since January 1, 1970" }
+  , { "Time", BYTES(4), RES_TIME, false, "s", "Seconds since midnight" }
+  , { "Latitude", BYTES(8), RES_LATITUDE, true, "deg", "" }
+  , { "Longitude", BYTES(8), RES_LONGITUDE, true, "deg", "" }
+  , { "Altitude", BYTES(8), 1e-6, true, "m", "Altitude referenced to WGS-84" }
+  , { "GNSS type", 4, RES_LOOKUP, false, LOOKUP_GNS, "" }
+  , { "Method", 4, RES_LOOKUP, false, LOOKUP_GNS_METHOD, "" }
+  , { "Integrity", 2, RES_LOOKUP, false, LOOKUP_GNS_INTEGRITY, "" }
+  , { "Reserved", 6, RES_BINARY, false, 0, "Reserved" }
+  , { "Number of SVs", BYTES(1), 1, false, 0, "Number of satellites used in solution" }
+  , { "HDOP", BYTES(2), 0.01, true, 0, "Horizontal dilution of precision" }
+  , { "PDOP", BYTES(2), 0.01, true, 0, "Probable dilution of precision" }
+  , { "Geoidal Separation", BYTES(2), 0.01, true, "m", "Geoidal Separation" }
+  , { "Reference Stations", BYTES(1), 1, false, 0, "Number of reference stations" }
+  , { "Reference Station Type", 4, RES_LOOKUP, false, LOOKUP_GNS, "" }
+  , { "Reference Station ID", 12, 1, false, "" }
+  , { "Age of DGNSS Corrections", BYTES(2), 0.01, false, "s", "" }
+  , { 0 }
+  }
+}
+
 };
 
 size_t pgnListSize = ARRAY_SIZE(pgnList);
