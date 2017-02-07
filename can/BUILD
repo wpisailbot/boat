@@ -13,6 +13,12 @@ cc_library(
   hdrs=["can.h", "canboat-pgn.h", "pgn.h"],
   deps=[":can_proto", "//util:proto_util", "//util:node"],
 )
+cc_test(
+  name="can_test",
+  srcs=["can_test.cc"],
+  deps=["@gtest//:main",
+        ":can"],
+)
 cc_binary(
   name="can-dump",
   srcs=["can-dump.cc"],
