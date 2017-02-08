@@ -47,6 +47,12 @@ cc_binary(
   name="elqr_bin",
   deps=[":elqr_lib"],
 )
+cc_library(
+  name="rudder_controller",
+  srcs=["rudder.cc"],
+  hdrs=["rudder.h", "//control/python:rudder_gains.h"],
+  deps=["@eigen//:eigen", "//util:node"],
+)
 cc_test(
   name="control_test",
   srcs=["control_test.cc"],
