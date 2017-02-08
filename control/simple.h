@@ -16,6 +16,7 @@ class SimpleControl : public Node {
   const bool do_tack_;
   msg::SailCmd *sail_msg_;
   msg::RudderCmd *rudder_msg_;
+  msg::BallastCmd *ballast_msg_;
   msg::BoatState *boat_state_;
   // If separate thing is dealing with tacking, listen for heading:
   std::atomic<float> heading_;
@@ -23,6 +24,7 @@ class SimpleControl : public Node {
   std::atomic<float> wind_x_{0}, wind_y_{0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
+  ProtoQueue<msg::BallastCmd> ballast_cmd_;
 
   // Various useful bits
   float last_goal_ = 0;

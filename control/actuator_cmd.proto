@@ -12,6 +12,10 @@ message RudderCmd {
   optional float vel = 11;
 }
 
+message BallastCmd {
+  optional float vel = 11;
+}
+
 message HeadingCmd {
   optional float heading = 9;
 }
@@ -41,9 +45,16 @@ message Quaternion {
   optional float z = 4;
 }
 
+message EulerAngles {
+  optional float roll = 1;
+  optional float pitch = 2;
+  optional float yaw = 3;
+}
+
 message InternalBoatState {
   optional float sail = 1;
   optional float rudder = 2;
+  optional float ballast = 3;
 }
 
 message BoatState {
@@ -52,4 +63,6 @@ message BoatState {
   optional Vector3f vel = 3;
   optional Vector3f omega = 4;
   optional InternalBoatState internal = 5;
+
+  optional EulerAngles euler = 11;
 }

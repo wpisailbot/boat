@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <functional>
 #include "sim/sim_debug.pb.h"
 
@@ -38,6 +39,24 @@ inline void EigenToProto(const Eigen::Vector3d &ve,
   msg->set_x(ve(0, 0));
   msg->set_y(ve(1, 0));
   msg->set_z(ve(2, 0));
+}
+
+inline Vector3d GetRollPitchYaw(Matrix3d R) {
+  // We don't want to just use Eigen's toEulerAngle, because they
+  // don't always turn things out in useful ranges (eg, a pitch of PI + roll of
+  // PI = a yaw of PI).
+  // First, get the yaw and pull it out of R.
+//  LOG(INFO) << "Clean R:\n" << R;
+  double yaw = std::atan2(R(1, 0), R(0, 0));
+  R = Eigen::AngleAxisd(-yaw, Vector3d::UnitZ()) * R;
+//  LOG(INFO) << "R after yaw undo:\n" << R;
+  double pitch = std::atan2(R(2, 0), R(0, 0));
+  R = Eigen::AngleAxisd(-pitch, Vector3d::UnitY()) * R;
+//  LOG(INFO) << "R after pitch undo:\n" << R;
+  double roll = std::atan2(R(2, 1), R(1, 1));
+//  R = Eigen::AngleAxisd(-roll, Vector3d::UnitX()) * R;
+//  LOG(INFO) << "R after roll undo:\n" << R;
+  return Vector3d(roll, pitch, yaw);
 }
 
 inline float norm_angle(float a) {

@@ -30,10 +30,11 @@ class SimulatorNode : public Node {
 
   void ProcessSail(const msg::SailCmd& cmd);
   void ProcessRudder(const msg::RudderCmd& cmd);
+  void ProcessBallast(const msg::BallastCmd& cmd);
 
   static constexpr double dt = 0.001;
   std::unique_ptr<TrivialDynamics> impl_;
-  std::atomic<double> sdot_, rdot_;
+  std::atomic<double> sdot_, rdot_, bdot_;
 
   ProtoQueue<msg::BoatState> state_queue_;
   msg::BoatState* state_msg_;

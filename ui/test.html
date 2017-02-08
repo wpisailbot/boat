@@ -6,7 +6,7 @@
     <script src="sail_widget.js"></script>
   </head>
   <body>
-    <svg id="myCanvas" width="95vw" height="95vh">
+    <svg id="myCanvas" width="100vw" height="90vh">
       <rect x="0" y="0" width="100%" height="100%" style="fill-opacity:0;stroke-opacity:0" id="background" />
       <g transform="translate(500, 500)" id="inertial_frame">
         <g transform="translate(0, 0)" id="hull_position">
@@ -25,9 +25,15 @@
     <br>
     <table>
       <tr>
-        <td> Time: <span class="data_output" field="time"></span> sec </td>
-        <td> Goto X: <input type="textbox" id="goto-x"> Goto Y: <input type="textbox" id="goto-y"> </td>
+        <td> Goto X: <input type="textbox" id="goto-x"> </td>
+        <td> Goto Y: <input type="textbox" id="goto-y"> </td>
         <td> <input type="button" id="goto-submit" value="Go"> </td>
+      </tr>
+      <tr>
+        <td> Time: <span class="data_output" field="time"></span> sec </td>
+        <td> Heel: <span class="data_output" field="boat_state.euler.roll"></span> radians </td>
+        <td> Yaw: <span class="data_output" field="boat_state.euler.yaw"></span> radians </td>
+        <td> Ballast Angle: <span class="data_output" field="boat_state.internal.ballast"></span> radians </td>
       </tr>
     </table>
 

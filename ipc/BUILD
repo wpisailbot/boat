@@ -30,4 +30,5 @@ cc_test(
     ":queue",
     ":queue_test_msg",
   ],
+  local = True,
 )

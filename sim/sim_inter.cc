@@ -7,7 +7,7 @@ namespace sim {
 SimulatorNode::SimulatorNode()
     : Node(dt),
       // impl_(new SimulatorSaoud2013(dt)),
-      impl_(new TrivialDynamics(dt)), sdot_(0), rdot_(0),
+      impl_(new TrivialDynamics(dt)), sdot_(0), rdot_(0), bdot_(0),
       state_queue_("boat_state", true),
       state_msg_(AllocateMessage<msg::BoatState>()), wind_queue_("wind", true),
       wind_msg_(AllocateMessage<msg::Vector3f>()) {
@@ -17,7 +17,10 @@ SimulatorNode::SimulatorNode()
     RegisterHandler<msg::RudderCmd>(
         "rudder_cmd",
         std::bind(&SimulatorNode::ProcessRudder, this, std::placeholders::_1));
-  }
+    RegisterHandler<msg::BallastCmd>(
+        "ballast_cmd",
+        std::bind(&SimulatorNode::ProcessBallast, this, std::placeholders::_1));
+}
 
 void SimulatorNode::ProcessSail(const msg::SailCmd& cmd) {
   if (cmd.has_vel() || std::isnan(cmd.vel()))
@@ -29,16 +32,23 @@ void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
     rdot_ = cmd.vel();
 }
 
+void SimulatorNode::ProcessBallast(const msg::BallastCmd& cmd) {
+  if (cmd.has_vel() || std::isnan(cmd.vel()))
+    bdot_ = cmd.vel();
+}
+
 void SimulatorNode::Iterate() {
   static float time = 0;
   VLOG(2) << "Time: " << (time += dt);
   VLOG(1) << "s, r: " << sdot_ << ", " << rdot_;
   //if (time > .05) std::exit(0);
-  impl_->Update(sdot_, rdot_);
+  impl_->Update(sdot_, rdot_, bdot_);
   Eigen::Vector3d omega = impl_->get_omega();
   Eigen::Vector3d x = impl_->get_x();
   Eigen::Vector3d v = impl_->get_v();
   Eigen::Quaternion<double> rot(impl_->get_RBI());
+
+  Eigen::Vector3d rollpitchyaw = GetRollPitchYaw(impl_->get_RBI());
 
   msg::Vector3f *pos = state_msg_->mutable_pos();
   pos->set_x(x(0));
@@ -61,24 +71,16 @@ void SimulatorNode::Iterate() {
   qmsg->set_y(rot.y());
   qmsg->set_z(rot.z());
 
+  msg::EulerAngles *euler = state_msg_->mutable_euler();
+  euler->set_roll(rollpitchyaw(0, 0));
+  euler->set_pitch(rollpitchyaw(1, 0));
+  euler->set_yaw(rollpitchyaw(2, 0));
+
   state_msg_->mutable_internal()->set_sail(impl_->get_deltas());
   state_msg_->mutable_internal()->set_rudder(impl_->get_deltar());
+  state_msg_->mutable_internal()->set_ballast(impl_->get_deltab());
 
   state_queue_.send(state_msg_);
-  return;
-  // TODO: Display/show results of simulation.
-
-  Eigen::Matrix3d R = impl_->get_RBI();
-  Eigen::Matrix3d Rinv = R.inverse();
-  Eigen::Matrix<double, 1, 3> euler = Rinv.eulerAngles(2, 0, 1).transpose();
-  Eigen::Matrix<double, 1, 3> eulerInv = R.eulerAngles(2, 0, 1).transpose();
-  std::cout << "\nRBI:\n" << impl_->get_RBI() << "\nEuler ZXY: " << euler
-            << " BackE: " << eulerInv << "\nX: " << x.transpose()
-            << "\nV: " << v.transpose() << "\nW: " << omega.transpose()
-            << std::endl;
-
-  //if (R(2, 2) < .5) std::exit(0);
-  if (std::isnan(v(0, 0))) std::exit(0);
 }
 
 }  // sim

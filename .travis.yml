@@ -43,7 +43,6 @@ script:
   - |
     bazel \
       test \
-      --spawn_strategy=standalone \
       //...
 notifications:
   email: false

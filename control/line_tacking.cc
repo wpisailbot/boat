@@ -10,8 +10,8 @@ namespace control {
 constexpr int LineTacker::N_WAYPOINTS;
 
 LineTacker::LineTacker()
-    : Node(0.01), kCloseHaul(M_PI / 4), kWindTol(0.1), wind_dir_(0),
-      cur_pos_({0, 0}), cur_theta_(0),
+    : Node(0.01), kCloseHaul(M_PI / 4), kWindTol(0.1),
+      cur_pos_({0, 0}), wind_dir_(0), cur_theta_(0),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {

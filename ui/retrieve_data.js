@@ -91,7 +91,6 @@ function periodic(method, timeout) {
   setTimeout(function() { periodic(method, timeout); }, timeout);
 }
 
-
 // schedule the first invocation:
 
 $(window).on('load', function() {

@@ -13,13 +13,14 @@ class SimulatorDynamics {
   typedef Eigen::Matrix3d Matrix3d;
   typedef Eigen::Matrix<double, 6, 6> Matrix6d;
   typedef Eigen::Matrix<double, 6, 1> Vector6d;
-  virtual std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) = 0;
+  virtual std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double bdot) = 0;
   virtual Vector3d get_x() = 0;
   virtual Vector3d get_v() = 0;
   virtual Matrix3d get_RBI() = 0;
   virtual Vector3d get_omega() = 0;
   virtual double get_deltas() = 0;
   virtual double get_deltar() = 0;
+  virtual double get_deltab() = 0;
   virtual void set_wind(Vector3d wind) = 0;
 };
 
@@ -36,14 +37,15 @@ class TrivialDynamics : public SimulatorDynamics {
   typedef Eigen::Matrix<double, kNumUInputs, 1> VectorInputs;
 
   TrivialDynamics(float _dt);
-  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot);
-  Vector3d get_x() { return x;}
-  Vector3d get_v() { return v; }
-  Matrix3d get_RBI() { return RBI; }
-  Vector3d get_omega() { return omega; }
-  double get_deltas() { return deltas; }
-  double get_deltar() { return deltar; }
-  void set_wind(Vector3d wind) { this->wind = wind; }
+  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double bdot) override;
+  Vector3d get_x() override { return x;}
+  Vector3d get_v() override { return v; }
+  Matrix3d get_RBI() override { return RBI; }
+  Vector3d get_omega() override { return omega; }
+  double get_deltas() override { return deltas; }
+  double get_deltar() override { return deltar; }
+  double get_deltab() override { return deltab; }
+  void set_wind(Vector3d wind) override { this->wind = wind; }
   double get_alpha_sail() {
     Vector3d wa = RBI.transpose() * (wind - v);
     return norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
@@ -314,7 +316,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     RBI = Orthogonalize(RBI);
   }
 
-  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot) override {
+  std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double) override {
     deltasdot = sdot;
     deltardot = rdot;
     Update();

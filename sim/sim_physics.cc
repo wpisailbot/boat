@@ -64,8 +64,8 @@ SimulatorSaoud2013::SimulatorSaoud2013(float _dt)
 
 TrivialDynamics::TrivialDynamics(float _dt)
     : dt(_dt), rr(-1), rs(.25), rk(0), ls(.5), lr(.03), hs(2), hr(-.2), hk(-.7),
-      lm(1), mm(30), CoM(0, 0, -1.5), mass(30), deltas(1.3), deltar(0),
-      deltab(0), yaw(0), heel(0), debug_queue_("sim_debug", true) {
+      lm(1), mm(15), CoM(0, 0, -1.5), mass(30), deltas(1.3), deltar(0),
+      deltab(1), yaw(0), heel(0), debug_queue_("sim_debug", true) {
   J << 25, 0, 0,
        0, 25, 0,
        0, 0, 5;
@@ -77,14 +77,17 @@ TrivialDynamics::TrivialDynamics(float _dt)
 }
 
 std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
-    double sdot, double rdot) {
+    double sdot, double rdot, double bdot) {
   sailbot::msg::SimDebugMsg msg;
   VLOG(1) << "sdot, rdot: " << sdot << ", " << rdot;
   deltas += sdot * dt;
   deltar += rdot * dt;
+  deltab += bdot * dt;
   deltas = norm_angle(deltas);
   deltar = norm_angle(deltar);
+  deltab = norm_angle(deltab);
   deltar = std::min(std::max(deltar, -0.6), 0.6);
+  deltab = std::min(std::max(deltab, -1.5), 1.5);
   Vector3d Fs = SailForces();
   Vector3d Fr = RudderForces();
   Vector3d Fk = KeelForces();
