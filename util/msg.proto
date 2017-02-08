@@ -40,10 +40,14 @@ message LogEntry {
   optional SimDebugMsg sim_debug = 3000;
   optional SBUS sbus_value = 3500;
 
-  optional can.CANMaster can126992 = 126992;
-  optional can.CANMaster can127250 = 127250;
-  optional can.CANMaster can127251 = 127251;
-  optional can.CANMaster can127257 = 127257;
-  optional can.CANMaster can129025 = 129025;
-  optional can.CANMaster can130306 = 130306;
+  optional can.CANMaster can126992 = 126992; // System time
+  optional can.CANMaster can127250 = 127250; // Vessel heading
+  optional can.CANMaster can127251 = 127251; // Rate of Turn
+  optional can.CANMaster can127257 = 127257; // Attitude
+  optional can.CANMaster can129025 = 129025; // Position Rapid Update
+  optional can.CANMaster can129026 = 129026; // COG/SOG Rapid Update
+  optional can.CANMaster can129029 = 129029; // GNSS Position Message
+  optional can.CANMaster can129033 = 129033; // Time and date
+  optional can.CANMaster can129539 = 129539; // GNSS DOP
+  optional can.CANMaster can130306 = 130306; // Wind Data
 }

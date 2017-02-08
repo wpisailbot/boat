@@ -479,6 +479,18 @@ Pgn pgnList[] =
 }
 
 ,
+{ "COG & SOG, Rapid Update", 129026, true, 8, 0,
+  { { "SID", BYTES(1), 1, false, 0, "" }
+  , { "COG Reference", 2, RES_LOOKUP, false, LOOKUP_DIRECTION_REFERENCE, "" }
+  , { "Reserved", 6, RES_BINARY, false, 0, "Reserved" }
+  , { "COG", BYTES(2), RES_RADIANS, false, "rad", "" }
+  , { "SOG", BYTES(2), 0.01, false, "m/s", "" }
+  , { "Reserved", BYTES(2), RES_BINARY, false, 0, "Reserved" }
+  , { 0 }
+  }
+}
+
+,
 { "Time & Date", 129033, true, 8, 0,
   { { "Date", BYTES(2), RES_DATE, false, "days", "Days since January 1, 1970" }
   , { "Time", BYTES(4), RES_TIME, false, "s", "Seconds since midnight" }

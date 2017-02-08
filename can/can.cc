@@ -282,7 +282,15 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
     return;
   }
   const CANMessage *msg_info = &msgs_[pgn];
+  can_frame frame;
+  if (ConstructMessage(msg, msg_info, &frame)) {
+    PCHECK(write(s_, &frame, sizeof(can_frame)) > 0) << "Write failed";
+  }
+}
 
+bool CanNode::ConstructMessage(const msg::can::CANMaster &msg,
+                               const CANMessage *msg_info, can_frame *frame) {
+  const int pgn = msg_info->pgn->pgn;
   const google::protobuf::Descriptor* descriptor = msg.GetDescriptor();
   const google::protobuf::Reflection* reflection = msg.GetReflection();
   const google::protobuf::FieldDescriptor *field_desc =
@@ -290,13 +298,12 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
   VLOG(3) << "Sending message with pgn " << pgn;
   if (field_desc == nullptr) {
     LOG(ERROR) << "Unable to find message for PGN " << pgn;
-    return;
+    return false;
   }
   const google::protobuf::Message &pgn_msg =
       reflection->GetMessage(msg, field_desc);
 
-  can_frame frame;
-  frame.can_dlc = 0;
+  frame->can_dlc = 0;
   if (msg_info->pgn->size > 8) {
     LOG(ERROR) << "Sending multi-packet messages is currently unsupported";
   }
@@ -304,34 +311,34 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
     const Field *f = msg_info->pgn->fieldList + i;
     if (f->size % 8 != 0) {
       LOG(ERROR) << "Attempting to send message with non-byte-aligned fields";
-      return;
+      return false;
     }
     // For now, only work with fields that are simple numbers and have byte alignment.
     if (f->resolution > 0) {
-      float x = util::GetProtoNumberFieldById(&pgn_msg, i+1);
-      uint32_t n_wire = x / f->resolution;
+      double x = util::GetProtoNumberFieldById(&pgn_msg, i+1);
+      uint64_t n_wire = x / f->resolution;
       VLOG(2) << "n_wire: " << n_wire;
-      memcpy((void*)(frame.data + frame.can_dlc), (void*)&n_wire, f->size / 8);
+      memcpy((void*)(frame->data + frame->can_dlc), (void*)&n_wire, f->size / 8);
     } else {
       LOG(WARNING) << "Attempting to write field with undefined resolution";
     }
-    frame.can_dlc += f->size / 8;
+    frame->can_dlc += f->size / 8;
   }
 
   CANID can_id;
   SetPGN(&can_id, pgn);
   can_id.priority = 0x2; // TODO(james): Parametrize to allow variation
   can_id.source = 100; // TODO(james): Use real source ID.
-  frame.can_id = ConstructID(can_id);
-  VLOG(2) << "ID: " << frame.can_id << " DLC: " << (int)frame.can_dlc
-          << " data: " << (int)frame.data[0] << ", " << (int)frame.data[1]
-          << ", " << (int)frame.data[2] << ", " << (int)frame.data[3] << ", "
-          << (int)frame.data[4];
-  for (; frame.can_dlc < 8; frame.can_dlc++) {
-    frame.data[frame.can_dlc] = 0xFF;
+  frame->can_id = ConstructID(can_id);
+  VLOG(2) << "ID: " << frame->can_id << " DLC: " << (int)frame->can_dlc
+          << " data: " << (int)frame->data[0] << ", " << (int)frame->data[1]
+          << ", " << (int)frame->data[2] << ", " << (int)frame->data[3] << ", "
+          << (int)frame->data[4];
+  for (; frame->can_dlc < 8; frame->can_dlc++) {
+    frame->data[frame->can_dlc] = 0xFF;
   }
   VLOG(2) << "CANID: DP: " << (int)can_id.DP;
-  PCHECK(write(s_, &frame, sizeof(can_frame)) > 0) << "Write failed";
+  return true;
 }
 
 }  // namespace sailbot

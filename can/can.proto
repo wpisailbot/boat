@@ -10,16 +10,22 @@ message SystemTime {
   optional uint32 time = 5; // 4 bytes, seconds since midnight
 }
 
+enum DIRECTION_REFERENCE {
+  TRUE = 0;
+  MAGNETIC = 1;
+}
+
 message VesselHeading {
   optional uint32 SID = 1;
   optional float heading = 2; // radians
   optional float deviation = 3; // radians
   optional float variation = 4; // radians
+  optional DIRECTION_REFERENCE reference = 5;
 }
 
 message RateOfTurn {
   optional uint32 SID = 1;
-  optional double rate = 2; // radians / sec
+  optional float rate = 2; // radians / sec
 }
 
 message Attitude {
@@ -29,9 +35,91 @@ message Attitude {
   optional float roll = 4; // radians
 }
 
+message TimeDate {
+  optional uint32 day = 1; // days since epoch
+  optional uint32 time = 2; // seconds since midnight
+  optional int32 localoffset = 3; // minutes
+}
+
+message GNSSDOP {
+  enum DOP_MODE {
+    ONED = 0;
+    TWOD = 1;
+    THREED = 2;
+    AUTO = 3;
+    ERROR = 6;
+  }
+  optional uint32 SID = 1;
+  optional DOP_MODE desired_mode = 2;
+  optional DOP_MODE actual_mode = 3;
+  optional uint32 reserved = 4;
+  optional float hdop = 5;
+  optional float vdop = 6;
+  optional float tdop = 7;
+}
+
+message GNSSPositionData {
+  optional uint32 SID = 1;
+  optional uint32 day = 2; // Days since epoch
+  optional uint32 time = 3; // secs since midnight;
+  optional double latitude = 4; // degrees
+  optional double longitude = 5; // degrees
+  optional double altitude = 6; // meters
+  enum GNSS_TYPE {
+    GPS = 0;
+    GLONASS = 1;
+    GPS_GLONASS = 2;
+    GPS_WAAS = 3;
+    GPS_WAAS_GLONASS = 4;
+    CHAYKA = 5;
+    INTEGRATED = 6;
+    SURVEYED = 7;
+    GALILEO = 8;
+  }
+  optional GNSS_TYPE gnss_type = 7;
+  enum GNSS_METHOD {
+    NO_GNSS = 0;
+    GNSS_FIX = 1;
+    DGNSS_FIX = 2;
+    PRECISE_GNSS = 3;
+    RTK_FIXED_INT = 4;
+    RTK_FLOAT = 5;
+    ESTIMATED_DR_MODE = 6;
+    MANUAL_INPUT = 7;
+    SIMULATE_MODE = 8;
+  }
+  optional GNSS_METHOD gnss_method = 8;
+  enum GNSS_INTEGRITY {
+    NONE = 0;
+    SAFE = 1;
+    CAUTION = 2;
+  }
+  optional GNSS_INTEGRITY gnss_integrity = 9;
+  optional uint32 reserved = 10;
+  optional uint32 n_satellites = 11; // Number of satellites used in calculation
+  optional float HDOP = 12; // horizontal dilution of precision
+  optional float PDOP = 13; // Probable dilution of precision
+  optional float geoidal_separation = 14; // Geoidal Separation, meters
+  optional uint32 n_reference_stations = 15;
+  optional GNSS_TYPE reference_station_type = 16;
+  optional uint32 reference_station_id = 17;
+  optional float dgnss_correction_age = 18; // seconds
+}
+
 message PosRapidUpdate {
   optional double lat = 1; // degrees
   optional double lon = 2; // degrees
+}
+
+// SOG and COG refer to speed and course over ground (ie, this provides
+// the current velocity of the boat).
+message COGSOGRapidUpdate {
+  optional uint32 SID = 1;
+  optional DIRECTION_REFERENCE cog_reference = 2;
+  optional uint32 reserved = 3;
+  optional float COG = 4; // radians
+  optional float SOG = 5; // m/s
+  optional uint32 reserved2 = 6;
 }
 
 message WindData {
@@ -47,5 +135,9 @@ message CANMaster {
   optional RateOfTurn rate_turn = 127251;
   optional Attitude attitude = 127257;
   optional PosRapidUpdate pos_rapid_update = 129025;
+  optional COGSOGRapidUpdate cog_rapid_update = 129026;
+  optional GNSSPositionData gnss_pos = 129029;
+  optional TimeDate time_and_date = 129033;
+  optional GNSSDOP gnss_dop = 129539;
   optional WindData wind_data = 130306;
 }
