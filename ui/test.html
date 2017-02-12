@@ -31,9 +31,13 @@
       </tr>
       <tr>
         <td> Time: <span class="data_output" field="time"></span> sec </td>
-        <td> Heel: <span class="data_output" field="boat_state.euler.roll"></span> radians </td>
-        <td> Yaw: <span class="data_output" field="boat_state.euler.yaw"></span> radians </td>
-        <td> Ballast Angle: <span class="data_output" field="boat_state.internal.ballast"></span> radians </td>
+        <td> Heel: <span class="data_output" field="sim_true_boat_state.euler.roll"></span> radians </td>
+        <td> Yaw: <span class="data_output" field="sim_true_boat_state.euler.yaw"></span> radians </td>
+        <td> Ballast Angle: <span class="data_output" field="sim_true_boat_state.internal.ballast"></span> radians </td>
+      </tr>
+        <td> True Sail Angle: <span class="data_output" field="sim_true_boat_state.internal.sail"></span> radians </td>
+        <td> Known Sail Angle: <span class="data_output" field="boat_state.internal.sail"></span> radians </td>
+      <tr>
       </tr>
     </table>
 

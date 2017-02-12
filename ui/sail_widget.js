@@ -1,7 +1,7 @@
-var quaternionQueue = "boat_state.orientation.";
-var sailState = "boat_state.internal.sail";
-var rudderState = "boat_state.internal.rudder";
-var positionQueue = "boat_state.pos";
+var quaternionQueue = "sim_true_boat_state.orientation.";
+var sailState = "sim_true_boat_state.internal.sail";
+var rudderState = "sim_true_boat_state.internal.rudder";
+var positionQueue = "sim_true_boat_state.pos";
 var waypointsQueue = "waypoints";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};

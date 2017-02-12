@@ -6,7 +6,7 @@ namespace sim {
 FakeAirmar::FakeAirmar()
     : Node(dt), heading_("can127250", true), rate_turn_("can127251", true),
       attitude_("can127257", true), pos_rapid_update_("can129025", true),
-      cog_rapid_update_("can129026", true), wind_data_("can129026", true),
+      cog_rapid_update_("can129026", true), wind_data_("can130306", true),
       counter_(0) {
   RegisterHandler<msg::BoatState>("sim_true_boat_state",
                                   [this](const msg::BoatState &msg) {
@@ -56,6 +56,8 @@ void FakeAirmar::Iterate() {
   out.mutable_wind_data()->set_wind_speed(
       std::sqrt(wind_.x() * wind_.x() + wind_.y() * wind_.y()));
   out.mutable_wind_data()->set_wind_angle(std::atan2(wind_.y(), wind_.x()));
+  wind_data_.send(&out);
+  out.clear_wind_data();
 
   ++counter_;
 }

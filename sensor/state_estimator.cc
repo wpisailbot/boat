@@ -64,7 +64,7 @@ StateEstimator::StateEstimator()
     }
   });
   // Wind Data
-  RegisterHandler<msg::can::CANMaster>("can129026",
+  RegisterHandler<msg::can::CANMaster>("can130306",
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_wind_data() && msg.wind_data().has_wind_speed() &&
