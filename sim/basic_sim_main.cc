@@ -21,17 +21,18 @@ int main(int argc, char *argv[]) {
   { path ".x", name " X" }                                                     \
   , {path ".y", name " Y"}, {                                                  \
   path ".z", name " Z"}
+#define TRUE_STATE "sim_true_boat_state"
   sailbot::CsvLogger csv({
-                          {"boat_state.internal.sail", "Sail"}, // 0
-                          {"boat_state.internal.rudder", "Rudder"}, // 1
-                          {"boat_state.pos.x", "Boat X"}, // 2
-                          {"boat_state.pos.y", "Boat Y"}, // 3
-                          {"boat_state.vel.x", "Boat Vel X"}, // 4
-                          {"boat_state.vel.y", "Boat Vel Y"}, // 5
-                          {"boat_state.orientation.w", "Quat W"}, // 6
-                          {"boat_state.orientation.x", "Quat X"}, // 7
-                          {"boat_state.orientation.y", "Quat Y"}, // 8
-                          {"boat_state.orientation.z", "Quat Z"}, // 9
+                          {TRUE_STATE".internal.sail", "Sail"}, // 0
+                          {TRUE_STATE".internal.rudder", "Rudder"}, // 1
+                          {TRUE_STATE".pos.x", "Boat X"}, // 2
+                          {TRUE_STATE".pos.y", "Boat Y"}, // 3
+                          {TRUE_STATE".vel.x", "Boat Vel X"}, // 4
+                          {TRUE_STATE".vel.y", "Boat Vel Y"}, // 5
+                          {TRUE_STATE".orientation.w", "Quat W"}, // 6
+                          {TRUE_STATE".orientation.x", "Quat X"}, // 7
+                          {TRUE_STATE".orientation.y", "Quat Y"}, // 8
+                          {TRUE_STATE".orientation.z", "Quat Z"}, // 9
                           {"wind.x", "Wind X"}, // 10
                           {"wind.y", "Wind Y"}, // 11
                           LOG_VECTOR("sim_debug.fs", "Sail Force"), // 12-14
@@ -48,6 +49,7 @@ int main(int argc, char *argv[]) {
                           {"heading_cmd.heading", "Heading Goal"}, // 45
                          },
                          FLAGS_csv_file, .01);
+#undef TRUE_STATE
 #undef LOG_VECTOR
 
   std::thread clock(&sailbot::util::ClockManager::Run, 0);

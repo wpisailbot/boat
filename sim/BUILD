@@ -8,27 +8,37 @@ cc_proto_library(
   default_runtime="@protobuf//:protobuf",
 )
 cc_library(
-  name="sim_util",
-  srcs=["util.cc"],
-  hdrs=["util.h"],
-  deps=[":sim_debug_proto", "@eigen//:eigen"],
-)
-cc_library(
   name="sim_physics",
   srcs=["sim_physics.cc"],
   hdrs=["sim_physics.h"],
   deps=["//control:actuator_cmd_proto",
         "//util:clock",
-        ":sim_util",
+        "//control:util",
         ":sim_debug_proto",
         "//ipc:queue",
         ],
 )
 cc_library(
+  name="fake_airmar",
+  srcs=["fake_airmar.cc"],
+  hdrs=["fake_airmar.h"],
+  deps=["//can:can_proto","//control:actuator_cmd_proto","//util:node"],
+)
+cc_library(
+  name="fake_internal_sensors",
+  srcs=["fake_internal_sensors.cc"],
+  hdrs=["fake_internal_sensors.h"],
+  deps=["//control:actuator_cmd_proto", "//util:node"],
+)
+cc_library(
   name="sim_inter",
   srcs=["sim_inter.cc"],
   hdrs=["sim_inter.h"],
-  deps=[":sim_physics","//control:actuator_cmd_proto","//util:node"],
+  deps=[":sim_physics",
+        "//control:actuator_cmd_proto",
+        ":fake_airmar",
+        ":fake_internal_sensors",
+        "//util:node"],
 )
 cc_library(
   name="csv_logger",

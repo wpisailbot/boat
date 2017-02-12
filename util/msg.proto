@@ -39,6 +39,10 @@ message LogEntry {
   optional test.QueueTestMsg test_queue = 2002;
 
   optional SimDebugMsg sim_debug = 3000;
+  optional InternalBoatState internal_state = 3001; // Will probably disappear
+  optional BoatState sim_true_boat_state = 3002; // Provides the "true" state of the system
+  optional Vector3f sim_true_wind = 3003; // Provides the "true" wind for the system
+
   optional SBUS sbus_value = 3500;
 
   optional can.CANMaster can126992 = 126992; // System time

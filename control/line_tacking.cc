@@ -1,6 +1,6 @@
 #include "line_tacking.h"
 #include "control/actuator_cmd.pb.h"
-#include "sim/util.h"
+#include "util.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
@@ -29,10 +29,6 @@ LineTacker::LineTacker()
     cur_pos_.y = msg.pos().y();
   });
 
-  waypoints_[0] = {0, 0};
-  waypoints_[1] = {0, 100};
-  way_len_ = 2;
-
   RegisterHandler<msg::WaypointList>("waypoints",
                                      [this](const msg::WaypointList &msg) {
     // TODO(james): Thread-safety
@@ -48,6 +44,10 @@ LineTacker::LineTacker()
 }
 
 void LineTacker::Iterate() {
+  if (way_len_ == 0) {
+    LOG(INFO) << "No Waypoints--not doing anything";
+    return;
+  }
   double gh = GoalHeading();
   heading_msg_->set_heading(gh);
   heading_cmd_.send(heading_msg_);
@@ -65,14 +65,14 @@ void LineTacker::Iterate() {
 float LineTacker::GoalHeading() {
   Point start = waypoints_[i_];
   Point end = waypoints_[i_+1];
-  float upwind = norm_angle(wind_dir_ - M_PI);
-  float min_closehaul = norm_angle(upwind - kCloseHaul);
-  float max_closehaul = norm_angle(upwind + kCloseHaul);
+  float upwind = util::norm_angle(wind_dir_ - M_PI);
+  float min_closehaul = util::norm_angle(upwind - kCloseHaul);
+  float max_closehaul = util::norm_angle(upwind + kCloseHaul);
   float dy = end.y - cur_pos_.y;
   float dx = end.x - cur_pos_.x;
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
-  float goal_wind_diff = norm_angle(nominal_heading - upwind);
+  float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
   if (dist < 2 && i_ < way_len_ - 2) {
     ++i_;
   }
@@ -86,7 +86,7 @@ float LineTacker::GoalHeading() {
 
   if (std::abs(dist_to_line) >= bounds_[i_]) {
     // Too far from the path, so go back.
-    if (norm_angle(wind_dir_ - nominal_heading) > 0) {
+    if (util::norm_angle(wind_dir_ - nominal_heading) > 0) {
       return max_closehaul;
     } else {
       return min_closehaul;
@@ -127,7 +127,7 @@ float LineTacker::DistanceFromLine(Point start, Point end, Point loc) {
 }
 
 float LineTacker::ApparentWind() {
-  return norm_angle(wind_dir_ - cur_theta_);
+  return util::norm_angle(wind_dir_ - cur_theta_);
 }
 
 }  // namespace control

@@ -2,15 +2,19 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <Eigen/Geometry>
-#include "util.h"
+#include "control/util.h"
 #include <iostream>
 #include "ipc/queue.hpp"
 #include "sim/sim_debug.pb.h"
 
+namespace sailbot {
+namespace sim {
+
+typedef Eigen::Vector3d Vector3d;
+typedef Eigen::Matrix3d Matrix3d;
+
 class SimulatorDynamics {
  public:
-  typedef Eigen::Vector3d Vector3d;
-  typedef Eigen::Matrix3d Matrix3d;
   typedef Eigen::Matrix<double, 6, 6> Matrix6d;
   typedef Eigen::Matrix<double, 6, 1> Vector6d;
   virtual std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double bdot) = 0;
@@ -48,7 +52,7 @@ class TrivialDynamics : public SimulatorDynamics {
   void set_wind(Vector3d wind) override { this->wind = wind; }
   double get_alpha_sail() {
     Vector3d wa = RBI.transpose() * (wind - v);
-    return norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
+    return util::norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
   }
 
   // Note: CalcXdot does make use of most parameters that aren't explicitly
@@ -253,8 +257,8 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Matrix6d CRB() {
     Matrix6d out = Matrix6d::Zero();
     Vector3d wb = omegaB();
-    out.block(0, 0, 3, 3) = m0 * Skew(wb);
-    out.block(3, 3, 3, 3) = -Skew(J0 * wb);
+    out.block(0, 0, 3, 3) = m0 * util::Skew(wb);
+    out.block(3, 3, 3, 3) = -util::Skew(J0 * wb);
     return out;
   }
   Matrix6d CA() {
@@ -263,8 +267,8 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     Matrix3d A12 = MA.block(0, 3, 3, 3); // Approximately 0
     Matrix3d A21 = MA.block(3, 0, 3, 3); // Approximately 0
     Matrix3d A22 = MA.block(3, 3, 3, 3);
-    out.block(3, 3, 3, 3) = -Skew(A21 * vB() + A22 * omegaB());
-    out.block(0, 3, 3, 3) = -Skew(A11 * vB() + A12 * omegaB());
+    out.block(3, 3, 3, 3) = -util::Skew(A21 * vB() + A22 * omegaB());
+    out.block(0, 3, 3, 3) = -util::Skew(A11 * vB() + A12 * omegaB());
     out.block(3, 0, 3, 3) = out.block(0, 3, 3, 3);
     return out;
   }
@@ -305,7 +309,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     Vector6d deltanu = nudot() * dt;
     Vector3d vbody = vB() + deltanu.block(0, 0, 3, 1);
     Vector3d omegabody = omegaB() + deltanu.block(3, 0, 3, 1);
-    Matrix3d wx = Skew(omegabody);
+    Matrix3d wx = util::Skew(omegabody);
     // Do actual update of v, omega:
     v = RBI * vbody;
     omega = RBI * omegabody;
@@ -313,7 +317,7 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
     // Do update of x, RBI:
     x += v * dt;
     RBI += RBI * wx * dt;
-    RBI = Orthogonalize(RBI);
+    RBI = util::Orthogonalize(RBI);
   }
 
   std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double) override {
@@ -390,6 +394,8 @@ class SimulatorSaoud2013 : public SimulatorDynamics {
   Matrix3d RBI; // The unit vectors of the boat in terms of inertial frame
   Vector3d omega; // Boat angular velocity
 
-  Vector3d TBI(const Vector3d& p) { return Trans(p, RBI, x); }
+  Vector3d TBI(const Vector3d& p) { return util::Trans(p, RBI, x); }
 };
 
+}  // namespace sim
+}  // namespace sailbot

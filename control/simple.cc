@@ -1,15 +1,15 @@
 #include "simple.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include "sim/util.h"
+#include "control/util.h"
 
 namespace sailbot {
 namespace control {
 
 namespace {
   bool in_bounds(float alpha, float min, float max) {
-    float diff = norm_angle(alpha - min);
-    return diff > 0 && diff < norm_angle(max - min);
+    float diff = util::norm_angle(alpha - min);
+    return diff > 0 && diff < util::norm_angle(max - min);
   }
 }
 
@@ -52,7 +52,7 @@ void SimpleControl::Iterate() {
   // For alphaw, if sailing straight into wind, =0, if wind is coming from port
   // (ie, on port tack), alphaw is positive, if coming from starboard, is
   // negative/between pi and 2pi.
-  float alphaw = norm_angle(std::atan2(vy - wind_y_, vx - wind_x_) - yaw);
+  float alphaw = util::norm_angle(std::atan2(vy - wind_y_, vx - wind_x_) - yaw);
   float wind_source_dir = std::atan2(-wind_y_, -wind_x_);
   float alphasail = alphaw - boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
@@ -63,7 +63,7 @@ void SimpleControl::Iterate() {
   }
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << alphasail
           << " goals: " << goal;
-  sail_msg_->set_vel(-norm_angle(goal - alphasail));
+  sail_msg_->set_vel(-util::norm_angle(goal - alphasail));
 
   ballast_msg_->set_vel(-0.5 * heel);
 
@@ -71,8 +71,10 @@ void SimpleControl::Iterate() {
   float max_rudder = vel < 0 ? 0.1 : 0.4;
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
-  float goal_rudder = std::min(
-      std::max(-norm_angle(goal_heading - cur_heading/*yaw*/), -max_rudder), max_rudder);
+  float goal_rudder =
+      std::min(std::max(-util::norm_angle(goal_heading - cur_heading /*yaw*/),
+                        -max_rudder),
+               max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);

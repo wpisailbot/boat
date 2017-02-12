@@ -3,6 +3,8 @@
 #include <functional>
 #include "control/actuator_cmd.pb.h"
 #include "sim_physics.h"
+#include "fake_internal_sensors.h"
+#include "fake_airmar.h"
 
 namespace sailbot {
 namespace sim {
@@ -10,6 +12,8 @@ namespace sim {
 class SimulatorNode : public Node {
  public:
   SimulatorNode();
+
+  void Run() override;
 
   void set_wind(float src_dir, float speed /*m/s*/) {
     float x = speed * std::cos(src_dir);
@@ -40,6 +44,9 @@ class SimulatorNode : public Node {
   msg::BoatState* state_msg_;
   ProtoQueue<msg::Vector3f> wind_queue_;
   msg::Vector3f* wind_msg_;
+
+  FakeInternalSensors internal_sensors_;
+  FakeAirmar fake_airmar_;
 };
 
 }  // sim

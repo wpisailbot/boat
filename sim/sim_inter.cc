@@ -8,8 +8,9 @@ SimulatorNode::SimulatorNode()
     : Node(dt),
       // impl_(new SimulatorSaoud2013(dt)),
       impl_(new TrivialDynamics(dt)), sdot_(0), rdot_(0), bdot_(0),
-      state_queue_("boat_state", true),
-      state_msg_(AllocateMessage<msg::BoatState>()), wind_queue_("wind", true),
+      state_queue_("sim_true_boat_state", true),
+      state_msg_(AllocateMessage<msg::BoatState>()),
+      wind_queue_("sim_true_wind", true),
       wind_msg_(AllocateMessage<msg::Vector3f>()) {
     RegisterHandler<msg::SailCmd>(
         "sail_cmd",
@@ -37,6 +38,13 @@ void SimulatorNode::ProcessBallast(const msg::BallastCmd& cmd) {
     bdot_ = cmd.vel();
 }
 
+void SimulatorNode::Run() {
+  std::thread t_internal(&FakeInternalSensors::Run, &internal_sensors_);
+  std::thread t_airmar(&FakeAirmar::Run, &fake_airmar_);
+  Node::Run();
+  t_internal.join();
+}
+
 void SimulatorNode::Iterate() {
   static float time = 0;
   VLOG(2) << "Time: " << (time += dt);
@@ -48,7 +56,7 @@ void SimulatorNode::Iterate() {
   Eigen::Vector3d v = impl_->get_v();
   Eigen::Quaternion<double> rot(impl_->get_RBI());
 
-  Eigen::Vector3d rollpitchyaw = GetRollPitchYaw(impl_->get_RBI());
+  Eigen::Vector3d rollpitchyaw = util::GetRollPitchYaw(impl_->get_RBI());
 
   msg::Vector3f *pos = state_msg_->mutable_pos();
   pos->set_x(x(0));

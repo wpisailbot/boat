@@ -23,7 +23,7 @@ class Node {
   Node(float loop_period);
   ~Node();
 
-  void Run();
+  virtual void Run();
  protected:
   template <typename T>
   void RegisterHandler(const char *queue_name,

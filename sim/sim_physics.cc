@@ -3,6 +3,9 @@
 #include "util/clock.h"
 #include "glog/logging.h"
 
+namespace sailbot {
+namespace sim {
+
 // Note on vertical distances:
 // because the origin is at the CoM, and the keel drags the CoM way down,
 // heights will seem too positive, as a more intuitive origin would be at the
@@ -83,9 +86,9 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   deltas += sdot * dt;
   deltar += rdot * dt;
   deltab += bdot * dt;
-  deltas = norm_angle(deltas);
-  deltar = norm_angle(deltar);
-  deltab = norm_angle(deltab);
+  deltas = util::norm_angle(deltas);
+  deltar = util::norm_angle(deltar);
+  deltab = util::norm_angle(deltab);
   deltar = std::min(std::max(deltar, -0.6), 0.6);
   deltab = std::min(std::max(deltab, -1.5), 1.5);
   Vector3d Fs = SailForces();
@@ -110,8 +113,8 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   VLOG(1) << "heel: " << heel << " yaw: " << yaw;
   heel += omega(0, 0) * dt;
   yaw += yawdot * dt;
-  heel = norm_angle(heel);
-  yaw = norm_angle(yaw);
+  heel = util::norm_angle(heel);
+  yaw = util::norm_angle(yaw);
   double ch = std::cos(heel);
   double sh = std::sin(heel);
   double cy = std::cos(yaw);
@@ -124,18 +127,18 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
        , sy, ch * cy , -cy * sh
        , 0 , sh      , ch;
 
-  EigenToProto(Fs, msg.mutable_fs());
-  EigenToProto(Fr, msg.mutable_fr());
-  EigenToProto(Fk, msg.mutable_fk());
-  EigenToProto(Fh, msg.mutable_fh());
-  EigenToProto(Fnet, msg.mutable_fnet());
+  util::EigenToProto(Fs, msg.mutable_fs());
+  util::EigenToProto(Fr, msg.mutable_fr());
+  util::EigenToProto(Fk, msg.mutable_fk());
+  util::EigenToProto(Fh, msg.mutable_fh());
+  util::EigenToProto(Fnet, msg.mutable_fnet());
 
-  EigenToProto(taus, msg.mutable_taus());
-  EigenToProto(taur, msg.mutable_taur());
-  EigenToProto(tauk, msg.mutable_tauk());
-  EigenToProto(tauh, msg.mutable_tauh());
-  EigenToProto(tauright, msg.mutable_tauright());
-  EigenToProto(tau, msg.mutable_taunet());
+  util::EigenToProto(taus, msg.mutable_taus());
+  util::EigenToProto(taur, msg.mutable_taur());
+  util::EigenToProto(tauk, msg.mutable_tauk());
+  util::EigenToProto(tauh, msg.mutable_tauh());
+  util::EigenToProto(tauright, msg.mutable_tauright());
+  util::EigenToProto(tau, msg.mutable_taunet());
   debug_queue_.send(&msg);
   VLOG(1) << "Fs " << Fs.transpose() << " Fr " << Fr.transpose() << " Fk "
           << Fk.transpose() << " Fh " << Fh.transpose();
@@ -233,7 +236,7 @@ Vector3d TrivialDynamics::AeroForces(Vector3d va, const float delta,
                                      const float maxlift) {
   // If alpha is negative, then lift follows [0 1; -1 0] * va
   // If alpha is positive, then lift follows [0 -1; 1 0] * va
-  float alphasigned = norm_angle(std::atan2(-va(1), -va(0)) - delta);
+  float alphasigned = util::norm_angle(std::atan2(-va(1), -va(0)) - delta);
   if (std::isnan(alphasigned))
     alphasigned = 0;
   const float alpha = std::abs(alphasigned);
@@ -247,9 +250,9 @@ Vector3d TrivialDynamics::AeroForces(Vector3d va, const float delta,
   const float kSlope = maxlift / kPeak;
 
   const float Cl =
-      alpha > kPeak ? kSlope * kPeak * (1 - (alpha - kPeak) / (PI / 2 - kPeak))
+      alpha > kPeak ? kSlope * kPeak * (1 - (alpha - kPeak) / (M_PI / 2 - kPeak))
                     : kSlope * alpha;
-  const float Cd = std::pow(maxdrag / mindrag, alpha * 2 / PI) * mindrag;
+  const float Cd = std::pow(maxdrag / mindrag, alpha * 2 / M_PI) * mindrag;
   VLOG(3) << alphasigned << " Cl: " << Cl << " Cd: " << Cd;
   const float true_area =
       A * RBI(2, 2);  // Calculate the area that is vertical.
@@ -330,3 +333,6 @@ Vector3d TrivialDynamics::RightingTorques(double heel) {
   const float kAccountForPitch = 0*-2000 * RBI(2, 0);
   return Vector3d(RBI(2, 1) * kMaxTorque + tauballast, kAccountForPitch, 0);
 }
+
+}  // namespace sim
+}  // namespace sailbot

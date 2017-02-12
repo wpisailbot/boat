@@ -13,6 +13,20 @@ cc_library(
   hdrs=["read-sbus.h"],
   deps=[":sbus_proto", "//util:node"],
 )
+cc_library(
+  name="state_estimator",
+  srcs=["state_estimator.cc"],
+  hdrs=["state_estimator.h"],
+  deps=["//control:util",
+        "//can:can_proto",
+        "//control:actuator_cmd_proto",
+        "//util:node"],
+)
+cc_binary(
+  name="state_estimator_main",
+  srcs=["state_estimator_main.cc"],
+  deps=[":state_estimator"],
+)
 cc_binary(
   name="sbus-test-run",
   srcs=["sbus-testing.cc"],

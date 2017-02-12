@@ -117,7 +117,7 @@ double ELQRPath::CostWork(State X, Input U, State goal,
   State diff = goal - X;
   // TODO(james): Determine whether adding cost to point towards goal is good
   double goalt = std::atan2(diff(1, 0), diff(0, 0));
-  double tdiff = norm_angle(goalt - X(3, 0));
+  double tdiff = util::norm_angle(goalt - X(3, 0));
   double QTheta = Q(3, 3);
   Q(3, 3) = 0;
   double cost =
@@ -317,7 +317,7 @@ void ELQRPath::ForwardsIter() {
 }
 
 double ELQRPath::WindCircle(double theta) {
-  theta = norm_angle(theta);
+  theta = util::norm_angle(theta);
   float atheta = std::abs(theta);
   float factor = 0;
   if (atheta < kIrons) {
@@ -338,7 +338,7 @@ double ELQRPath::WindCircle(double theta) {
 }
 
 double ELQRPath::DeltaWindCircle(double theta) {
-  theta = norm_angle(theta);
+  theta = util::norm_angle(theta);
   float atheta = std::abs(theta);
   float factor = 0;
   if (atheta < kIrons) {

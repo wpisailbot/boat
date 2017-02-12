@@ -7,6 +7,7 @@
 #include "sim/sim_inter.h"
 #include "control/simple.h"
 #include "control/line_tacking.h"
+#include "sensor/state_estimator.h"
 #include "sim/csv_logging.h"
 
 DEFINE_string(csv_file, "sim/python/basic_sim_data.csv", "File to save CSV data to");
@@ -22,21 +23,23 @@ class SimpleControlTest : public ::testing::Test {
     sailbot::util::ClockManager::SetFakeClock(true, true);
 
     server_.reset(new WebSocketServer());
+
 #define LOG_VECTOR(path, name)                                                 \
   { path ".x", name " X" }                                                     \
   , {path ".y", name " Y"}, { path ".z", name " Z" }
+#define TRUE_STATE "sim_true_boat_state"
     csv_logger_.reset(new CsvLogger(
         {
-         {"boat_state.internal.sail", "Sail"},                // 0
-         {"boat_state.internal.rudder", "Rudder"},            // 1
-         {"boat_state.pos.x", "Boat X"},                      // 2
-         {"boat_state.pos.y", "Boat Y"},                      // 3
-         {"boat_state.vel.x", "Boat Vel X"},                  // 4
-         {"boat_state.vel.y", "Boat Vel Y"},                  // 5
-         {"boat_state.orientation.w", "Quat W"},              // 6
-         {"boat_state.orientation.x", "Quat X"},              // 7
-         {"boat_state.orientation.y", "Quat Y"},              // 8
-         {"boat_state.orientation.z", "Quat Z"},              // 9
+         {TRUE_STATE".internal.sail", "Sail"},                // 0
+         {TRUE_STATE".internal.rudder", "Rudder"},            // 1
+         {TRUE_STATE".pos.x", "Boat X"},                      // 2
+         {TRUE_STATE".pos.y", "Boat Y"},                      // 3
+         {TRUE_STATE".vel.x", "Boat Vel X"},                  // 4
+         {TRUE_STATE".vel.y", "Boat Vel Y"},                  // 5
+         {TRUE_STATE".orientation.w", "Quat W"},              // 6
+         {TRUE_STATE".orientation.x", "Quat X"},              // 7
+         {TRUE_STATE".orientation.y", "Quat Y"},              // 8
+         {TRUE_STATE".orientation.z", "Quat Z"},              // 9
          {"wind.x", "Wind X"},                                // 10
          {"wind.y", "Wind Y"},                                // 11
          LOG_VECTOR("sim_debug.fs", "Sail Force"),            // 12-14
@@ -53,19 +56,22 @@ class SimpleControlTest : public ::testing::Test {
          {"heading_cmd.heading", "Heading Goal"},             // 45
         },
         FLAGS_csv_file, .1));
+#undef TRUE_STATE
 #undef LOG_VECTOR
 
     clock_.reset(new util::ClockInstance());
     sim_node_.reset(new sim::SimulatorNode());
     simple_ctrl_.reset(new control::SimpleControl(false));
     tacker_.reset(new control::LineTacker());
+    state_estimator_.reset(new control::StateEstimator());
 
     threads_.clear();
-    threads_.emplace_back(&sim::SimulatorNode::Run, simple_ctrl_.get());
     threads_.emplace_back(&WebSocketServer::Run, server_.get());
     threads_.emplace_back(&CsvLogger::Run, csv_logger_.get());
-    threads_.emplace_back(&control::SimpleControl::Run, sim_node_.get());
+    threads_.emplace_back(&sim::SimulatorNode::Run, sim_node_.get());
+    threads_.emplace_back(&control::SimpleControl::Run, simple_ctrl_.get());
     threads_.emplace_back(&control::LineTacker::Run, tacker_.get());
+    threads_.emplace_back(&control::StateEstimator::Run, state_estimator_.get());
     threads_.emplace_back(&sailbot::util::ClockManager::Run, 0);
   }
 
@@ -81,7 +87,9 @@ class SimpleControlTest : public ::testing::Test {
     sim_node_.reset();
     simple_ctrl_.reset();
     tacker_.reset();
+    state_estimator_.reset();
 
+    // Handle ClockManager
     threads_[threads_.size()-1].join();
   }
 
@@ -96,6 +104,7 @@ class SimpleControlTest : public ::testing::Test {
   std::unique_ptr<sailbot::sim::SimulatorNode> sim_node_;
   std::unique_ptr<sailbot::control::SimpleControl> simple_ctrl_;
   std::unique_ptr<sailbot::control::LineTacker> tacker_;
+  std::unique_ptr<sailbot::control::StateEstimator> state_estimator_;
 
   std::vector<std::thread> threads_;
 };

@@ -8,6 +8,12 @@ cc_proto_library(
   default_runtime = "@protobuf//:protobuf",
 )
 cc_library(
+  name="util",
+  srcs=["util.cc"],
+  hdrs=["util.h"],
+  deps=["//sim:sim_debug_proto", "@eigen//:eigen"],
+)
+cc_library(
   name="simple_control",
   srcs=["simple.cc"],
   hdrs=["simple.h"],
@@ -19,22 +25,33 @@ cc_library(
   hdrs=["line_tacking.h"],
   deps=[":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
+cc_test(
+  name="line_tacking_test",
+  srcs=["line_tacking_test.cc"],
+  deps=[":line_tacking", "@gtest//:main"],
+)
+cc_test(
+  name="util_test",
+  srcs=["util_test.cc"],
+  deps=[":util", "@gtest//:main"],
+)
 cc_library(
   name="elqr_lib",
   srcs=["elqr_routing.cc"],
   hdrs=["elqr_routing.h"],
-  deps=["//sim:sim_util"],
+  deps=[":util"],
 )
 cc_binary(
   name="elqr_bin",
   deps=[":elqr_lib"],
 )
 cc_test(
-  name="simple_control_test",
+  name="control_test",
   srcs=["control_test.cc"],
   timeout="eternal",
   deps=[":simple_control",
-        "line_tacking",
+        ":line_tacking",
+        "//sensor:state_estimator",
         "@gtest//:main",
         "//sim:sim_inter",
         "//ui:server",
