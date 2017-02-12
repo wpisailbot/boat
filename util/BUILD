@@ -42,6 +42,16 @@ cc_library(
     "@gflags//:gflags",
   ],
 )
+cc_library(
+  name="testing",
+  srcs=["testing.cc"],
+  hdrs=["testing.h"],
+  deps = [
+    "@gtest//:main",
+    "//ipc:queue",
+    ":clock",
+  ],
+)
 cc_binary(
   name="logger_main",
   srcs=["logger_main.cc"],

@@ -52,7 +52,7 @@ cc_test(
   deps=[":simple_control",
         ":line_tacking",
         "//sensor:state_estimator",
-        "@gtest//:main",
+        "//util:testing",
         "//sim:sim_inter",
         "//ui:server",
         "//sim:csv_logger"],

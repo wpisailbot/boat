@@ -10,7 +10,7 @@ namespace testing {
 TEST(TimeTest, BasicLooping) {
   ::std::chrono::time_point<::std::chrono::steady_clock> start, cur;
 
-  double period = .001;
+  double period = .01;
   Loop loop(period);
 
   start = ::std::chrono::steady_clock::now();
@@ -21,7 +21,7 @@ TEST(TimeTest, BasicLooping) {
     cur = ::std::chrono::steady_clock::now();
     ::std::chrono::duration<double> elapsed = cur - start;
     double difftime = elapsed.count();
-    EXPECT_NEAR(difftime, period, .0002);
+    EXPECT_NEAR(difftime, period, .001);
     start = cur;
   }
 }

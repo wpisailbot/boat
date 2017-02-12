@@ -48,7 +48,6 @@ class Node {
   void RunHandlerCaller(std::unique_ptr<char[]> queue_name,
                         ::std::function<void(const T &)> callback);
   double period_;
-  util::Loop loop_;
 
   google::protobuf::ArenaOptions arena_settings_;
   std::unique_ptr<google::protobuf::Arena> arena_;

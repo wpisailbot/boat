@@ -9,27 +9,21 @@
 #include "control/line_tacking.h"
 #include "sensor/state_estimator.h"
 #include "sim/csv_logging.h"
+#include "util/testing.h"
 
 DEFINE_string(csv_file, "sim/python/basic_sim_data.csv", "File to save CSV data to");
 
 namespace sailbot {
 namespace testing {
 
-class SimpleControlTest : public ::testing::Test {
+class SimpleControlTest : public TestWrapper {
  protected:
-  void SetUp() override {
-    util::CancelShutdown();
-    Queue::set_testing(true);
-    sailbot::util::ClockManager::SetFakeClock(true, true);
-
-    server_.reset(new WebSocketServer());
-
+  SimpleControlTest() :
 #define LOG_VECTOR(path, name)                                                 \
   { path ".x", name " X" }                                                     \
   , {path ".y", name " Y"}, { path ".z", name " Z" }
 #define TRUE_STATE "sim_true_boat_state"
-    csv_logger_.reset(new CsvLogger(
-        {
+    csv_logger_({
          {TRUE_STATE".internal.sail", "Sail"},                // 0
          {TRUE_STATE".internal.rudder", "Rudder"},            // 1
          {TRUE_STATE".pos.x", "Boat X"},                      // 2
@@ -54,62 +48,36 @@ class SimpleControlTest : public ::testing::Test {
          LOG_VECTOR("sim_debug.tauright", "Righting Moment"), // 39-41
          LOG_VECTOR("sim_debug.taunet", "Net Torque"),        // 42-44
          {"heading_cmd.heading", "Heading Goal"},             // 45
-        },
-        FLAGS_csv_file, .1));
+        }, FLAGS_csv_file, .1),
 #undef TRUE_STATE
 #undef LOG_VECTOR
+      simple_ctrl_(false) {
 
-    clock_.reset(new util::ClockInstance());
-    sim_node_.reset(new sim::SimulatorNode());
-    simple_ctrl_.reset(new control::SimpleControl(false));
-    tacker_.reset(new control::LineTacker());
-    state_estimator_.reset(new control::StateEstimator());
-
-    threads_.clear();
-    threads_.emplace_back(&WebSocketServer::Run, server_.get());
-    threads_.emplace_back(&CsvLogger::Run, csv_logger_.get());
-    threads_.emplace_back(&sim::SimulatorNode::Run, sim_node_.get());
-    threads_.emplace_back(&control::SimpleControl::Run, simple_ctrl_.get());
-    threads_.emplace_back(&control::LineTacker::Run, tacker_.get());
-    threads_.emplace_back(&control::StateEstimator::Run, state_estimator_.get());
-    threads_.emplace_back(&sailbot::util::ClockManager::Run, 0);
+    threads_.emplace_back(&WebSocketServer::Run, &server_);
+    threads_.emplace_back(&CsvLogger::Run, &csv_logger_);
+    threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);
+    threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
+    threads_.emplace_back(&control::LineTacker::Run, &tacker_);
+    threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
   }
 
-  void TearDown() override {
-    util::RaiseShutdown();
-    clock_.reset();
-    // Deal with everything but clock manager
-    for (unsigned i = 0; i < threads_.size()-1; ++i) {
-      threads_[i].join();
+  ~SimpleControlTest() {
+    for (auto &t : threads_) {
+      t.join();
     }
-    csv_logger_.reset();
-    server_.reset();
-    sim_node_.reset();
-    simple_ctrl_.reset();
-    tacker_.reset();
-    state_estimator_.reset();
-
-    // Handle ClockManager
-    threads_[threads_.size()-1].join();
   }
-
-  void Sleep(double sec) {
-    clock_->SleepUntil(clock_->Time() +
-                       std::chrono::milliseconds(int(sec * 1e3)));
-  }
-
-  std::unique_ptr<util::ClockInstance> clock_;
-  std::unique_ptr<CsvLogger> csv_logger_;
-  std::unique_ptr<WebSocketServer> server_;
-  std::unique_ptr<sailbot::sim::SimulatorNode> sim_node_;
-  std::unique_ptr<sailbot::control::SimpleControl> simple_ctrl_;
-  std::unique_ptr<sailbot::control::LineTacker> tacker_;
-  std::unique_ptr<sailbot::control::StateEstimator> state_estimator_;
 
   std::vector<std::thread> threads_;
+  CsvLogger csv_logger_;
+  WebSocketServer server_;
+  sim::SimulatorNode sim_node_;
+  control::SimpleControl simple_ctrl_;
+  control::LineTacker tacker_;
+  control::StateEstimator state_estimator_;
 };
 
 TEST_F(SimpleControlTest, NavigationChallenge) {
+//  FLAGS_v = 2;
   msg::WaypointList waypoints;
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
@@ -125,7 +93,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   p4->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_->set_wind(0, 6);
+  sim_node_.set_wind(0, 6);
   Sleep(75);
   ASSERT_TRUE(true);
 }
@@ -149,7 +117,7 @@ TEST_F(SimpleControlTest, Square) {
   p5->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_->set_wind(0, 6);
+  sim_node_.set_wind(0, 6);
   Sleep(200);
   ASSERT_TRUE(true);
 }
@@ -164,7 +132,7 @@ TEST_F(SimpleControlTest, StartInIrons) {
   p2->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_->set_wind(M_PI, 6);
+  sim_node_.set_wind(M_PI, 6);
   Sleep(20);
   EXPECT_TRUE(true);
  // std::cerr << "x: " << sim_node_->get_x() << std::endl;
