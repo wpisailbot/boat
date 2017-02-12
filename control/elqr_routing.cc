@@ -1,5 +1,4 @@
 #include "elqr_routing.h"
-#include "sim/util.h"
 #include <cmath>
 #include <iostream>
 
@@ -75,7 +74,7 @@ ELQRPath::State ELQRPath::G(State X, Input U, bool forwards, bool lin) {
   };
   XDim Xaug;
   Xaug << X, U;
-  RungeKutta4(f, Xaug, 0, dt * (forwards ? 1 : -1));
+  sailbot::util::RungeKutta4(f, Xaug, 0, dt * (forwards ? 1 : -1));
   if (lin) {
     double theta = X(3, 0);
     //std::cout << theta << "\n";
@@ -100,7 +99,7 @@ ELQRPath::State ELQRPath::G(State X, Input U, bool forwards, bool lin) {
     } else {
       XDim Xfor;
       Xfor << X, U;
-      RungeKutta4(f, Xfor, 0, dt);
+      sailbot::util::RungeKutta4(f, Xfor, 0, dt);
       c_ << -A_ * X - B_ * U + Xfor.block(0, 0, N, 1);
     }
     Abar_ = A_.inverse();
@@ -117,7 +116,7 @@ double ELQRPath::CostWork(State X, Input U, State goal,
   State diff = goal - X;
   // TODO(james): Determine whether adding cost to point towards goal is good
   double goalt = std::atan2(diff(1, 0), diff(0, 0));
-  double tdiff = util::norm_angle(goalt - X(3, 0));
+  double tdiff = sailbot::util::norm_angle(goalt - X(3, 0));
   double QTheta = Q(3, 3);
   Q(3, 3) = 0;
   double cost =
@@ -317,7 +316,7 @@ void ELQRPath::ForwardsIter() {
 }
 
 double ELQRPath::WindCircle(double theta) {
-  theta = util::norm_angle(theta);
+  theta = sailbot::util::norm_angle(theta);
   float atheta = std::abs(theta);
   float factor = 0;
   if (atheta < kIrons) {
@@ -328,9 +327,9 @@ double ELQRPath::WindCircle(double theta) {
     factor = kBeamSpeed / (b * b) * (2 * b - x) * x;
   } else if (atheta < kBroad) {
     factor = kBeamSpeed;
-  } else if (atheta < PI) {
+  } else if (atheta < M_PI) {
     const float x = atheta - kBroad;
-    factor = kBeamSpeed + x * (kDownSpeed - kBeamSpeed) / (PI - kBroad);
+    factor = kBeamSpeed + x * (kDownSpeed - kBeamSpeed) / (M_PI - kBroad);
   }
   factor += 0.05;
 
@@ -338,7 +337,7 @@ double ELQRPath::WindCircle(double theta) {
 }
 
 double ELQRPath::DeltaWindCircle(double theta) {
-  theta = util::norm_angle(theta);
+  theta = sailbot::util::norm_angle(theta);
   float atheta = std::abs(theta);
   float factor = 0;
   if (atheta < kIrons) {
@@ -349,15 +348,15 @@ double ELQRPath::DeltaWindCircle(double theta) {
     factor = kBeamSpeed / (b * b) * 2 * (b - x);
   } else if (atheta < kBroad) {
     factor = 0;
-  } else if (atheta < PI) {
-    factor = (kDownSpeed - kBeamSpeed) / (PI - kBroad);
+  } else if (atheta < M_PI) {
+    factor = (kDownSpeed - kBeamSpeed) / (M_PI - kBroad);
   }
 
   return wind_speed_ * factor * (theta > 0 ? 1 : -1);
 }
 
 void ELQRPath::FooMain() {
-  for (float t = 0; t < PI * 2; t += 0.01) {
+  for (float t = 0; t < M_PI * 2; t += 0.01) {
     std::cout << t << ", " << WindCircle(t) << ", " << DeltaWindCircle(t)
               << std::endl;
   }
@@ -365,7 +364,7 @@ void ELQRPath::FooMain() {
 
 int main() {
   ELQRPath::State start, end;
-  start << 0, 0, 0, PI/2, 0;
+  start << 0, 0, 0, M_PI/2, 0;
   end << 20, 0, 0, 0, 0;
   ELQRPath tst(start, end);
   tst.Run();

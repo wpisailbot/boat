@@ -2,7 +2,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <array>
-#include "sim/util.h"
+#include "control/util.h"
 
 class ELQRPath {
  public:
@@ -32,10 +32,10 @@ class ELQRPath {
   const double kTheta = 10.;
   const double kMaxRudder = 1; // Maximum rudder input value
   // Wind Circle constants
-  const float kIrons = PI / 6;
+  const float kIrons = M_PI / 6;
   const float kBeamSpeed = 1;
-  const float kBeam = PI / 2;
-  const float kBroad = 3. * PI / 4.;
+  const float kBeam = M_PI / 2;
+  const float kBroad = 3. * M_PI / 4.;
   const float kDownSpeed = .5;
 
   State F(State X, Input U);
