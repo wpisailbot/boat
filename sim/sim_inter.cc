@@ -42,6 +42,7 @@ void SimulatorNode::Run() {
   std::thread t_internal(&FakeInternalSensors::Run, &internal_sensors_);
   std::thread t_airmar(&FakeAirmar::Run, &fake_airmar_);
   Node::Run();
+  t_airmar.join();
   t_internal.join();
 }
 
