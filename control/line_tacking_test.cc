@@ -10,7 +10,7 @@ namespace testing {
 
 class GoalReceiverTestNode : public Node {
  public:
-  GoalReceiverTestNode() : Node(0) {
+  GoalReceiverTestNode() : Node(1) {
     RegisterHandler<msg::HeadingCmd>("heading_cmd",
                                      [this](const msg::HeadingCmd &cmd) {
       actual_ = cmd;
@@ -31,7 +31,7 @@ class LineTackerTest : public ::testing::Test {
     sailbot::util::ClockManager::SetFakeClock(true, true);
 
     tacker_.reset(new LineTacker());
-    receiver_.reset(new GoalReceiverTestNode());
+//    receiver_.reset(new GoalReceiverTestNode());
     threads_.emplace_back(&sailbot::util::ClockManager::Run, 0);
     threads_.emplace_back(&LineTacker::Run, tacker_.get());
   }
