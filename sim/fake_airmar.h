@@ -14,7 +14,7 @@ class FakeAirmar : public Node {
  public:
   FakeAirmar();
  private:
-  static constexpr float dt = 0.01;
+  static constexpr float dt = 0.1;
 
   void Iterate() override;
 

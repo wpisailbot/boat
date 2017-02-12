@@ -47,5 +47,7 @@ float GPSBearing(float lat1, float lon1, float lat2, float lon2);
 template <typename T> T ToRad(T a) { return a * M_PI / 180.; }
 template <typename T> T ToDeg(T a) { return a * 180. / M_PI; }
 
+float Normal(float mean = 0, float std = 1);
+
 }  // namespace util
 }  // namespace sailbot

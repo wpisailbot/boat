@@ -22,7 +22,10 @@ cc_library(
   name="fake_airmar",
   srcs=["fake_airmar.cc"],
   hdrs=["fake_airmar.h"],
-  deps=["//can:can_proto","//control:actuator_cmd_proto","//util:node"],
+  deps=["//can:can_proto",
+        "//control:actuator_cmd_proto",
+        "//util:node",
+        "//control:util"],
 )
 cc_library(
   name="fake_internal_sensors",

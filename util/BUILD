@@ -55,7 +55,6 @@ cc_binary(
 cc_test(
   name="clock_test",
   srcs=["clock_test.cc"],
-  copts = ["-Iexternal/gtest/include"],
   deps = [
     "@gtest//:main",
     ":clock",

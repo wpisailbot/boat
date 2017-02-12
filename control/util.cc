@@ -1,4 +1,5 @@
 #include "util.h"
+#include <random>
 
 namespace sailbot {
 namespace util {
@@ -90,6 +91,15 @@ float GPSBearing(float lat1, float lon1, float lat2, float lon2) {
   const float x = std::cos(lat1) * std::sin(lat2) -
                   std::sin(lat1) * std::cos(lat2) * std::cos(lon2 - lon1);
   return std::atan2(x, y);
+}
+
+namespace {
+  std::default_random_engine generator;
+}
+
+float Normal(float mean, float std) {
+  std::normal_distribution<float> dist(mean, std);
+  return dist(generator);
 }
 
 }  // namespace util
