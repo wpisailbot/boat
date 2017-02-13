@@ -12,15 +12,24 @@ namespace testing {
 class TestQueue {
  public:
   TestQueue(const std::string &name, size_t max_size)
-      : name_(name), max_size_(max_size) {}
+      : name_(name), max_size_(max_size) {
+    std::unique_lock<std::mutex> lck_(map_lock_);
+    conditions_[name_].cnt++;
+  }
+  ~TestQueue() {
+    std::unique_lock<std::mutex> lck_(map_lock_);
+    conditions_[name_].cnt--;
+    if (conditions_[name_].cnt.load() == 0) {
+      conditions_.erase(name_);
+    }
+  }
   void send(const void *msg, size_t size);
   bool receive(void *msg, size_t size, size_t &rcvd);
  private:
   struct QueueData {
     std::condition_variable cond;
     std::unique_ptr<uint8_t[]> data;
-    std::atomic<int> readers_waiting{0};
-    std::condition_variable writer_cond;
+    std::atomic<int> cnt{0};
     size_t data_len = 0;
     int inc = 0;
   };

@@ -53,7 +53,6 @@ class Node {
   std::unique_ptr<google::protobuf::Arena> arena_;
 
   std::vector<std::thread> threads_;
-  std::unique_ptr<std::thread> run_thread_;
 };
 
 template <typename T>

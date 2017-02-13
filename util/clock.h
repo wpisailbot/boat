@@ -47,6 +47,15 @@ class monotonic_clock {
     tick_.notify_all();
   }
 
+  static void set_wakeup(rep time) {
+    std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
+    if (next_wakeup_ <= time_) {
+      next_wakeup_ = std::max(time, time_.load());
+    } else {
+      next_wakeup_ = std::min(next_wakeup_, time);
+    }
+  }
+
   friend class ClockManager;
   friend void RaiseShutdown();
 };

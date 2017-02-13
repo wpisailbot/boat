@@ -19,7 +19,6 @@ void TestQueue::send(const void *msg, size_t size) {
   memcpy(data.data.get(), msg, std::min(size, max_size_));
   data.data_len = std::min(size, max_size_);
   data.cond.notify_all();
-  //data.writer_cond.wait(lck_, [&data]() -> bool { return data.readers_waiting == 0; });
 }
 
 bool TestQueue::receive(void *msg, size_t size, size_t &rcvd) {
@@ -27,14 +26,9 @@ bool TestQueue::receive(void *msg, size_t size, size_t &rcvd) {
   // Construct in place if needed.
   if (conditions_[name_].inc == last_inc_) {
     // Wait for the data...
-    //conditions_[name_].readers_waiting++;
     while (conditions_[name_].inc == last_inc_ && !util::IsShutdown()) {
       conditions_[name_].cond.wait_for(lck_, std::chrono::milliseconds(50));
     }
-    /*
-    conditions_[name_].readers_waiting--;
-    conditions_[name_].writer_cond.notify_all();
-    */
   }
   if (conditions_[name_].data) {
     rcvd = std::min(size, conditions_[name_].data_len);

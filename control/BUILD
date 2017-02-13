@@ -28,7 +28,9 @@ cc_library(
 cc_test(
   name="line_tacking_test",
   srcs=["line_tacking_test.cc"],
-  deps=[":line_tacking", "@gtest//:main"],
+  deps=[":line_tacking",
+        "@gtest//:main",
+        "//util:testing"],
 )
 cc_test(
   name="util_test",

@@ -52,18 +52,10 @@ void monotonic_clock::sleep_until(time_point time,
     ts.tv_nsec = len - ts.tv_sec * 1000000000LL;
     clock_nanosleep(clock_, TIMER_ABSTIME /*flags*/, &ts, NULL);
   } else {
-    {
-      std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
-      if (next_wakeup_ <= time_) {
-        next_wakeup_ = std::max(len, time_.load());
-      } else {
-        next_wakeup_ = std::min(next_wakeup_, len);
-      }
-    }
+    set_wakeup(len);
     tick_.notify_all();
     tick_.wait(l, [&]() {
-//      std::unique_lock<std::mutex> l(wakeup_time_mutex_);
-//      next_wakeup_ = std::min(next_wakeup_, len);
+      set_wakeup(len);
       return len <= time_ || IsShutdown();
     });
   }
