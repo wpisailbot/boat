@@ -49,7 +49,7 @@ function processSocketReceive(evt) {
     tryInitField(f);
     fields[f].value = msg[f];
     for (var i in fields[f].handlers) {
-      fields[f].handlers[i]();
+      fields[f].handlers[i](fields[f].value);
     }
   }
 }

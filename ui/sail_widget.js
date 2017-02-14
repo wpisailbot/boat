@@ -48,11 +48,11 @@ function svgMainToInertial(pos) {
 }
 
 function setRotation(id, angle) {
-  $("#"+id).attr("transform", "rotate(" + Math.round(angle * 180 / Math.PI) + ")");
+  $("."+id).attr("transform", "rotate(" + Math.round(angle * 181 / Math.PI) + ")");
 }
 
 function setTranslate(id, x, y) {
-  $("#"+id).attr("transform", "translate(" + x + "," + y + ")");
+  $("."+id).attr("transform", "translate(" + x + "," + y + ")");
 }
 
 function quaternionListener(component) {
@@ -74,6 +74,37 @@ function rudderListener() {
   setRotation("rudder_path", -fields[rudderState].value);
 }
 
+var vectorInc = 0;
+function addVector(frame, color, x, y, xyQueue, scale) {
+  // Draws a vector of color "color" in svg frame with id=frame,
+  // with the base of the vector starting at (x, y), pointing
+  // along (xyQueue.x * scale, xyQueue.y * scale)
+  var vecId = "vector" + vectorInc;
+  vectorInc++;
+
+  function makeSVG(angle, len) {
+    len *= scale;
+    angle *= 180 / Math.PI;
+    var vecTranslate = '<g transform="translate(' + x + ',' + y + ')">';
+    var vecRotate = '<g transform="rotate(' + angle + ')">';
+    var vecPath = '<path d="M 0 0 L ' + len + ' 0" stroke="' + color +
+                  '" stroke-width=4 />' +
+                  '<path d="M 0 -5 L 0 5 L 15 0 z" fill="' + color +
+                  '" transform="translate(' + len + ',0)" />';
+    return vecTranslate + vecRotate + vecPath + '</g></g>';
+  }
+
+  $("#" + frame).html($("#" + frame).html() + '<g id="' + vecId + '">' +
+                      makeSVG(0, 3) + '</g>');
+
+  // Add queue listeners
+  addHandler(xyQueue, function(vec) {
+    var angle = Math.atan2(-vec.y, vec.x);
+    var len = Math.sqrt(vec.y * vec.y + vec.x * vec.x);
+    $("#" + vecId).html(makeSVG(angle, len));
+  });
+}
+
 function waypointsListener() {
   var points = fields[waypointsQueue].value.points;
   var id_base = "waypoint_marker";
@@ -87,9 +118,9 @@ function waypointsListener() {
     var desc = i + "(" + points[i].x + "," + points[i].y + ")";
     var pos = toInertialSvgCoords(points[i]);
     if (document.getElementById(id) == null) {
-      document.getElementById(inertialFrame).innerHTML +=
-          "<text id='" + id + "' x='" + pos.x + "' y='" + pos.y +
-          "'>" + desc + "</text>";
+      var iframe = $("." + inertialFrame);
+      iframe.html(iframe.html() + "<text id='" + id + "' x='" + pos.x +
+                  "' y='" + pos.y + "'>" + desc + "</text>");
     }
     $("#"+id).attr("x", pos.x);
     $("#"+id).attr("y", pos.y);
@@ -173,4 +204,7 @@ function initializeBoatHandlers() {
   addHandler(rudderState, rudderListener);
   addHandler(positionQueue, boatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
+
+  addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", 15);
+  addVector("demo_hull_loc", "orange", 0, 0, "wind", 15);
 }
