@@ -19,9 +19,17 @@ RudderController::RudderController() : Node(dt_), K_(gains::RudderGains::K) {
     Eigen::Quaternionf quat(state.orientation().w(), state.orientation().x(),
                             state.orientation().y(), state.orientation().z());
     Eigen::Matrix<double, 3, 3> rotMat = quat.toRotationMatrix();
+    std::unique_ptr<std::mutex> lck(state_access_);
     X_(0, 0) = GetYaw(rotMat);
     X_(1, 0) = (rotMat * state.omega())(2, 0);
     X_(2, 0) = state.internal().rudder();
+    X_(3, 0) = state.internal().rudderdot();
   });
 }
+
+void RudderController::Iterate() {
+  std::unique_ptr<std::mutex> lck(state_access_);
+  double U = K_ * X_;
+}
+
 }  // namespace sailbot

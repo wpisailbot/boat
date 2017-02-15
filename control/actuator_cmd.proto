@@ -55,6 +55,9 @@ message InternalBoatState {
   optional float sail = 1;
   optional float rudder = 2;
   optional float ballast = 3;
+  optional float saildot = 4;
+  optional float rudderdot = 5;
+  optional float ballastdot = 6;
 }
 
 message BoatState {

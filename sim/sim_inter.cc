@@ -88,6 +88,9 @@ void SimulatorNode::Iterate() {
   state_msg_->mutable_internal()->set_sail(impl_->get_deltas());
   state_msg_->mutable_internal()->set_rudder(impl_->get_deltar());
   state_msg_->mutable_internal()->set_ballast(impl_->get_deltab());
+  state_msg_->mutable_internal()->set_saildot(sdot_);
+  state_msg_->mutable_internal()->set_rudderdot(rdot_)
+  state_msg_->mutable_internal()->set_ballastdot(bdot_);
 
   state_queue_.send(state_msg_);
 }
