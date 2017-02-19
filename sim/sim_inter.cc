@@ -24,17 +24,20 @@ SimulatorNode::SimulatorNode()
 }
 
 void SimulatorNode::ProcessSail(const msg::SailCmd& cmd) {
-  if (cmd.has_vel() || std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel()))
     sdot_ = cmd.vel();
 }
 
 void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
-  if (cmd.has_vel() || std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel())) {
     rdot_ = cmd.vel();
+  } else if (cmd.has_pos() && !std::isnan(cmd.pos())) {
+    rdot_ = impl_->get_rdot_for_goal(cmd.pos());
+  }
 }
 
 void SimulatorNode::ProcessBallast(const msg::BallastCmd& cmd) {
-  if (cmd.has_vel() || std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel()))
     bdot_ = cmd.vel();
 }
 
@@ -89,7 +92,7 @@ void SimulatorNode::Iterate() {
   state_msg_->mutable_internal()->set_rudder(impl_->get_deltar());
   state_msg_->mutable_internal()->set_ballast(impl_->get_deltab());
   state_msg_->mutable_internal()->set_saildot(sdot_);
-  state_msg_->mutable_internal()->set_rudderdot(rdot_)
+  state_msg_->mutable_internal()->set_rudderdot(rdot_);
   state_msg_->mutable_internal()->set_ballastdot(bdot_);
 
   state_queue_.send(state_msg_);

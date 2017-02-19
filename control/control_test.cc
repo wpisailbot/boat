@@ -7,6 +7,7 @@
 #include "sim/sim_inter.h"
 #include "control/simple.h"
 #include "control/line_tacking.h"
+#include "control/rudder.h"
 #include "sensor/state_estimator.h"
 #include "sim/csv_logging.h"
 #include "util/testing.h"
@@ -57,6 +58,7 @@ class SimpleControlTest : public TestWrapper {
     threads_.emplace_back(&CsvLogger::Run, &csv_logger_);
     threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);
     threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
+    threads_.emplace_back(&control::RudderController::Run, &rudder_);
     threads_.emplace_back(&control::LineTacker::Run, &tacker_);
     threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
   }
@@ -72,6 +74,7 @@ class SimpleControlTest : public TestWrapper {
   WebSocketServer server_;
   sim::SimulatorNode sim_node_;
   control::SimpleControl simple_ctrl_;
+  control::RudderController rudder_;
   control::LineTacker tacker_;
   control::StateEstimator state_estimator_;
 };
@@ -88,13 +91,14 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   p2->set_x(100);
   p2->set_y(-100);
   p3->set_x(100);
-  p3->set_y(100);
+//  p3->set_y(100);
+  p3->set_y(300);
 //  p4->set_x(0);
 //  p4->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_.set_wind(0, 6);
-  Sleep(75);
+  Sleep(750);
   ASSERT_TRUE(true);
 }
 

@@ -55,6 +55,11 @@ class TrivialDynamics : public SimulatorDynamics {
     return util::norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
   }
 
+  double get_rdot_for_goal(double goal) {
+    // To spoof a simple servo
+    return goal - deltar;
+  }
+
   // Note: CalcXdot does make use of most parameters that aren't explicitly
   // mentioned as part of X/U, although it assumes that those are all constant.
   // CalcXdot WILL butcher the state of this.

@@ -9,6 +9,16 @@ var quaternion = {w: 1, x: 0, y: 0, z: 0};
 var inertialFramePos = {x: 500, y: 500};
 var scale = 4;
 
+function normalizeAngle(a) {
+  var tau = 2 * Math.PI;
+  if (a > Math.PI) {
+    a -= int(a / tau + .5) * tau;
+  } else if (a < -Math.PI) {
+    a -= int(a / tau - .5) * tau;
+  }
+  return a;
+}
+
 function quaternionToEuler(quaternion) {
   var w = quaternion.w;
   var x = quaternion.x;
@@ -75,7 +85,7 @@ function rudderListener() {
 }
 
 var vectorInc = 0;
-function addVector(frame, color, x, y, xyQueue, scale) {
+function addVector(frame, color, x, y, xyQueue, angleQueue, lenQueue, scale) {
   // Draws a vector of color "color" in svg frame with id=frame,
   // with the base of the vector starting at (x, y), pointing
   // along (xyQueue.x * scale, xyQueue.y * scale)
@@ -98,11 +108,32 @@ function addVector(frame, color, x, y, xyQueue, scale) {
                       makeSVG(0, 3) + '</g>');
 
   // Add queue listeners
-  addHandler(xyQueue, function(vec) {
-    var angle = Math.atan2(-vec.y, vec.x);
-    var len = Math.sqrt(vec.y * vec.y + vec.x * vec.x);
-    $("#" + vecId).html(makeSVG(angle, len));
-  });
+  if (xyQueue != null) {
+    addHandler(xyQueue, function(vec) {
+      var angle = Math.atan2(-vec.y, vec.x);
+      var len = Math.sqrt(vec.y * vec.y + vec.x * vec.x);
+      $("#" + vecId).html(makeSVG(angle, len));
+    });
+  } else if (angleQueue != null && lenQueue != null) {
+    var angle = 0;
+    var len = 0;
+    if (isNaN(angleQueue)) {
+      addHandler(angleQueue, function(a) {
+        angle = -normalizeAngle(a);
+        $("#" + vecId).html(makeSVG(angle, len));
+      });
+    } else {
+      angle = -normalizeAngle(angleQueue);
+    }
+    if (isNaN(lenQueue)) {
+      addHandler(lenQueue, function(l) {
+        len = l;
+        $("#" + vecId).html(makeSVG(angle, len));
+      });
+    } else {
+      len = lenQueue;
+    }
+  }
 }
 
 function waypointsListener() {
@@ -205,6 +236,7 @@ function initializeBoatHandlers() {
   addHandler(positionQueue, boatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
 
-  addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", 15);
-  addVector("demo_hull_loc", "orange", 0, 0, "wind", 15);
+  addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
+  addVector("demo_hull_loc", "orange", 0, 0, "wind", null, null, 15);
+  addVector("demo_hull_loc", "purple", 0, 0, null, "heading_cmd.heading", 10, 1);
 }

@@ -53,12 +53,18 @@ cc_library(
   hdrs=["rudder.h", "//control/python:rudder_gains.h"],
   deps=["@eigen//:eigen", "//util:node"],
 )
+cc_binary(
+  name="rudder_controller_main",
+  srcs=["rudder_main.cc"],
+  deps=[":rudder_controller"],
+)
 cc_test(
   name="control_test",
   srcs=["control_test.cc"],
   timeout="eternal",
   deps=[":simple_control",
         ":line_tacking",
+        ":rudder_controller",
         "//sensor:state_estimator",
         "//util:testing",
         "//sim:sim_inter",

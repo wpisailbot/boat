@@ -8,12 +8,12 @@ namespace control {
 
 class SimpleControl : public Node {
  public:
-  SimpleControl(bool do_tack=false);
+  SimpleControl(bool do_rudder=false);
 
   void Iterate() override;
  private:
   constexpr static float dt = 0.01;
-  const bool do_tack_;
+  const bool do_rudder_;
   msg::SailCmd *sail_msg_;
   msg::RudderCmd *rudder_msg_;
   msg::BallastCmd *ballast_msg_;

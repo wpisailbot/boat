@@ -10,6 +10,7 @@ message SailCmd {
 
 message RudderCmd {
   optional float vel = 11;
+  optional float pos = 12;
 }
 
 message BallastCmd {

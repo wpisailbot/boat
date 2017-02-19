@@ -13,9 +13,9 @@ namespace {
   }
 }
 
-SimpleControl::SimpleControl(bool do_tack)
+SimpleControl::SimpleControl(bool do_rudder)
     : Node(0.01),
-      do_tack_(do_tack),
+      do_rudder_(do_rudder),
       sail_msg_(AllocateMessage<msg::SailCmd>()),
       rudder_msg_(AllocateMessage<msg::RudderCmd>()),
       ballast_msg_(AllocateMessage<msg::BallastCmd>()),
@@ -78,7 +78,9 @@ void SimpleControl::Iterate() {
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);
-  rudder_cmd_.send(rudder_msg_);
+  if (do_rudder_) {
+    rudder_cmd_.send(rudder_msg_);
+  }
   ballast_cmd_.send(ballast_msg_);
 }
 

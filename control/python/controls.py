@@ -18,6 +18,10 @@ class Controller(object):
 
   def Discretize(self):
     self.Ad, self.Bd = c2d(self.Ac, self.Bc, self.dt)
+    print("Ad:")
+    print(self.Ad)
+    print("Bd:")
+    print(self.Bd)
 
   def UpdateU(self, U):
     self.X = self.Ad * self.X + self.Bd * U
@@ -26,10 +30,34 @@ class Controller(object):
   def CalcLQR(self):
     self.K = dlqr(self.Ad, self.Bd, self.Q, self.R)
 
+  def DAREStep(self, X):
+    """
+      Performs one iteration of the DARE, given an X_t.
+      Returns (X_{t-1}, K_{t})
+    """
+    A = self.Ad
+    B = self.Bd
+    Q = self.Q
+    R = self.R
+    AXB = A.T * X * B
+    BXBRinv = np.linalg.inv(B.T * X * B + R)
+    Xtm1 = Q + A.T * X * A - AXB * BXBRinv * AXB.T
+    K = BXBRinv * AXB.T
+    return Xtm1, K
+
+  def CalcDARE(self, n_iters=100):
+    X = self.Q
+    K = None
+    for _ in range(n_iters):
+      X, K = self.DAREStep(X)
+    self.K = K
+
   def FLaw(self, R):
     return self.K * (R - self.X)
 
-  def Run(self, x_i, R, t):
+  def Run(self, x_i, R, t, biasx=None):
+    if biasx == None:
+      biasx = np.zeros(R.shape)
     U = None
     X = x_i
     self.X = x_i
@@ -40,7 +68,9 @@ class Controller(object):
         U = np.concatenate((U, curU), axis=1)
       else:
         U = curU
-      X = np.concatenate((X, self.UpdateU(U[:, -1])), axis=1)
+      self.X = self.UpdateU(U[:, -1])
+      self.X += biasx
+      X = np.concatenate((X, self.X), axis=1)
     return ts, X, U
 
   def WriteGains(self, fname):
