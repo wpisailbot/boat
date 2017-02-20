@@ -79,6 +79,7 @@ cc_proto_library(
         "//sim:sim_debug_proto",
         "//sensor:sbus_proto",
         "//can:can_proto",
+        "//rigid_wing:rigid_wing_proto",
         "//ipc:queue_test_msg",],
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",

@@ -5,6 +5,7 @@ import "ipc/queue_test_msg.proto";
 import "control/actuator_cmd.proto";
 import "sensor/sbus.proto";
 import "can/can.proto";
+import "rigid_wing/rigid_wing.proto";
 
 package sailbot.msg;
 
@@ -32,6 +33,8 @@ message LogEntry {
   optional HeadingCmd heading_cmd = 504;
   optional WaypointList waypoints = 505;
   optional BallastCmd ballast_cmd = 506;
+  optional RigidWingCmd rigid_wing_cmd = 507;
+  optional RigidWingFeedback rigid_wing_feedback = 508;
 
   // Test Messages
   optional PingMsg ping = 2000;

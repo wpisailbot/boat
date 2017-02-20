@@ -1,0 +1,31 @@
+syntax = "proto2";
+
+package sailbot.msg;
+
+option cc_enable_arenas = true;
+
+// Sent to the sail to control it at >1Hz
+message RigidWingCmd {
+  enum WingState {
+    // Note: MAX_LIFT is really max lift / drag
+    NO_LIFT = 0; // ie, disabled
+    MAX_LIFT_STARBOARD = 1; // For when on starboard tack (ie, wind from starboard)
+    HEEL_LIMIT_STARBOARD = 2; // Sail should account for heel as well
+    MAX_LIFT_PORT = 3;
+    HEEL_LIMIT_PORT = 4;
+    MAX_DRAG_STARBOARD = 5; // Sail on starboard side of boat (ie, port tack)
+    MAX_DRAG_PORT = 6; // Sail on port side of boat (ie, starboard tack)
+    MANUAL = 7; // We specify angles of attack
+  }
+  optional WingState state = 1;
+  optional float heel = 2; // radians
+  optional float max_heel = 3; // radians, should be greater than 0
+  optional float angle_of_attack = 4; // radians
+}
+
+// The message that we get back from the sail
+message RigidWingFeedback {
+  optional float angle_of_attack = 1; // radians, angle of attack of sail
+  optional int32 servo_pos = 2; // 0-100, 50 = sentered
+  optional float battery = 3; // Volts
+}
