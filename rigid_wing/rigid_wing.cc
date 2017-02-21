@@ -14,6 +14,7 @@ RigidWing::RigidWing()
     : Node(0.1), feedback_queue_("rigid_wing_feedback", true),
       feedback_msg_(AllocateMessage<msg::RigidWingFeedback>()), sock_fd_(-1),
       conn_fd_(-1) {
+  InitSocket();
   RegisterHandler<msg::RigidWingCmd>(
       "rigid_wing_cmd",
       [this](const msg::RigidWingCmd &cmd) { ConstructAndSend(cmd); });
@@ -25,7 +26,6 @@ void RigidWing::Iterate() {
       if (util::IsShutdown()) {
         return;
       }
-      VLOG(1) << "Waiting for a connection...";
     }
   }
 
@@ -51,6 +51,7 @@ void RigidWing::Iterate() {
     }
   }
 
+  buf[14] = 0;
   ParseMessage(buf, n, feedback_msg_);
   feedback_queue_.send(feedback_msg_);
 }
@@ -81,17 +82,18 @@ int RigidWing::WaitForChange(int fd, struct timeval tv) {
 }
 
 namespace {
-char atoi(const char *a, size_t len) {
+int atoi(const char *a, size_t len) {
   int retval = 0;
   for (size_t i = 0; i < len; ++i) {
     retval *= 10;
     retval += *(a++) - 0x30;
   }
-    return retval;
-  }
+  return retval;
+}
 }  // namespace
 
-void RigidWing::ParseMessage(const char *buf, size_t buf_len, msg::RigidWingFeedback *feedback) {
+void RigidWing::ParseMessage(const char *buf, size_t buf_len,
+                             msg::RigidWingFeedback *feedback) {
   feedback->clear_angle_of_attack();
   feedback->clear_servo_pos();
   feedback->clear_battery();
@@ -104,9 +106,9 @@ void RigidWing::ParseMessage(const char *buf, size_t buf_len, msg::RigidWingFeed
     return;
   }
 
-  feedback->set_angle_of_attack(util::ToRad(atoi(buf + 1, 3)));
+  feedback->set_angle_of_attack(util::ToRad((float)atoi(buf + 1, 3)));
   // buf[4] = ' '
-  feedback->set_servo_pos(util::ToRad(atoi(buf + 5, 3)));
+  feedback->set_servo_pos(atoi(buf + 5, 3));
   // buf[8] = ' '
   feedback->set_battery((float)atoi(buf + 9, 4) / 1000.);
 
@@ -117,13 +119,20 @@ void RigidWing::ParseMessage(const char *buf, size_t buf_len, msg::RigidWingFeed
 
 void RigidWing::InitSocket() {
   sock_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+  // Set non-blocking I/O
+  int flags = fcntl(sock_fd_, F_GETFL, 0);
+  PLOG_IF(FATAL, flags == -1) << "Failed to receive flags";
+  flags |= O_NONBLOCK;
+  PLOG_IF(FATAL, fcntl(sock_fd_, F_SETFL, flags) == -1)
+      << "Failed to set fnctl flags";
+
   struct sockaddr_in serv_addr;
   // Zero out serv_addr
   bzero((char *) &serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = FLAGS_rigid_wing_port;
-  PCHECK(::bind(sock_fd_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  serv_addr.sin_port = htons(FLAGS_rigid_wing_port);
+  PCHECK(::bind(sock_fd_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == 0)
       << "Bind failed";
   PCHECK(listen(sock_fd_, 1) == 0) << "Listen failed";
 }
@@ -133,15 +142,10 @@ bool RigidWing::AcceptConnection() {
   if (result == 0) {
     VLOG(1) << "Looking for connections timed out...";
   } else {
+    // Creates non-blocking socket.
     // Ignore address information
     int fd = accept4(sock_fd_, nullptr, nullptr, SOCK_NONBLOCK);
     PLOG_IF(WARNING, fd == -1) << "Error on accept";
-    // Set nonblocking I/O
-    int flags = fcntl(fd, F_GETFL, 0);
-    // TODO(james): Actually *do* something if these fail.
-    PLOG_IF(FATAL, flags != -1) << "Failed to receive flags";
-    flags &= ~O_NONBLOCK;
-    PLOG_IF(FATAL, fcntl(fd, F_SETFL, flags) != -1) << "Failed to set fnctl flags";
     conn_fd_ = fd;
     return true;
   }

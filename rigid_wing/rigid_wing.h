@@ -8,6 +8,14 @@ namespace sailbot {
 class RigidWing : public Node {
  public:
   RigidWing();
+  ~RigidWing() {
+    if (conn_fd_ != -1) {
+      close(conn_fd_);
+    }
+    if (sock_fd_ != -1) {
+      close(sock_fd_);
+    }
+  }
 
   /**
    * @param cmd The message to put out into the buffer

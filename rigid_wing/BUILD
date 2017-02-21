@@ -16,3 +16,8 @@ cc_library(
         "@gflags//:gflags",
         ],
 )
+cc_binary(
+  name="rigid_wing_ping",
+  srcs=["rigid_wing_ping.cc"],
+  deps=[":rigid_wing"],
+)
