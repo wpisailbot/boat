@@ -54,14 +54,20 @@ function processSocketReceive(evt) {
   }
 }
 
+function wsReady() {
+  return ws != null && ws.readyState == ws.OPEN;
+}
+
 function sendMessage(queue, content) {
   var request = '{"' + queue + '":' + JSON.stringify(content) + '}';
-  ws.send(request);
+  if (wsReady()) {
+    ws.send(request);
+  }
 }
 
 var a = 0;
 function sendRequests() {
-  if (ws == null || ws.readyState != ws.OPEN) {
+  if (!wsReady()) {
     return;
   }
   sendMessage("ping", {a: ++a});
@@ -80,7 +86,7 @@ function sendRequests() {
 }
 
 function initializeWebsocket() {
-  ws = new WebSocket("ws://" + window.location.host + ":13000");
+  ws = new WebSocket("ws://" + window.location.hostname + ":13000");
   ws.onmessage = processSocketReceive;
   // Avoid excessive polling; wait 1 sec before trying again.
   ws.onclose = function() { setTimeout(initializeWebsocket, 1000); };
@@ -125,4 +131,6 @@ function setupRigidWingSend() {
   }
 
   $(submitId).click(function() { periodic(sendSailCmd, 500); });
+
+  $(submitId).click();
 }

@@ -8,6 +8,7 @@ genrule(
         "//ui:server_main",
         "//sensor:sbus-test-run",
         "//can:can-ping",
+        "//rigid_wing:rigid_wing_ping",
         "//util:ping",
         "//util:pong"],
   outs=["output.zip"],

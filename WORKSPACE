@@ -72,6 +72,6 @@ new_git_repository(
 git_repository(
   name = 'openssl',
   remote = 'https://github.com/wpisailbot/bazel-openssl.git',
-  commit = 'e26e3c1e1a7bc3de5d0c1db7f71ef0fe83ad79f5',
+  commit = '65313853c9c7dce9518b81cbf52c7154a9f7c4ec',
   init_submodules = True,
 )
