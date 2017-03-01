@@ -99,7 +99,30 @@ $(window).on('load', function() {
   }
   registerFieldHandlers();
   initializeBoatHandlers();
+  setupRigidWingSend();
 
   initializeWebsocket();
   periodic(sendRequests, 100);
 });
+
+// Rigid Wing Stuff (TODO: Refactor for easy sending messages)
+function setupRigidWingSend() {
+  var submitId = "#rwsubmit";
+  if ($(submitId).length == 0) {
+    // Not on debug page
+    return;
+  }
+
+  function sendSailCmd() {
+    // Take all the values and send them!
+    var msg = {
+      state : parseInt($("#rwstate").val()),
+      heel : parseFloat($("#rwheel").val()),
+      max_heel : parseFloat($("#rwmaxheel").val()),
+      servo_pos : parseInt($("#rwservo").val()),
+    };
+    sendMessage("rigid_wing_cmd", msg);
+  }
+
+  $(submitId).click(function() { periodic(sendSailCmd, 500); });
+}

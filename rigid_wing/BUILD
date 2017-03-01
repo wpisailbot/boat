@@ -13,6 +13,7 @@ cc_library(
   deps=["//util:node",
         ":rigid_wing_proto",
         "//control:util",
+        "//ui:server",
         "@gflags//:gflags",
         ],
 )

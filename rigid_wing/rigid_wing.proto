@@ -20,7 +20,8 @@ message RigidWingCmd {
   optional WingState state = 1;
   optional float heel = 2; // radians, 0=sail on port, PI/2 = vertical
   optional float max_heel = 3; // radians, should be greater than 0. 0 = vertical
-  optional float angle_of_attack = 4; // radians
+  //optional float angle_of_attack = 4; // radians
+  optional int32 servo_pos = 5; // 0-100, 50=centered, 0 = full port
 }
 
 // The message that we get back from the sail

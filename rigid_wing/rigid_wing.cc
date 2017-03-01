@@ -20,6 +20,10 @@ RigidWing::RigidWing()
       [this](const msg::RigidWingCmd &cmd) { ConstructAndSend(cmd); });
 }
 
+namespace {
+constexpr int kBufLen = 13;
+}
+
 void RigidWing::Iterate() {
   if (conn_fd_ == -1) {
     while (!AcceptConnection()) {
@@ -51,7 +55,7 @@ void RigidWing::Iterate() {
     }
   }
 
-  buf[14] = 0;
+  buf[kBufLen] = 0;
   ParseMessage(buf, n, feedback_msg_);
   feedback_queue_.send(feedback_msg_);
 }
@@ -68,7 +72,7 @@ void RigidWing::ConstructAndSend(const msg::RigidWingCmd &cmd) {
 int RigidWing::ConstructMessage(const msg::RigidWingCmd &cmd, char *buf, size_t buf_len) {
   int heel = util::ToDeg(cmd.heel());
   int max_heel = util::ToDeg(cmd.max_heel());
-  int aoa = util::ToDeg(cmd.angle_of_attack());
+  int aoa = cmd.servo_pos();
   return snprintf(buf, buf_len, "[%01d %03d %02d %03d]", (int)cmd.state(), heel,
                   max_heel, aoa);
 }
@@ -90,6 +94,7 @@ int atoi(const char *a, size_t len) {
   }
   return retval;
 }
+
 }  // namespace
 
 void RigidWing::ParseMessage(const char *buf, size_t buf_len,
@@ -97,8 +102,8 @@ void RigidWing::ParseMessage(const char *buf, size_t buf_len,
   feedback->clear_angle_of_attack();
   feedback->clear_servo_pos();
   feedback->clear_battery();
-  if (buf_len != 14) {
-    LOG(WARNING) << "Buffer must be exactly 14 bytes long";
+  if (buf_len != kBufLen) {
+    LOG(WARNING) << "Buffer must be exactly 13 bytes long";
     return;
   }
   if (buf[0] != '[') {
@@ -106,25 +111,30 @@ void RigidWing::ParseMessage(const char *buf, size_t buf_len,
     return;
   }
 
-  feedback->set_angle_of_attack(util::ToRad((float)atoi(buf + 1, 3)));
+  feedback->set_angle_of_attack(
+      util::norm_angle(util::ToRad((float)atoi(buf + 1, 3))));
   // buf[4] = ' '
   feedback->set_servo_pos(atoi(buf + 5, 3));
   // buf[8] = ' '
-  feedback->set_battery((float)atoi(buf + 9, 4) / 1000.);
+  feedback->set_battery((float)atoi(buf + 9, 3) / 1000.);
 
-  if (buf[13] != ']') {
+  if (buf[kBufLen-1] != ']') {
     LOG(WARNING) << "Message not terminated properly";
   }
 }
 
 void RigidWing::InitSocket() {
   sock_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+  // Prevent "address already in use" problem.
+  int option = 1;
+  setsockopt(sock_fd_, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
   // Set non-blocking I/O
   int flags = fcntl(sock_fd_, F_GETFL, 0);
   PLOG_IF(FATAL, flags == -1) << "Failed to receive flags";
   flags |= O_NONBLOCK;
   PLOG_IF(FATAL, fcntl(sock_fd_, F_SETFL, flags) == -1)
       << "Failed to set fnctl flags";
+
 
   struct sockaddr_in serv_addr;
   // Zero out serv_addr
