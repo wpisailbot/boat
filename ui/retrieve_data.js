@@ -1,6 +1,11 @@
 var fields = {};
+var ops = {}; // The various operations which can be applied to fields
 var data_class = "data_output";
 var ws = null;
+
+function createOps() {
+  ops["toDeg"] = function(a) { return a * 180 / Math.PI; };
+}
 
 function registerFieldHandlers() {
   $("."+data_class).each(function(i, element) {
@@ -39,7 +44,12 @@ function updateFieldHandler(field_name) {
   tryInitField(field_name);
   var field = fields[field_name];
   for (var i in field.text_fields) {
-    field.text_fields[i].innerHTML = JSON.stringify(field.value);
+    html = field.text_fields[i];
+    op = function(a) { return a; };
+    if (html.hasAttribute("op")) {
+      op = ops[html.getAttribute("op")];
+    }
+    html.innerHTML = JSON.stringify(op(field.value));
   }
 }
 
@@ -103,6 +113,7 @@ $(window).on('load', function() {
   if (!("WebSocket" in window)) {
     alert("WebSocket not supported by your browser");
   }
+  createOps();
   registerFieldHandlers();
   initializeBoatHandlers();
   setupRigidWingSend();
