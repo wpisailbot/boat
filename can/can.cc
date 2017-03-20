@@ -1,6 +1,7 @@
 #include "can.h"
 #include "util/node.h"
 #include "util/proto_util.h"
+#include "util/clock.h"
 #include "pgn.h"
 #include "canboat-pgn.h"
 #include <linux/can.h>
@@ -91,7 +92,11 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
   sockaddr_can addr;
 
   strcpy(ifr.ifr_name, "can0"); // TODO(james): Settable name.
-  PCHECK(ioctl(s_, SIOCGIFINDEX, &ifr) == 0) << "ioctl IFINDEX set failed";
+  while (ioctl(s_, SIOCGIFINDEX, &ifr) != 0) {
+    util::ClockInstance clock;
+    PLOG(ERROR) << "ioctl IFINDEX set failed";
+    clock.SleepUntil(clock.Time() + std::chrono::milliseconds(1000));
+  }
   /*
   int block = 1; // We want blocking I/O.
   PCHECK(ioctl(s_, FIONBIO, &ifr, &block) == 0) << "ioctl set to nonblocking failed";
@@ -123,7 +128,7 @@ void CanNode::Iterate() {
       if (errno == EAGAIN) {
         PLOG(ERROR) << "Timeout on read--not getting any CAN data";
       } else {
-        PLOG(FATAL) << "Read failed for some reason";
+        PLOG(ERROR) << "Read failed for some reason";
       }
     } else {
       break;
