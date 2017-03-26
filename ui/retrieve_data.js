@@ -117,6 +117,7 @@ $(window).on('load', function() {
   registerFieldHandlers();
   initializeBoatHandlers();
   setupRigidWingSend();
+  setupHeadingSend();
 
   initializeWebsocket();
   periodic(sendRequests, 100);
@@ -144,4 +145,21 @@ function setupRigidWingSend() {
   $(submitId).click(function() { periodic(sendSailCmd, 500); });
 
   $(submitId).click();
+}
+
+function setupHeadingSend() {
+  var submitId = "#heading_submit";
+  if ($(submitId).length == 0) {
+    // Not on debug page
+    return;
+  }
+  function sendHeadingCmd() {
+    // Take all the values and send them!
+    var msg = {
+      heading : parseFloat($("#goal_heading").val()),
+    };
+    sendMessage("heading_cmd", msg);
+  }
+
+  $(submitId).click(sendHeadingCmd);
 }

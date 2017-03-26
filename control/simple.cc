@@ -34,6 +34,7 @@ SimpleControl::SimpleControl(bool do_rudder)
   });
   RegisterHandler<msg::HeadingCmd>("heading_cmd", [this](const msg::HeadingCmd &msg) {
     heading_ = msg.heading();
+    VLOG(2) << "Got heading cmd: " << heading_.load();
   });
 }
 
@@ -61,9 +62,14 @@ void SimpleControl::Iterate() {
   if (std::abs(alphaw) < 2.8) {
     goal = alphaw > 0 ? goal : -goal;
   }
+  // TODO(james): These are temporary for testing
+  goal = std::abs(goal);
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << alphasail
           << " goals: " << goal;
-  sail_msg_->set_vel(-util::norm_angle(goal - alphasail));
+  // TODO(james): Temporary for testing:
+  goal = goal_heading;
+  alphasail = boat_state_->internal().sail();
+  sail_msg_->set_voltage(-util::norm_angle(goal - alphasail));
 
   ballast_msg_->set_vel(-0.5 * heel);
 
@@ -76,6 +82,7 @@ void SimpleControl::Iterate() {
                         -max_rudder),
                max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
+  rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);
   if (do_rudder_) {

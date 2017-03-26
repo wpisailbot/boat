@@ -6,11 +6,11 @@ namespace sailbot {
 
 class ReadSBUS : public Node {
  public:
-   ReadSBUS(const char *port)
-       : Node(0.0), port_name_(port), msg_(AllocateMessage<msg::SBUS>()),
-         queue_("sbus_value", true) {
-     Init();
-   }
+  ReadSBUS(const char *port)
+      : Node(0.0), port_name_(port), msg_(AllocateMessage<msg::SBUS>()),
+        queue_("sbus_value", true) {
+    Init();
+  }
   ~ReadSBUS() {
     close(fd);
   }

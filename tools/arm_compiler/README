@@ -1,1 +1,3 @@
 See https://github.com/bazelbuild/bazel/tree/master/src/test/shell/bazel/testdata/bazel_toolchain_test_data for original source of this.
+
+The gnueabihf references are all for the Beaglebone Black. The gnueabi is for the Raspberry Pi

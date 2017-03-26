@@ -33,11 +33,21 @@ new_git_repository(
   build_file = "third_party/ws.BUILD"
 )
 
+# For BBB
 new_http_archive(
-  name = 'org_linaro_components_toolchain_gcc_5_3_1',
-  build_file = 'compilers/linaro_linux_gcc_5.3.1.BUILD',
-  url = 'https://bazel-mirror.storage.googleapis.com/releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf.tar.xz',
+  name = 'org_linaro_components_toolchain_gcc_5_3_1_gnueabihf',
+  build_file = 'compilers/linaro_linux_gcc_5.3.1_gnueabihf.BUILD',
+  #url = 'https://bazel-mirror.storage.googleapis.com/releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf.tar.xz',
+  url = 'https://releases.linaro.org/components/toolchain/binaries/5.3-2016.05/arm-linux-gnueabihf/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf.tar.xz',
   strip_prefix = 'gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf',
+)
+
+# For Pi
+new_http_archive(
+  name = 'org_linaro_components_toolchain_gcc_5_3_1_gnueabi',
+  build_file = 'compilers/linaro_linux_gcc_5.3.1_gnueabi.BUILD',
+  url = 'https://releases.linaro.org/components/toolchain/binaries/5.3-2016.05/arm-linux-gnueabi/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi.tar.xz',
+  strip_prefix = 'gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi',
 )
 
 new_http_archive(
@@ -72,6 +82,6 @@ new_git_repository(
 git_repository(
   name = 'openssl',
   remote = 'https://github.com/wpisailbot/bazel-openssl.git',
-  commit = '65313853c9c7dce9518b81cbf52c7154a9f7c4ec',
+  commit = 'd5c1dcb247ee74000b58d54408da612c550b4978',
   init_submodules = True,
 )

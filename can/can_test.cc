@@ -17,6 +17,10 @@ TEST(PgnTest, EncodeDecodeCanID) {
   EXPECT_EQ(canid.source, back.source);
   EXPECT_EQ(canid.priority, back.priority);
   EXPECT_EQ(127251, GetPGN(back));
+  SetPGN(&canid, 0xFF01);
+  std::cout << std::hex << ConstructID(canid) << std::endl;
+  SetPGN(&canid, 0xFF02);
+  std::cout << std::hex << ConstructID(canid) << std::endl;
 }
 
 class CanTest : public ::testing::Test {

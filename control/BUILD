@@ -20,6 +20,33 @@ cc_library(
   deps=[":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="arduino_motors",
+  srcs=["arduino_motors.cc"],
+  hdrs=["arduino_motors.h"],
+  deps=[":actuator_cmd_proto", "//util:node"],
+)
+cc_binary(
+  name="arduino_main",
+  srcs=["arduino_motors_main.cc"],
+  deps=[":arduino_motors"],
+)
+cc_library(
+  name="scamp",
+  srcs=["scamp.cc"],
+  hdrs=["scamp.h"],
+  deps=[":actuator_cmd_proto", "//util:node"],
+)
+cc_binary(
+  name="scamp_main",
+  srcs=["scamp_main.cc"],
+  deps=[":scamp"],
+)
+cc_binary(
+  name="simple_control_main",
+  srcs=["simple_main.cc"],
+  deps=[":simple_control"],
+)
+cc_library(
   name="line_tacking",
   srcs=["line_tacking.cc"],
   hdrs=["line_tacking.h"],

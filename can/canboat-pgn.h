@@ -443,6 +443,21 @@ Pgn pgnList[] =
 }
 
 ,
+{ "Analog Read", 0xFF01, true, 1, 0,
+  { { "Val", BYTES(1), 4, false, 0, "" }
+  , { 0 }
+  }
+}
+
+,
+{ "PWM Write", 0xFF02, true, 1, 0,
+  { { "Winch", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { "Rudder", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { 0 }
+  }
+}
+
+,
 { "Attitude", 127257, true, 7, 0,
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Yaw", BYTES(2), RES_RADIANS, true, "rad", "" }

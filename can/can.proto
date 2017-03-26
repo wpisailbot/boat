@@ -128,6 +128,15 @@ message WindData {
   optional float wind_angle = 3; // radians
 }
 
+message AnalogPot {
+  optional uint32 val = 1;
+}
+
+message PWMWrite {
+  optional uint32 winch = 1;
+  optional uint32 rudder = 2;
+}
+
 message CANMaster {
   optional bool outgoing = 1 [default = false]; // Whether to send out over wire
   optional SystemTime sys_tme = 126992;
@@ -140,4 +149,7 @@ message CANMaster {
   optional TimeDate time_and_date = 129033;
   optional GNSSDOP gnss_dop = 129539;
   optional WindData wind_data = 130306;
+
+  optional AnalogPot analog_pot = 65281;
+  optional PWMWrite pwm_write = 65282;
 }

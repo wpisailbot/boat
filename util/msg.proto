@@ -58,4 +58,6 @@ message LogEntry {
   optional can.CANMaster can129033 = 129033; // Time and date
   optional can.CANMaster can129539 = 129539; // GNSS DOP
   optional can.CANMaster can130306 = 130306; // Wind Data
+  optional can.CANMaster can65281 = 65281; // Analog Pot
+  optional can.CANMaster can65282 = 65282; // PWM Write
 }

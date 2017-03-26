@@ -6,6 +6,7 @@ option cc_enable_arenas = true;
 
 message SailCmd {
   optional float vel = 11;
+  optional float voltage = 12;
 }
 
 message RudderCmd {
