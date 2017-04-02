@@ -98,7 +98,7 @@ TEST_F(CanTest, ExtractUnsignedMultiByteAligned0Field) {
 
 TEST_F(CanTest, ExtractUnsignedSubByteAligned0Field) {
   uint8_t goal = 8;
-  uint8_t data = (goal << 3) + 0x7;
+  uint8_t data = (0x7 << 5) + goal;
   field.size = 5;
   field.hasSign = false;
   int64_t maxval = -1;
@@ -109,7 +109,7 @@ TEST_F(CanTest, ExtractUnsignedSubByteAligned0Field) {
 
 TEST_F(CanTest, ExtractUnsignedSubByteUnalignedField) {
   uint8_t goal = 8;
-  uint8_t data = (0x7 << 5) + goal;
+  uint8_t data = (goal << 3) + 0x7;
   field.size = 5;
   field.hasSign = false;
   int64_t maxval = -1;
@@ -120,8 +120,8 @@ TEST_F(CanTest, ExtractUnsignedSubByteUnalignedField) {
 
 TEST_F(CanTest, ExtractUnsignedMultiByteUnalignedField) {
   uint16_t goal = 0xAB0F;
-  uint8_t data[4] = {(uint8_t)(0xF8 | goal), (uint8_t)(goal >> 3),
-                     (uint8_t)((goal >> 8) & 0xF8)};
+  uint8_t data[4] = {(uint8_t)(goal) << 5, (uint8_t)(goal >> 3),
+                     (uint8_t)((goal >> 11) & 0x1F)};
   field.size = 16;
   field.hasSign = false;
   int64_t maxval = -1;
@@ -132,8 +132,8 @@ TEST_F(CanTest, ExtractUnsignedMultiByteUnalignedField) {
 
 TEST_F(CanTest, ExtractSignedMultiByteUnalignedField) {
   int16_t goal = -0x3B0F;
-  uint8_t data[4] = {(uint8_t)(0xF8 | goal), (uint8_t)(goal >> 3),
-                     (uint8_t)((goal >> 8) & 0xF8)};
+  uint8_t data[4] = {(uint8_t)(goal) << 5, (uint8_t)(goal >> 3),
+                     (uint8_t)((goal >> 11))};
   field.size = 16;
   field.hasSign = true;
   int64_t maxval = -1;
@@ -144,8 +144,8 @@ TEST_F(CanTest, ExtractSignedMultiByteUnalignedField) {
 
 TEST_F(CanTest, ExtractSignedMultiByteUnalignedFieldOffset) {
   int16_t goal = -0x3B0F;
-  uint8_t data[6] = {0xFF, 0xFF, (uint8_t)(0xF8 | goal), (uint8_t)(goal >> 3),
-                     (uint8_t)((goal >> 8) & 0xF8)};
+  uint8_t data[6] = {0xFF, 0xFF, (uint8_t)(goal) << 5, (uint8_t)(goal >> 3),
+                     (uint8_t)((goal >> 11))};
   field.size = 16;
   field.hasSign = true;
   int64_t maxval = -1;
@@ -169,8 +169,8 @@ TEST_F(CanTest, EncodeDecodeBasicMessage) {
   EXPECT_EQ(8, frame.can_dlc);
   CANID id = RetrieveID(frame.can_id);
   EXPECT_EQ(1, id.__eff_ident);
-  EXPECT_EQ(100, id.source);
-  EXPECT_EQ(2, id.priority);
+  EXPECT_EQ(21, id.source);
+  EXPECT_EQ(5, id.priority);
   EXPECT_EQ(127251, GetPGN(id));
 
   int32_t int_rate = rate_of_turn->rate() / RES_HIRES_ROTATION;

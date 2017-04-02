@@ -280,7 +280,7 @@ int64_t CanNode::ExtractNumberField(const Field *f, const uint8_t *data,
     retval += cur_val;
 
     *maxval <<= byte_bits;
-    *maxval += mask >> end_gap;
+    *maxval += mask >> start_bit;
 
     bits_left -= byte_bits;
     magnitude += byte_bits;
