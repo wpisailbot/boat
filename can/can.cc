@@ -209,12 +209,15 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
       }
     } else if (f->resolution < 0) {
       double res = f->resolution;
-      if (cur_bit % 8 != 0 || f->size % 8 != 0) {
+      bool byte_aligned = cur_bit % 8 == 0;
+      /*if (cur_bit % 8 != 0 || f->size % 8 != 0) {
         LOG(ERROR) << "Unable to read field because expected byte alignment.";
-      } else if (res == RES_LATITUDE || res == RES_LONGITUDE) {
+      } else*/ if (res == RES_LATITUDE || res == RES_LONGITUDE) {
         double val = 0;
         bool reserved = false;
-        if (f->size == 32) {
+        if (!byte_aligned) {
+          LOG(ERROR) << "Reading non-byte-aligend lat/lon is unsupported";
+        } else if (f->size == 32) {
           int32_t short_val;
           memcpy(&short_val, data + (cur_bit / 8), 4);
           val = (double)short_val * RES_LAT_LONG;
@@ -222,7 +225,7 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
           max >>= 1;
           reserved = IsReserved(short_val, max);
         } else if (f->size == 64) {
-          int32_t int_val;
+          int64_t int_val;
           memcpy(&int_val, data + (cur_bit / 8), 8);
           val = (double)int_val * RES_LAT_LONG_64;
           int64_t max = -1 ^ ((int64_t)1 << 63);
@@ -231,13 +234,25 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
         if (!reserved) SetProtoNumberField(pgn_msg, i+1, val);
         else VLOG(3) << "Lat/lon field reserved";
       } else if (res == RES_DATE) { // Date = days since epoch
+        if (!byte_aligned || f->size != 16) {
+          LOG(ERROR) << "Date field should be byte aligned and 2 bytes long";
+        }
         uint16_t days;
         memcpy(&days, data + (cur_bit / 8), 2);
         SetProtoNumberField(pgn_msg, i+1, days);
       } else if (res == RES_TIME) { // time = seconds since midnight
+        if (!byte_aligned || f->size != 32) {
+          LOG(ERROR) << "Time field should be byte aligned and 4 bytes long";
+        }
         uint32_t secs;
         memcpy(&secs, data + (cur_bit / 8), 4);
         SetProtoNumberField(pgn_msg, i+1, secs);
+      } else if (res == RES_LOOKUP) {
+        // TODO(james): Test
+        int64_t max_val = 0;
+        int64_t val = ExtractNumberField(f, data, cur_bit, &max_val);
+        VLOG(2) << "Extracted " << val << " for field " << f->name;
+        SetProtoNumberField(pgn_msg, i+1, val);
       } else {
         // For now, assume we don't care about anything else (which is incorrect).
       }
@@ -260,8 +275,8 @@ int64_t CanNode::ExtractNumberField(const Field *f, const uint8_t *data,
   while (bits_left) {
     uint8_t byte_bits = std::min(8 - start_bit, bits_left);
     size_t end_gap = 8 - byte_bits - start_bit;
-    uint8_t mask = ((uint16_t)0xFF >> start_bit) << end_gap;
-    uint64_t cur_val = (uint64_t(mask & *data) >> end_gap) << magnitude;
+    uint8_t mask = ((uint16_t)0xFF >> end_gap) & (0xFF << start_bit);
+    uint64_t cur_val = (uint64_t(mask & *data) >> start_bit) << magnitude;
     retval += cur_val;
 
     *maxval <<= byte_bits;
@@ -289,7 +304,7 @@ void CanNode::SendMessage(const msg::can::CANMaster & msg, const int pgn) {
   const CANMessage *msg_info = &msgs_[pgn];
   can_frame frame;
   if (ConstructMessage(msg, msg_info, &frame)) {
-    PCHECK(write(s_, &frame, sizeof(can_frame)) > 0) << "Write failed";
+    PLOG_IF(ERROR, write(s_, &frame, sizeof(can_frame)) <= 0) << "Write failed";
   }
 }
 
@@ -332,8 +347,8 @@ bool CanNode::ConstructMessage(const msg::can::CANMaster &msg,
 
   CANID can_id;
   SetPGN(&can_id, pgn);
-  can_id.priority = 0x2; // TODO(james): Parametrize to allow variation
-  can_id.source = 100; // TODO(james): Use real source ID.
+  can_id.priority = 0x5; // TODO(james): Parametrize to allow variation
+  can_id.source = 0x15; // TODO(james): Use real source ID.
   frame->can_id = ConstructID(can_id);
   VLOG(2) << "ID: " << frame->can_id << " DLC: " << (int)frame->can_dlc
           << " data: " << (int)frame->data[0] << ", " << (int)frame->data[1]

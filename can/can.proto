@@ -126,6 +126,14 @@ message WindData {
   optional uint32 SID = 1;
   optional float wind_speed = 2; // m/s
   optional float wind_angle = 3; // radians
+  enum WIND_REFERENCE {
+    TRUE_NORTH_REF = 0;
+    MAGNETIC_NORTH_REF = 1;
+    APPARENT = 2;
+    TRUE_BOAT_REF = 3;
+    TRUE_WATER_REF = 4;
+  }
+  optional WIND_REFERENCE reference = 4;
 }
 
 message AnalogPot {
@@ -138,7 +146,7 @@ message PWMWrite {
 }
 
 message CANMaster {
-  optional bool outgoing = 1 [default = false]; // Whether to send out over wire
+  optional bool outgoing = 1 [default = true]; // Whether to send out over wire
   optional SystemTime sys_tme = 126992;
   optional VesselHeading heading = 127250;
   optional RateOfTurn rate_turn = 127251;

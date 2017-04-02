@@ -45,7 +45,7 @@ void SetPGN(CANID *id, int32_t pgn) {
   id->PF = pgn & 0xFF;
   pgn >>= 8;
   id->DP = pgn & 0x01;
-  if (id->PF > 240) {
+  if (id->PF >= 240) {
     id->PS = low;
   }
 }
