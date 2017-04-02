@@ -24,8 +24,16 @@ SimulatorNode::SimulatorNode()
 }
 
 void SimulatorNode::ProcessSail(const msg::SailCmd& cmd) {
-  if (cmd.has_vel() && !std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel())) {
     sdot_ = cmd.vel();
+  } else if (cmd.has_pos() && !std::isnan(cmd.pos())) {
+    double pos = cmd.pos();
+    if (impl_->get_apparent_dir() < 0) {
+      pos *= -1;
+    }
+    LOG(INFO) << "Goal pos: " << pos;
+    sdot_ = impl_->get_sdot_for_goal(pos);
+  }
 }
 
 void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
@@ -88,7 +96,8 @@ void SimulatorNode::Iterate() {
   euler->set_pitch(rollpitchyaw(1, 0));
   euler->set_yaw(rollpitchyaw(2, 0));
 
-  state_msg_->mutable_internal()->set_sail(impl_->get_deltas());
+  LOG(INFO) << "Deltas: " << impl_->get_deltas();
+  state_msg_->mutable_internal()->set_sail(std::abs(impl_->get_deltas()));
   state_msg_->mutable_internal()->set_rudder(impl_->get_deltar());
   state_msg_->mutable_internal()->set_ballast(impl_->get_deltab());
   state_msg_->mutable_internal()->set_saildot(sdot_);

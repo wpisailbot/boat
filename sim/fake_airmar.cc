@@ -28,7 +28,8 @@ namespace {
 void FakeAirmar::Iterate() {
   msg::can::CANMaster out;
 
-  out.mutable_heading()->set_heading(state_.euler().yaw() + Normal(0, 0.05));
+  // Reverse sign of yaw because headings are compass headings
+  out.mutable_heading()->set_heading(-state_.euler().yaw() + Normal(0, 0.05));
   heading_.send(&out);
   out.clear_heading();
 
@@ -41,13 +42,18 @@ void FakeAirmar::Iterate() {
   if ((counter_ % int(1 / dt)) == 0) {
     out.mutable_attitude()->set_roll(state_.euler().roll() + Normal(0, 0.05));
     out.mutable_attitude()->set_pitch(state_.euler().pitch() + Normal(0, 0.05));
+    // TODO(james): Check whether this yaw needs to be reversed.
     out.mutable_attitude()->set_yaw(state_.euler().yaw() + Normal(0, 0.05));
     attitude_.send(&out);
     out.clear_attitude();
   }
 
-  out.mutable_pos_rapid_update()->set_lon(state_.pos().x() + Normal(0, 3));
-  out.mutable_pos_rapid_update()->set_lat(state_.pos().y() + Normal(0, 3));
+  double x = state_.pos().x() + Normal(0, .5);
+  double y = state_.pos().y() + Normal(0, .5);
+  double lat = y / 111054. + 41;
+  double lon = x / 84135. - 71;
+  out.mutable_pos_rapid_update()->set_lon(lon);
+  out.mutable_pos_rapid_update()->set_lat(lat);
   pos_rapid_update_.send(&out);
   out.clear_pos_rapid_update();
 
@@ -62,8 +68,20 @@ void FakeAirmar::Iterate() {
   out.mutable_wind_data()->set_wind_speed(
       std::sqrt(wind_.x() * wind_.x() + wind_.y() * wind_.y()) +
       Normal(0, 0.1));
-  out.mutable_wind_data()->set_wind_angle(std::atan2(wind_.y(), wind_.x()) +
+  // Invert x/y to properly spoof airmar wind from, rather than wind dir.
+  out.mutable_wind_data()->set_wind_angle(std::atan2(-wind_.y(), -wind_.x()) +
                                           Normal(0, 0.05));
+  out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_TRUE_NORTH_REF);
+  wind_data_.send(&out);
+  // And now do apparent wind...
+  double wx = wind_.x() - vx;
+  double wy = wind_.y() - vy;
+  // Add M_PI to handle to vs. from wind dir.
+  double alphaw =
+      util::norm_angle(M_PI + std::atan2(wy, wx) - state_.euler().yaw());
+  out.mutable_wind_data()->set_wind_speed(std::sqrt(wx * wx + wy * wy));
+  out.mutable_wind_data()->set_wind_angle(alphaw);
+  out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_APPARENT);
   wind_data_.send(&out);
   out.clear_wind_data();
 

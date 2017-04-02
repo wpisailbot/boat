@@ -50,14 +50,24 @@ class TrivialDynamics : public SimulatorDynamics {
   double get_deltar() override { return deltar; }
   double get_deltab() override { return deltab; }
   void set_wind(Vector3d wind) override { this->wind = wind; }
-  double get_alpha_sail() {
+  Vector3d get_wind() { return wind; }
+  double get_apparent_dir() {
+    // Returns the direction that the wind is blowing from relative to the boat
     Vector3d wa = RBI.transpose() * (wind - v);
-    return util::norm_angle(std::atan2(-wa(1), -wa(0)) - deltas);
+    return std::atan2(-wa(1), -wa(0));
+  }
+  double get_alpha_sail() {
+    return util::norm_angle(get_apparent_dir() - deltas);
   }
 
   double get_rdot_for_goal(double goal) {
     // To spoof a simple servo
     return goal - deltar;
+  }
+
+  double get_sdot_for_goal(double goal) {
+    // To spoof a servo.
+    return goal - deltas;
   }
 
   // Note: CalcXdot does make use of most parameters that aren't explicitly

@@ -19,6 +19,7 @@ class SimulatorNode : public Node {
     float x = speed * std::cos(src_dir);
     float y = speed * std::sin(src_dir);
     impl_->set_wind(Vector3d(x, y, 0));
+
     wind_msg_->set_x(x);
     wind_msg_->set_y(y);
     wind_msg_->set_z(0);
