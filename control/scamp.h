@@ -11,6 +11,9 @@ class SCAMP : public Node {
 
  private:
   void Iterate() override;
+  static int SBUSToRaw(int sbus) {
+    return ((sbus - 1023) * 90) / 1000;
+  };
 
   ProtoQueue<msg::InternalBoatState> state_queue_;
   msg::InternalBoatState *state_msg_;
@@ -19,6 +22,8 @@ class SCAMP : public Node {
   msg::can::CANMaster *pwm_msg_;
   std::atomic<int> raw_winch_{90};
   std::atomic<int> raw_rudder_{90};;
+  std::atomic<bool> is_manual_mode_{false};
+  std::atomic<bool> is_connected_{true};
 };  // class SCAMP
 
 }  // namespace sailbot

@@ -7,6 +7,7 @@ option cc_enable_arenas = true;
 message SailCmd {
   optional float vel = 11;
   optional float voltage = 12;
+  optional float pos = 13;
 }
 
 message RudderCmd {
@@ -32,6 +33,14 @@ message WaypointList {
   repeated Waypoint points = 1;
   // Whether or not to start these waypoints from the start.
   optional bool restart = 2 [default = true];
+}
+
+message ControlMode {
+  enum MODE {
+    MANUAL = 0;
+    AUTO = 1;
+  }
+  optional MODE mode = 1;
 }
 
 message Vector3f {

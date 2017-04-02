@@ -53,23 +53,20 @@ void SimpleControl::Iterate() {
   // For alphaw, if sailing straight into wind, =0, if wind is coming from port
   // (ie, on port tack), alphaw is positive, if coming from starboard, is
   // negative/between pi and 2pi.
-  float alphaw = util::norm_angle(std::atan2(vy - wind_y_, vx - wind_x_) - yaw);
+//  float alphaw = util::norm_angle(std::atan2(vy - wind_y_, vx - wind_x_) - yaw);
+  float alphaw = std::abs(util::norm_angle(std::atan2(wind_y_, -wind_x_)));
   float wind_source_dir = std::atan2(-wind_y_, -wind_x_);
-  float alphasail = alphaw - boat_state_->internal().sail();
+  //float alphasail = util::norm_angle(alphaw - boat_state_->internal().sail());
+  float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  static float goal = 0;
-  goal = std::abs(alphaw) > 2.5 ? 1.5 : .4;
-  if (std::abs(alphaw) < 2.8) {
-    goal = alphaw > 0 ? goal : -goal;
-  }
-  // TODO(james): These are temporary for testing
-  goal = std::abs(goal);
-  VLOG(2) << "Alphaw: " << alphaw << " alphas: " << alphasail
+  float goal = std::min(std::max(alphaw - 0.4, 0.), 1.5);
+  VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
           << " goals: " << goal;
   // TODO(james): Temporary for testing:
-  goal = goal_heading;
-  alphasail = boat_state_->internal().sail();
-  sail_msg_->set_voltage(-util::norm_angle(goal - alphasail));
+  //goal = std::abs(goal_heading);
+  //alphasail = boat_state_->internal().sail();
+  sail_msg_->set_voltage(3 * util::norm_angle(goal - cursail));
+  sail_msg_->set_pos(goal);
 
   ballast_msg_->set_vel(-0.5 * heel);
 
