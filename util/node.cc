@@ -2,8 +2,7 @@
 
 namespace sailbot {
 
-Node::Node(float loop_period)
-    : period_(loop_period) {
+Node::Node(float loop_period) : period_(loop_period), loop_(period_) {
   arena_settings_.start_block_size = 10000;
   arena_settings_.max_block_size = 0;
   arena_.reset(new google::protobuf::Arena(arena_settings_));
@@ -19,17 +18,16 @@ void Node::Run() {
   if (period_ < 0) {
     return;
   }
-  util::Loop loop(period_);
   while (!util::IsShutdown()) {
     if (period_ > 0) {
-      loop.WaitForNext();
+      loop_.WaitForNext();
     }
     if (util::IsShutdown()) {
       return;
     }
     Iterate();
   }
-  loop.Done();
+  loop_.Done();
 }
 
 }  // sailbot

@@ -103,6 +103,7 @@ class Loop {
   Loop(float period);
   void WaitForNext();
   void Done() { clock_.CleanUp(); }
+  monotonic_clock::time_point Time() { return clock_.Time(); }
 
  private:
   ClockInstance clock_;

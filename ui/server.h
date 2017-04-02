@@ -8,11 +8,13 @@
 
 namespace sailbot {
 
-class WebSocketServer {
+class WebSocketServer : public Node {
+ /**
+  * Handles the UI. Also tells us whether the UI is connected
+  */
  public:
   WebSocketServer(int port=13000);
   ~WebSocketServer();
-  void Run();
 
  private:
   void RegisterQueueHandler(const std::string name);
@@ -20,6 +22,7 @@ class WebSocketServer {
   void ProcessSocket(uWS::WebSocket<uWS::SERVER> ws, char *message,
                      size_t length, uWS::OpCode opcode);
   std::string GetCurrentVal(const std::string &msg);
+  void Iterate();
 
   uWS::Hub hub_;
   const int port_;
@@ -28,6 +31,12 @@ class WebSocketServer {
   std::mutex send_map_mutex_;
   std::map<std::string, std::unique_ptr<Queue>> send_msgs_;
   std::vector<std::thread> threads_;
+  // The last time that we processed a socket request
+  // TODO(james): Initialize apopriately
+  std::mutex last_conn_mut_;
+  util::monotonic_clock::time_point last_conn_;
+  ::sailbot::msg::ConnectionStatus *conn_status_;
+  ProtoQueue<msg::ConnectionStatus> conn_queue_;
 };
 
 }  // namespace sailbot

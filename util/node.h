@@ -34,10 +34,8 @@ class Node {
   template <typename T>
   T *AllocateMessage();
 
-  timespec Time() {
-    timespec time;
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    return time;
+  util::monotonic_clock::time_point Time() {
+    return loop_.Time();
   }
 
   virtual void Iterate() {}
@@ -48,6 +46,7 @@ class Node {
   void RunHandlerCaller(std::unique_ptr<char[]> queue_name,
                         ::std::function<void(const T &)> callback);
   double period_;
+  util::Loop loop_;
 
   google::protobuf::ArenaOptions arena_settings_;
   std::unique_ptr<google::protobuf::Arena> arena_;

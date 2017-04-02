@@ -7,7 +7,10 @@
 
 namespace sailbot {
 
-WebSocketServer::WebSocketServer(int port) : port_(port) {
+WebSocketServer::WebSocketServer(int port)
+    : Node(1), port_(port),
+      conn_status_(AllocateMessage<msg::ConnectionStatus>()),
+      conn_queue_("connection_status", true) {
   msg::LogEntry tmp;
   const google::protobuf::Descriptor* desc = tmp.GetDescriptor();
   std::unique_lock<std::mutex> send_lck(send_map_mutex_);
@@ -20,6 +23,11 @@ WebSocketServer::WebSocketServer(int port) : port_(port) {
   hub_.onMessage(std::bind(&WebSocketServer::ProcessSocket, this,
                            std::placeholders::_1, std::placeholders::_2,
                            std::placeholders::_3, std::placeholders::_4));
+
+  hub_.listen(port_);
+  //threads_.emplace_back([this]() { hub_.run(); });
+  std::thread t([this]() { hub_.run(); });
+  t.detach();
 }
 
 WebSocketServer::~WebSocketServer() {
@@ -30,11 +38,14 @@ WebSocketServer::~WebSocketServer() {
   usleep(1000000);
 }
 
-void WebSocketServer::Run() {
-  hub_.listen(port_);
-  //threads_.emplace_back([this]() { hub_.run(); });
-  std::thread t([this]() { hub_.run(); });
-  t.detach();
+void WebSocketServer::Iterate() {
+  {
+    std::unique_lock<std::mutex> l(last_conn_mut_);
+    if (Time() > last_conn_ + std::chrono::seconds(5)) {
+      conn_status_->set_connected(false);
+    }
+  }
+  conn_queue_.send(conn_status_);
 }
 
 void WebSocketServer::RegisterQueueHandler(const std::string name) {
@@ -69,6 +80,12 @@ void WebSocketServer::ProcessQueue(const std::string name) {
 void WebSocketServer::ProcessSocket(uWS::WebSocket<uWS::SERVER> ws,
                                      char *message, size_t length,
                                      uWS::OpCode opcode) {
+  {
+    std::unique_lock<std::mutex> l(last_conn_mut_);
+    last_conn_ = Time();
+    conn_status_->set_connected(true);
+  }
+
   std::string msg(message, length);
   // First, get rid of starting/trailing "{" "}".
   if (msg.front() == '{') {
