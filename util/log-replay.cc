@@ -39,7 +39,7 @@ void LogReplay::Run() {
     }
     std::vector<const google::protobuf::FieldDescriptor*> fields;
     entry.GetReflection()->ListFields(entry, &fields);
-    CHECK_EQ(fields.size(), 2) << "We only support log entries with a timestamp + ONE message";
+    CHECK_LE(fields.size(), 2) << "We only support log entries with a timestamp + ONE message";
     for (const auto field : fields) {
       if (field->lowercase_name() == "time") {
         msg_time =
@@ -57,7 +57,8 @@ void LogReplay::Run() {
       clock_.SleepUntil(msg_time);
       cur_time = clock_.Time();
     }
-    queues_[queue_name]->send(msg_buffer, n);
+    if (queue_name.size() > 0)
+      queues_[queue_name]->send(msg_buffer, n);
   }
 }
 
