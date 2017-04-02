@@ -68,10 +68,10 @@ void RudderController::Iterate() {
   constexpr double Kwd = 0.1; // rad/s, Gain for calculated desired omegad
   constexpr double Kp = 10; // rad, proportional constant
   constexpr double Kd = 1; // s^-1, derivative constant
-  constexpr double Kiw = 0.5; // s^-2, constant for calculating bias
+  constexpr double Kiw = 0 * 0.5; // s^-2, constant for calculating bias
   constexpr double epsilon = 1e-2; // Dimensionless, for equation (9) in paper
   constexpr double vcrit = 0.5; // m/s, Critical vlon to switch between heading/course
-  constexpr double lambda = 20; // Constant for controlling rate of switching
+  constexpr double lambda = 10; // Constant for controlling rate of switching
 
   double vnorm = vlat * vlat + vlon * vlon;
   double speed = std::sqrt(vnorm);

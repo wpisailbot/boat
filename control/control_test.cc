@@ -52,13 +52,13 @@ class SimpleControlTest : public TestWrapper {
         }, FLAGS_csv_file, .1),
 #undef TRUE_STATE
 #undef LOG_VECTOR
-      simple_ctrl_(false) {
+      simple_ctrl_(true) {
 
     threads_.emplace_back(&WebSocketServer::Run, &server_);
     threads_.emplace_back(&CsvLogger::Run, &csv_logger_);
     threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);
     threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
-    threads_.emplace_back(&control::RudderController::Run, &rudder_);
+//    threads_.emplace_back(&control::RudderController::Run, &rudder_);
     threads_.emplace_back(&control::LineTacker::Run, &tacker_);
     threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
   }
@@ -74,10 +74,23 @@ class SimpleControlTest : public TestWrapper {
   WebSocketServer server_;
   sim::SimulatorNode sim_node_;
   control::SimpleControl simple_ctrl_;
-  control::RudderController rudder_;
+//  control::RudderController rudder_;
   control::LineTacker tacker_;
   control::StateEstimator state_estimator_;
 };
+
+namespace {
+double ToLat(double y) {
+  return y / 111054. + 41;
+}
+double ToLon(double x) {
+  return x / 84135. - 71;
+}
+void SetWaypoint(msg::Waypoint* p, double x, double y) {
+  p->set_x(ToLon(x));
+  p->set_y(ToLat(y));
+}
+}  // namespace
 
 TEST_F(SimpleControlTest, NavigationChallenge) {
 //  FLAGS_v = 2;
@@ -86,18 +99,14 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   msg::Waypoint* p2 = waypoints.add_points();
   msg::Waypoint* p3 = waypoints.add_points();
 //  msg::Waypoint* p4 = waypoints.add_points();
-  p1->set_x(0);
-  p1->set_y(0);
-  p2->set_x(100);
-  p2->set_y(-100);
-  p3->set_x(100);
-//  p3->set_y(100);
-  p3->set_y(300);
+  SetWaypoint(p1, 0, 0);
+  SetWaypoint(p2, 200, -100);
+  SetWaypoint(p3, 100, 300);
 //  p4->set_x(0);
 //  p4->set_y(0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_.set_wind(0, 6);
+  sim_node_.set_wind(0, 3);
   Sleep(750);
   ASSERT_TRUE(true);
 }
@@ -109,16 +118,11 @@ TEST_F(SimpleControlTest, Square) {
   msg::Waypoint* p3 = waypoints.add_points();
   msg::Waypoint* p4 = waypoints.add_points();
   msg::Waypoint* p5 = waypoints.add_points();
-  p1->set_x(0);
-  p1->set_y(0);
-  p2->set_x(0);
-  p2->set_y(150);
-  p3->set_x(-150);
-  p3->set_y(150);
-  p4->set_x(-150);
-  p4->set_y(0);
-  p5->set_x(0);
-  p5->set_y(0);
+  SetWaypoint(p1, 0, 0);
+  SetWaypoint(p2, 0, 150);
+  SetWaypoint(p3, -150, 150);
+  SetWaypoint(p4, -150, 0);
+  SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_.set_wind(0, 6);

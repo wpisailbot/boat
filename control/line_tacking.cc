@@ -14,7 +14,7 @@ LineTacker::LineTacker()
       cur_pos_({0, 0}), wind_dir_(0), cur_theta_(0),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
-  RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {
+  RegisterHandler<msg::Vector3f>("true_wind", [this](const msg::Vector3f &msg) {
     wind_dir_ = std::atan2(msg.y(), msg.x());
   });
   // TODO(james): Thread-safeness.
@@ -73,12 +73,16 @@ float LineTacker::GoalHeading() {
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
-  if (dist < 2 && i_ < way_len_ - 2) {
+  if (dist < 2e-5 && i_ < way_len_ - 2) {
     ++i_;
   }
 
   if (std::abs(goal_wind_diff) > kCloseHaul + kWindTol) {
     // It is worth it to go ahead and go straight there.
+    LOG(INFO) << "Going straight to " << nominal_heading << " i: " << i_;
+    LOG(INFO) << "endx: " << end.x << ", endy: " << end.y
+              << ", startx: " << start.x << ", starty: " << end.y
+              << ", curx: " << cur_pos_.x << ", cury: " << cur_pos_.y;
     return nominal_heading;
   }
 
@@ -100,6 +104,7 @@ float LineTacker::GoalHeading() {
     }
   }
 
+  LOG(FATAL) << "Reached unreachable state";
   return nominal_heading;
 }
 

@@ -17,6 +17,9 @@ class RudderController : public Node {
  private:
   static constexpr float dt_ = 0.01;
   void Iterate() override;
+
+  void CalcDARE(int steps) {}
+
   const Matrix<1, 4> K_;
   std::mutex state_access_;
   // State vector: [Yaw, Yaw-dot, Rudder, Rudder-dot]

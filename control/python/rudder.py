@@ -17,8 +17,9 @@ class Rudder(controls.Controller):
                         [0, 0, 1e-3, 0],
                         [0, 0, 0, 0]])
 
-    self.R = np.matrix([[30, 0],
+    self.R = np.matrix([[30 * 1e1, 0],
                         [0, 1]])
+    self.R = np.matrix([[1]])
 
     self.CalcAB()
     self.Discretize()
@@ -36,6 +37,7 @@ class Rudder(controls.Controller):
                          [0, 0],
                          [Kr, 0],
                          [0, 1]])
+    self.Bc = self.Bc[:, 1]
 
   def RunAndPlot(self, R, x_i=np.zeros((4, 1)), t=10, title=None, biasx=None):
     t, X, U = self.Run(x_i, R[:4, 0], t, biasx)
@@ -43,7 +45,7 @@ class Rudder(controls.Controller):
     ax = plt.subplot(211)
     plt.gcf().canvas.set_window_title(title)
     plt.plot(t, U[0, :].T, label="Control input goal")
-    plt.plot(t, U[1, :].T, label="Control input bias")
+#    plt.plot(t, U[1, :].T, label="Control input bias")
     plt.legend()
     plt.subplot(212, sharex=ax)
     plt.plot(t, X[0, :-1].T, label="Yaw")
@@ -55,10 +57,14 @@ class Rudder(controls.Controller):
   def RangeOfKs(self, vmin, vmax, dv):
     Ks = []
     vs = np.arange(vmin, vmax, dv)
+    Astart = self.Ad
     for v in vs:
       self.v = v
       self.CalcAB()
       self.Discretize()
+      A = np.divide(self.Ad, Astart)
+      print(v)
+      print(A)
       self.CalcLQR()
       Ks.append(self.K.tolist()[0])
     Ks = np.matrix(Ks)
@@ -93,12 +99,13 @@ if __name__ == "__main__":
     obj.RunAndPlot(np.matrix([[1],[0],[0],[0]]),
                    title="Innacurate (low) Velocity with bias",
                    biasx=np.matrix([[0], [.1], [0], [0]]))
-    obj.K[1, :] = 0
+   # obj.K[1, :] = 0
     print("K: " + repr(obj.K))
     obj.RunAndPlot(np.matrix([[1],[0],[0],[0]]),
                    title="Innacurate (low) Velocity with bias, no correction",
                    biasx=np.matrix([[0], [.1], [0], [0]]))
     obj.CalcLQR()
     obj.RunAndPlot(np.matrix([[1],[0],[0],[0]]), title="Higher Velocity")
-    #obj.RangeOfKs(0.2, 10, 0.1)
+    obj.RangeOfKs(0.2, 10, 0.1)
+
     plt.show()
