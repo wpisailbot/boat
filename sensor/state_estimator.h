@@ -20,6 +20,7 @@ class StateEstimator : public Node {
 
   ProtoQueue<msg::BoatState> state_queue_;
   ProtoQueue<msg::Vector3f> wind_queue_;
+  ProtoQueue<msg::Vector3f> true_wind_queue_;
   // For locking access to all the state variables.
   std::mutex state_msg_mutex_;
   // Store the state in the Eigen variables until we send out the state_msg_.

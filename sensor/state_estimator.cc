@@ -6,8 +6,8 @@ namespace control {
 
 StateEstimator::StateEstimator()
     : Node(0.01), state_queue_("boat_state", true), wind_queue_("wind", true),
-      euler_angles_(Vector3d::Zero()), omega_(Vector3d::Zero()),
-      pos_(Vector3d::Zero()), vel_(Vector3d::Zero()),
+      true_wind_queue_("true_wind", true), euler_angles_(Vector3d::Zero()),
+      omega_(Vector3d::Zero()), pos_(Vector3d::Zero()), vel_(Vector3d::Zero()),
       state_msg_(AllocateMessage<msg::BoatState>()),
       wind_msg_(AllocateMessage<msg::Vector3f>()) {
   // Vessel Heading
@@ -15,7 +15,7 @@ StateEstimator::StateEstimator()
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_heading() && msg.heading().has_heading()) {
-      euler_angles_[2] = msg.heading().heading();
+      euler_angles_[2] = -msg.heading().heading();
     }
   });
   // Rate of Turn
@@ -36,8 +36,8 @@ StateEstimator::StateEstimator()
         euler_angles_[0] = msg.attitude().roll();
       if (msg.attitude().has_pitch())
         euler_angles_[1] = msg.attitude().pitch();
-      if (msg.attitude().has_yaw())
-        euler_angles_[2] = msg.attitude().yaw();
+      //if (msg.attitude().has_yaw())
+      //  euler_angles_[2] = msg.attitude().yaw();
     }
   });
   // Position Update
@@ -68,13 +68,20 @@ StateEstimator::StateEstimator()
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_wind_data() && msg.wind_data().has_wind_speed() &&
-        msg.wind_data().has_wind_angle()) {
-      const float speed = msg.wind_data().wind_speed();
-      const float dir = msg.wind_data().wind_angle();
+        msg.wind_data().has_wind_angle() && msg.wind_data().has_reference()) {
+      // Airmar provides direction wind is coming from, not where it is
+      // and uses compass headings, not real headiings.
+      const float speed = -msg.wind_data().wind_speed();
+      const float dir = -msg.wind_data().wind_angle();
       wind_msg_->set_x(speed * std::cos(dir));
       wind_msg_->set_y(speed * std::sin(dir));
       wind_msg_->set_z(0);
-      wind_queue_.send(wind_msg_);
+      if (msg.wind_data().reference() ==
+          msg::can::WindData_WIND_REFERENCE_APPARENT) {
+        wind_queue_.send(wind_msg_);
+      } else {
+        true_wind_queue_.send(wind_msg_);
+      }
     }
   });
   // Internal state data.
