@@ -1,12 +1,14 @@
-var quaternionQueue = "sim_true_boat_state.orientation.";
-var sailState = "sim_true_boat_state.internal.sail";
-var rudderState = "sim_true_boat_state.internal.rudder";
-var positionQueue = "sim_true_boat_state.pos";
+var boatState = "boat_state"
+var quaternionQueue = boatState + ".orientation.";
+var sailState = boatState + ".internal.sail";
+var rudderState = boatState + ".internal.rudder";
+var positionQueue = boatState + ".pos";
 var waypointsQueue = "waypoints";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};
 // Variables for transforming between coordinate systems.
 var inertialFramePos = {x: 500, y: 500};
+var posTranslate = {x: 0, y: 0};
 var scale = 4;
 
 function normalizeAngle(a) {
@@ -17,6 +19,34 @@ function normalizeAngle(a) {
     a -= int(a / tau - .5) * tau;
   }
   return a;
+}
+
+function toRad(x) {
+  return x * Math.PI / 180;
+}
+
+function GPSDistance(lat1, lon1, lat2, lon2) {
+  lat1 = toRad(lat1);
+  lat2 = toRad(lat2);
+  lon1 = toRad(lon1);
+  lon2 = toRad(lon2);
+  a = Math.pow(Math.sin((lat2 - lat1) / 2), 2) +
+      Math.cos(lat1) * Math.cos(lat2) *
+        Math.pow(Math.sin((lon2 - lon1) / 2), 2);
+  c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  R = 6.371e6; // Earth's radius
+  d = R * c;
+  return d;
+}
+
+function GPSBearing(lat1, lon1, lat2, lon2) {
+  lat1 = toRad(lat1);
+  lat2 = toRad(lat2);
+  lon1 = toRad(lon1);
+  lon2 = toRad(lon2);
+  y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+  x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+  return Math.atan2(x, y);
 }
 
 function quaternionToEuler(quaternion) {
@@ -46,15 +76,16 @@ function quaternionToEuler(quaternion) {
 }
 
 function toInertialSvgCoords(pos) {
-  return {x: scale * pos.x, y: scale * -pos.y};
+  return {x: scale * (pos.x - posTranslate.x), y: scale * (posTranslate.y - pos.y)};
 }
 
 function svgInertialToBoat(pos) {
-  return {x: pos.x / scale, y: -pos.y / scale};
+  return {x: pos.x / scale + posTranslate.x, y: posTranslate.y - pos.y / scale};
 }
 
 function svgMainToInertial(pos) {
-  return {x : -inertialFramePos.x + pos.x, y : -inertialFramePos.y + pos.y};
+  return {x : -inertialFramePos.x + pos.x,
+          y : -inertialFramePos.y + pos.y};
 }
 
 function setRotation(id, angle) {
@@ -175,21 +206,28 @@ function waypointsListener() {
   maxy = Math.max(maxy, boaty);
 
   // Provide a buffer.
-  minx -= 5;
-  miny -= 5;
-  maxx += 5;
-  maxy += 5;
+  minx -= .00001;
+  miny -= .00001;
+  maxx += .00001;
+  maxy += .00001;
   var svgWidth = $("#myCanvas").width();
   var svgHeight = $("#myCanvas").height();
   // Give us a bit of padding for the case of really near waypoints.
-  var dx = Math.max(maxx - minx, 50);
-  var dy = Math.max(maxy - miny, 50);
+  var dx = Math.max(maxx - minx, .00001);
+  var dy = Math.max(maxy - miny, .00001);
   var scalex = svgWidth / dx;
   var scaley = svgHeight / dy;
   scale = Math.min(scalex, scaley); // Avoid running one coordinate off the edge of the screen
-  inertialFramePos.x = -(minx + maxx) / 2 * scale + svgWidth / 2;
-  inertialFramePos.y = (miny + maxy) / 2 * scale + svgHeight / 2;
+  posTranslate.x = (minx + maxx) / 2;
+  posTranslate.y = (miny + maxy) / 2;
+  inertialFramePos.x = svgWidth / 2;
+  inertialFramePos.y = svgHeight / 2;
   setTranslate(inertialFrame, inertialFramePos.x, inertialFramePos.y);
+
+  lat_per_meter = 1e-5 / GPSDistance(miny, minx, miny + 1e-5, minx);
+  $("#gps_lat_to_m").html(lat_per_meter.toFixed(10));
+  lon_per_meter = 1e-5 / GPSDistance(miny, minx, miny, minx + 1e-5);
+  $("#gps_lon_to_m").html(lon_per_meter.toFixed(10));
 }
 
 function clicked(evt){
@@ -237,6 +275,6 @@ function initializeBoatHandlers() {
   addHandler(waypointsQueue, waypointsListener);
 
   addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
-  addVector("demo_hull_loc", "orange", 0, 0, "wind", null, null, 15);
+  addVector("demo_hull_loc", "orange", 0, 0, "true_wind", null, null, 15);
   addVector("demo_hull_loc", "purple", 0, 0, null, "heading_cmd.heading", 10, 1);
 }

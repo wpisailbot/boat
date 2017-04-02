@@ -1,6 +1,8 @@
 var fields = {};
 var ops = {}; // The various operations which can be applied to fields
 var data_class = "data_output";
+var input_field_class = "data_input";
+var input_submit_class = "data_submit";
 var ws = null;
 
 function createOps() {
@@ -13,6 +15,45 @@ function registerFieldHandlers() {
     tryInitField(field_name);
     addHandler(field_name, function() { updateFieldHandler(field_name); });
     fields[field_name].text_fields.push(element);
+  });
+}
+
+function registerSendHandlers() {
+  var inputs = {};
+  function getQueueName(e) {
+    queue = e.getAttribute("msg");
+    if (typeof queue !== "string") {
+      return undefined;
+    } else {
+      return queue;
+    }
+  }
+  $("." + input_field_class).each(function(i, element) {
+    queue = getQueueName(element)
+    if (queue === undefined) {
+      return;
+    }
+    if (inputs[queue] === undefined) {
+      inputs[queue] = []
+    }
+    inputs[queue].push(element);
+  });
+  $("." + input_submit_class).each(function(i, element) {
+    queue = getQueueName(element)
+    if (queue === undefined) {
+      return;
+    }
+    element.onclick = function() {
+      var msg = {};
+      var fields = inputs[queue];
+      for (i in fields) {
+        field = fields[i];
+        // TODO(james) Check for missing field value
+        fname = field.getAttribute("field");
+        msg[fname] = parseFloat(field.value);
+      }
+      sendMessage(queue, msg);
+    };
   });
 }
 
@@ -80,7 +121,7 @@ function sendRequests() {
   if (!wsReady()) {
     return;
   }
-  sendMessage("ping", {a: ++a});
+  //sendMessage("ping", {a: ++a});
   var request = "{";
   for (var f in fields) {
     if (f === "time") {
@@ -115,9 +156,10 @@ $(window).on('load', function() {
   }
   createOps();
   registerFieldHandlers();
+  registerSendHandlers();
   initializeBoatHandlers();
-  setupRigidWingSend();
-  setupHeadingSend();
+//  setupRigidWingSend();
+//  setupHeadingSend();
 
   initializeWebsocket();
   periodic(sendRequests, 100);
@@ -145,21 +187,4 @@ function setupRigidWingSend() {
   $(submitId).click(function() { periodic(sendSailCmd, 500); });
 
   $(submitId).click();
-}
-
-function setupHeadingSend() {
-  var submitId = "#heading_submit";
-  if ($(submitId).length == 0) {
-    // Not on debug page
-    return;
-  }
-  function sendHeadingCmd() {
-    // Take all the values and send them!
-    var msg = {
-      heading : parseFloat($("#goal_heading").val()),
-    };
-    sendMessage("heading_cmd", msg);
-  }
-
-  $(submitId).click(sendHeadingCmd);
 }

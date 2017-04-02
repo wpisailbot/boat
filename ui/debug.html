@@ -29,8 +29,15 @@
       <tr>
         <td>Rigid Wing Feedback: <span class="data_output" field="rigid_wing_feedback" /> </td>
       </tr>
+      <tr>
+        <td> Sail Cmd: <span class="data_output" field="sail_cmd" /> </td>
+        <td> Rudder Cmd: <span class="data_output" field="rudder_cmd" /> </td>
+        <td> Heading Cmd: <span class="data_output" field="heading_cmd" /> </td>
       </tr>
     </table>
+    <div>
+      Boat State: <span class="data_output" field="boat_state" /> </td>
+    </div>
     <div>
       Rigid Wing Send:
       State: <input type="textbox" id="rwstate" value="0">
@@ -39,10 +46,15 @@
       Servo Pos: <input type="textbox" id="rwservo" value="50">
       <input type="button" id="rwsubmit" value="Submit">
     </div>
-      Heading Send:
-      <input type="textbox" id="goal_heading" value="0">
-      <input type="button" id="heading_submit" value="Submit">
     <div>
+      Heading Send:
+      <input type="textbox" class="data_input" field="heading" msg="heading_cmd" value="0">
+      <input type="button" class="data_submit" msg="heading_cmd" value="Send Heading">
+    </div>
+    <div>
+      Manual Control Send (0=manual,1=auto):
+      <input type="textbox" class="data_input" field="mode" msg="control_mode" value="0">
+      <input type="button" class="data_submit" msg="control_mode" value="Send Mode">
     </div>
     <div>
       <span class="data_output" field="can126992"></span> <br>
@@ -55,6 +67,8 @@
       <span class="data_output" field="can129033"></span> <br>
       <span class="data_output" field="can129539"></span> <br>
       <span class="data_output" field="can130306"></span> <br>
+      <span class="data_output" field="can65282"></span> <br>
+      <span class="data_output" field="sbus_value"></span> <br>
     </div>
   </body>
 </html>
