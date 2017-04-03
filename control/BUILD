@@ -52,6 +52,11 @@ cc_library(
   hdrs=["line_tacking.h"],
   deps=[":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
+cc_binary(
+  name="line_tacking_main",
+  srcs=["line_tacking_main.cc"],
+  deps=[":line_tacking"],
+)
 cc_test(
   name="line_tacking_test",
   srcs=["line_tacking_test.cc"],

@@ -244,7 +244,7 @@ function gotoWaypoint(x, y, restart) {
   var boatx = fields[positionQueue].value.x;
   var boaty = fields[positionQueue].value.y;
   var points;
-  if (restart) {
+  if (restart || fields[waypointsQueue].value == null) {
     points = [ {x : boatx, y : boaty}, {x : x, y : y} ];
   } else {
     points = fields[waypointsQueue].value.points.concat([{x : x, y : y}]);

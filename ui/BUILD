@@ -20,7 +20,7 @@ cc_binary(
 )
 genrule(
   name="zip_site",
-  srcs=glob(["*.html", "*.js"]),
+  srcs=glob(["*.html", "*.js", "*.css"]),
   outs=["site.zip"],
   cmd="zip -j $(location site.zip) $(SRCS)",
 )

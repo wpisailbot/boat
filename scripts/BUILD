@@ -8,6 +8,7 @@ genrule(
         "//ui:server_main",
         "//control:simple_control_main",
         "//control:scamp_main",
+        "//control:line_tacking_main",
         "//sensor:state_estimator_main",
         "//sensor:sbus-test-run",
         "//can:can-ping",

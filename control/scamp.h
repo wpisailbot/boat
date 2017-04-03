@@ -12,7 +12,7 @@ class SCAMP : public Node {
  private:
   void Iterate() override;
   static int SBUSToRaw(int sbus) {
-    return ((sbus - 1023) * 90) / 1000;
+    return ((sbus - 1023.) * 90.) / 1000. + 90.;
   };
 
   ProtoQueue<msg::InternalBoatState> state_queue_;
@@ -22,7 +22,7 @@ class SCAMP : public Node {
   msg::can::CANMaster *pwm_msg_;
   std::atomic<int> raw_winch_{90};
   std::atomic<int> raw_rudder_{90};;
-  std::atomic<bool> is_manual_mode_{false};
+  std::atomic<bool> is_manual_mode_{true};
   std::atomic<bool> is_connected_{true};
 };  // class SCAMP
 

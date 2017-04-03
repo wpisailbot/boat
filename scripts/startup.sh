@@ -11,6 +11,7 @@ $DIR/logger_main -logfilename /home/debian/logfile-$(date +%s) &
 $DIR/can-dump &
 $DIR/server_main &
 $DIR/simple_control_main &
+$DIR/line_tacking_main &
 $DIR/state_estimator_main &
 $DIR/scamp_main &
 $DIR/sbus-test-run &

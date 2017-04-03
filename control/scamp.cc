@@ -1,15 +1,17 @@
 #include "scamp.h"
 #include "control/actuator_cmd.pb.h"
+#include "gflags.h"
+
+DEFINE_int32(full_out_pot, 400, "Pot value at winch = 90 deg");
+DEFINE_int32(full_in_pot, 700, "Pot value at winch = 0 deg");
 
 namespace sailbot {
 
 namespace {
 
-constexpr int kMinPot = 400;
-constexpr int kMaxPot = 700;
 float WinchPotToAngle(float pot_val) {
-  constexpr int kPotRange = kMaxPot - kMinPot;
-  return (1. - (pot_val - kMinPot) / kPotRange) * M_PI / 2;
+  const int kPotRange = FLAGS_full_out_pot - FLAGS_full_in_pot;
+  return (pot_val - FLAGS_full_in_pot) / kPotRange * M_PI / 2;
 }
 
 }  // namespace
@@ -62,8 +64,8 @@ SCAMP::SCAMP()
   });
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
     if ((is_manual_mode_ || !is_connected_) && sbus.channel_size() >= 2) {
-      raw_rudder_ = SBUSToRaw(sbus.channel(1));
-      raw_rudder_ = SBUSToRaw(sbus.channel(2));
+      raw_rudder_ = SBUSToRaw(sbus.channel(0));
+      raw_winch_ = SBUSToRaw(sbus.channel(1));
     }
   });
   RegisterHandler<msg::ConnectionStatus>(
