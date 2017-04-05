@@ -19,7 +19,7 @@ class WebSocketServer : public Node {
  private:
   void RegisterQueueHandler(const std::string name);
   void ProcessQueue(const std::string name);
-  void ProcessSocket(uWS::WebSocket<uWS::SERVER> ws, char *message,
+  void ProcessSocket(uWS::WebSocket<uWS::SERVER> *ws, char *message,
                      size_t length, uWS::OpCode opcode);
   std::string GetCurrentVal(const std::string &msg);
   void Iterate();

@@ -21,7 +21,7 @@ function registerFieldHandlers() {
 function registerSendHandlers() {
   var inputs = {};
   function getQueueName(e) {
-    queue = e.getAttribute("msg");
+    var queue = e.getAttribute("msg");
     if (typeof queue !== "string") {
       return undefined;
     } else {
@@ -29,7 +29,7 @@ function registerSendHandlers() {
     }
   }
   $("." + input_field_class).each(function(i, element) {
-    queue = getQueueName(element)
+    var queue = getQueueName(element)
     if (queue === undefined) {
       return;
     }
@@ -39,7 +39,7 @@ function registerSendHandlers() {
     inputs[queue].push(element);
   });
   $("." + input_submit_class).each(function(i, element) {
-    queue = getQueueName(element)
+    var queue = getQueueName(element)
     if (queue === undefined) {
       return;
     }

@@ -13,6 +13,7 @@ genrule(
         "//sensor:sbus-test-run",
         "//can:can-ping",
         "//rigid_wing:rigid_wing_ping",
+        "//util:log_replay_test",
         "//util:ping",
         "//util:pong"],
   outs=["output.zip"],

@@ -58,6 +58,7 @@ void WebSocketServer::ProcessQueue(const std::string name) {
   char buf[BUF_LEN];
   size_t rcvd;
   msg::LogEntry entry;
+  msg::LogEntry tmp;
   while (!util::IsShutdown()) {
     // TODO(james): Shutdown while receiving from queue.
     if (!q.receive(buf, BUF_LEN, rcvd)) {
@@ -66,9 +67,12 @@ void WebSocketServer::ProcessQueue(const std::string name) {
     if (util::IsShutdown())
       return;
     std::unique_lock<std::mutex> lck(map_mutex_);
-    entry.ParseFromArray(buf, rcvd);
+    if (tmp.ParseFromArray(buf, rcvd)) {
+      entry = tmp;
+    }
     msgs_[name] = &entry;
   }
+  std::unique_lock<std::mutex> lck(map_mutex_);
   msgs_[name] = nullptr;
 }
 
@@ -77,9 +81,9 @@ void WebSocketServer::ProcessQueue(const std::string name) {
 // If a value is provided for the member, then it must be an object
 // and the member name must correspond to a queue (ie, no periods).
 // Note: For simplicity, there should be no extra whitespace.
-void WebSocketServer::ProcessSocket(uWS::WebSocket<uWS::SERVER> ws,
-                                     char *message, size_t length,
-                                     uWS::OpCode opcode) {
+void WebSocketServer::ProcessSocket(uWS::WebSocket<uWS::SERVER> *ws,
+                                    char *message, size_t length,
+                                    uWS::OpCode opcode) {
   {
     std::unique_lock<std::mutex> l(last_conn_mut_);
     last_conn_ = Time();
@@ -167,7 +171,7 @@ void WebSocketServer::ProcessSocket(uWS::WebSocket<uWS::SERVER> ws,
     }
   }
   out_str.back() = '}'; // Overwrite Ending comma.
-  ws.send(out_str.c_str(), out_str.size(), opcode);
+  ws->send(out_str.c_str(), out_str.size(), opcode);
 }
 
 std::string WebSocketServer::GetCurrentVal(const std::string &msg) {

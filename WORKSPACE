@@ -29,7 +29,7 @@ new_git_repository(
 new_git_repository(
   name="ws",
   remote = "https://github.com/uWebSockets/uWebSockets.git",
-  tag = "v0.12.0",
+  tag = "v0.14.0",
   build_file = "third_party/ws.BUILD"
 )
 
