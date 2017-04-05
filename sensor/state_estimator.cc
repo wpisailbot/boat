@@ -15,7 +15,7 @@ StateEstimator::StateEstimator()
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_heading() && msg.heading().has_heading()) {
-      euler_angles_[2] = -msg.heading().heading();
+      euler_angles_[2] = -msg.heading().heading() + M_PI / 2.;
     }
   });
   // Rate of Turn

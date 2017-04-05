@@ -29,7 +29,8 @@ void FakeAirmar::Iterate() {
   msg::can::CANMaster out;
 
   // Reverse sign of yaw because headings are compass headings
-  out.mutable_heading()->set_heading(-state_.euler().yaw() + Normal(0, 0.05));
+  out.mutable_heading()->set_heading(M_PI / 2. - state_.euler().yaw() +
+                                     Normal(0, 0.05));
   heading_.send(&out);
   out.clear_heading();
 
