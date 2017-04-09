@@ -15,6 +15,14 @@ class SCAMP : public Node {
     return ((sbus - 1023.) * 90.) / 1000. + 90.;
   };
 
+  void SetRawFromSailCmd(float volts);
+  void SetRawFromRudderCmd(const msg::RudderCmd &cmd);
+
+  bool IsDisabled() { return control_mode_ == msg::ControlMode_MODE_DISABLE; }
+  bool IsAuto() { return control_mode_ == msg::ControlMode_MODE_AUTO; }
+  bool IsManualRC() { return control_mode_ == msg::ControlMode_MODE_MANUAL_RC; }
+  bool IsManualWiFi() { return control_mode_ == msg::ControlMode_MODE_MANUAL_WIFI; }
+
   ProtoQueue<msg::InternalBoatState> state_queue_;
   msg::InternalBoatState *state_msg_;
   std::mutex state_msg_mut_;
@@ -22,7 +30,7 @@ class SCAMP : public Node {
   msg::can::CANMaster *pwm_msg_;
   std::atomic<int> raw_winch_{90};
   std::atomic<int> raw_rudder_{90};;
-  std::atomic<bool> is_manual_mode_{true};
+  std::atomic<int> control_mode_{msg::ControlMode_MODE_DISABLE};
   std::atomic<bool> is_connected_{true};
 };  // class SCAMP
 

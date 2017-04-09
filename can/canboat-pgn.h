@@ -445,6 +445,7 @@ Pgn pgnList[] =
 ,
 { "Analog Read", 0xFF01, true, 1, 0,
   { { "Val", BYTES(1), 4, false, 0, "" }
+  , { "Current", BYTES(1), 1, false, 0, "" }
   , { 0 }
   }
 }

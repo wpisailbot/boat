@@ -42,6 +42,8 @@ message LogEntry {
   optional ConnectionStatus connection_status = 509;
   optional ControlMode control_mode = 510;
   optional Vector3f true_wind = 511;
+  optional SailCmd manual_sail_cmd = 512;
+  optional RudderCmd manual_rudder_cmd = 513;
 
   // Test Messages
   optional PingMsg ping = 2000;

@@ -61,6 +61,11 @@ class SimpleControlTest : public TestWrapper {
 //    threads_.emplace_back(&control::RudderController::Run, &rudder_);
     threads_.emplace_back(&control::LineTacker::Run, &tacker_);
     threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
+
+    ProtoQueue<msg::ControlMode> mode_queue("control_mode", true);
+    msg::ControlMode mode_msg;
+    mode_msg.set_mode(msg::ControlMode_MODE_AUTO);
+    mode_queue.send(&mode_msg);
   }
 
   ~SimpleControlTest() {

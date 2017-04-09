@@ -206,10 +206,10 @@ function waypointsListener() {
   maxy = Math.max(maxy, boaty);
 
   // Provide a buffer.
-  minx -= .00001;
-  miny -= .00001;
-  maxx += .00001;
-  maxy += .00001;
+  minx -= .0001;
+  miny -= .0001;
+  maxx += .0001;
+  maxy += .0001;
   var svgWidth = $("#myCanvas").width();
   var svgHeight = $("#myCanvas").height();
   // Give us a bit of padding for the case of really near waypoints.
@@ -224,9 +224,9 @@ function waypointsListener() {
   inertialFramePos.y = svgHeight / 2;
   setTranslate(inertialFrame, inertialFramePos.x, inertialFramePos.y);
 
-  lat_per_meter = 1e-5 / GPSDistance(miny, minx, miny + 1e-5, minx);
+  var lat_per_meter = 1e-5 / GPSDistance(miny, minx, miny + 1e-5, minx);
   $("#gps_lat_to_m").html(lat_per_meter.toFixed(10));
-  lon_per_meter = 1e-5 / GPSDistance(miny, minx, miny, minx + 1e-5);
+  var lon_per_meter = 1e-5 / GPSDistance(miny, minx, miny, minx + 1e-5);
   $("#gps_lon_to_m").html(lon_per_meter.toFixed(10));
 }
 
@@ -236,7 +236,8 @@ function clicked(evt){
   var x = evt.clientX - dim.left;
   var y = evt.clientY - dim.top;
   var simPos = svgInertialToBoat(svgMainToInertial({x : x, y : y}));
-  gotoWaypoint(simPos.x, simPos.y, false);
+  // If CTRL is pressed, reset waypoints
+  gotoWaypoint(simPos.x, simPos.y, evt.shiftKey);
 }
 
 // restart = whether to add on waypoint or to restart from scratch.
@@ -262,9 +263,22 @@ function submitWaypoints() {
   gotoWaypoint(x, y, true);
 }
 
+function submitRelativeWaypoint() {
+  var pos = fields[positionQueue].value;
+  var lat = pos.y;
+  var lon = pos.x;
+  var lat_per_meter = 1e-5 / GPSDistance(lat, lon, lat + 1e-5, lon);
+  var lon_per_meter = 1e-5 / GPSDistance(lat, lon, lat, lon + 1e-5);
+  var x = parseFloat($("#goto-rel-x").val()) * lon_per_meter + lon;
+  var y = parseFloat($("#goto-rel-y").val()) * lat_per_meter + lat;
+
+  gotoWaypoint(x, y, true);
+}
+
 function initializeBoatHandlers() {
   $("#background").on("click", clicked);
   $("#goto-submit").on("click", submitWaypoints);
+  $("#goto-rel-submit").on("click", submitRelativeWaypoint);
   addHandler(quaternionQueue + "w", function() { quaternionListener("w"); });
   addHandler(quaternionQueue + "x", function() { quaternionListener("x"); });
   addHandler(quaternionQueue + "y", function() { quaternionListener("y"); });

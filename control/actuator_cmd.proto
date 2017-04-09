@@ -37,8 +37,10 @@ message WaypointList {
 
 message ControlMode {
   enum MODE {
-    MANUAL = 0;
+    MANUAL_RC = 0;
     AUTO = 1;
+    MANUAL_WIFI = 2;
+    DISABLE = 3;
   }
   optional MODE mode = 1;
 }

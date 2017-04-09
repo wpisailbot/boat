@@ -69,15 +69,20 @@ StateEstimator::StateEstimator()
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_wind_data() && msg.wind_data().has_wind_speed() &&
         msg.wind_data().has_wind_angle() && msg.wind_data().has_reference()) {
+      bool true_wind = msg.wind_data().reference() !=
+                       msg::can::WindData_WIND_REFERENCE_APPARENT;
       // Airmar provides direction wind is coming from, not where it is
-      // and uses compass headings, not real headiings.
-      const float speed = -msg.wind_data().wind_speed();
-      const float dir = -msg.wind_data().wind_angle();
+      // and uses compass headings, not real headings.
+      // compass headings are (a) left-handed and (b) North-zeroed
+      float speed = -msg.wind_data().wind_speed();
+      float dir = -msg.wind_data().wind_angle();
+      if (true_wind) {
+        dir += M_PI / 2.; // Compensate for North = 0 vs. East = 0.
+      }
       wind_msg_->set_x(speed * std::cos(dir));
       wind_msg_->set_y(speed * std::sin(dir));
       wind_msg_->set_z(0);
-      if (msg.wind_data().reference() ==
-          msg::can::WindData_WIND_REFERENCE_APPARENT) {
+      if (!true_wind) {
         wind_queue_.send(wind_msg_);
       } else {
         true_wind_queue_.send(wind_msg_);

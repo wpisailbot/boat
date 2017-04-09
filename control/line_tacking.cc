@@ -73,7 +73,7 @@ float LineTacker::GoalHeading() {
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
-  if (dist < 2e-5 && i_ < way_len_ - 2) {
+  if (dist < 5e-5 && i_ < way_len_ - 2) {
     ++i_;
   }
 

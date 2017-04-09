@@ -138,6 +138,7 @@ message WindData {
 
 message AnalogPot {
   optional uint32 val = 1;
+  optional uint32 current = 2;
 }
 
 message PWMWrite {

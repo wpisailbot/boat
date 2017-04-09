@@ -70,8 +70,10 @@ void FakeAirmar::Iterate() {
       std::sqrt(wind_.x() * wind_.x() + wind_.y() * wind_.y()) +
       Normal(0, 0.1));
   // Invert x/y to properly spoof airmar wind from, rather than wind dir.
-  out.mutable_wind_data()->set_wind_angle(std::atan2(-wind_.y(), -wind_.x()) +
-                                          Normal(0, 0.05));
+  // Also, handle North vs. East 0-reference
+  double true_wind_angle = util::norm_angle(
+      M_PI / 2. - std::atan2(-wind_.y(), -wind_.x()) + Normal(0, 0.05));
+  out.mutable_wind_data()->set_wind_angle(true_wind_angle);
   out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_TRUE_NORTH_REF);
   wind_data_.send(&out);
   // And now do apparent wind...

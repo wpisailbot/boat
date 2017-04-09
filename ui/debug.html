@@ -36,9 +36,6 @@
       </tr>
     </table>
     <div>
-      Boat State: <span class="data_output" field="boat_state" /> </td>
-    </div>
-    <div>
       Rigid Wing Send:
       State: <input type="textbox" id="rwstate" value="0">
       Heel: <input type="textbox" id="rwheel" value="0">
@@ -50,9 +47,15 @@
       Heading Send:
       <input type="textbox" class="data_input" field="heading" msg="heading_cmd" value="0">
       <input type="button" class="data_submit" msg="heading_cmd" value="Send Heading">
+      Sail Voltage:
+      <input type="textbox" class="data_input" field="voltage" msg="manual_sail_cmd" value="0">
+      <input type="button" class="data_submit" msg="manual_sail_cmd" value="Send Sail">
+      Rudder Position:
+      <input type="textbox" class="data_input" field="pos" msg="manual_rudder_cmd" value="0">
+      <input type="button" class="data_submit" msg="manual_rudder_cmd" value="Send Rudder">
     </div>
     <div>
-      Manual Control Send (0=manual,1=auto):
+      Manual Control Send (0=rc,1=auto,2=wifi,3=disable):
       <input type="textbox" class="data_input" field="mode" msg="control_mode" value="0">
       <input type="button" class="data_submit" msg="control_mode" value="Send Mode">
     </div>
@@ -70,6 +73,9 @@
       <span class="data_output" field="can65281"></span> <br>
       <span class="data_output" field="can65282"></span> <br>
       <span class="data_output" field="sbus_value"></span> <br>
+    </div>
+    <div>
+      Boat State: <span class="data_output" field="boat_state" /> </td>
     </div>
   </body>
 </html>
