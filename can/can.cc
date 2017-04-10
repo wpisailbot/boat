@@ -152,6 +152,8 @@ void CanNode::Iterate() {
     uint8_t index = data[0] & 0x1F;
     uint8_t base = data[0] & 0xE0;
     data_start = index * 7 - 1;
+    VLOG(2) << "Index: " << (int)index
+            << " base: " << (int)base << " data_start: " << (int)data_start;
     --dlc;
     ++data;
     if (index == 0) {
@@ -170,7 +172,7 @@ void CanNode::Iterate() {
   }
 
   // Check if we are at the end of the message and send it.
-  bool at_end = (!msg->is_long_) || (data_start + dlc >= msg->len_);
+  bool at_end = (!msg->is_long_) || (8 * (data_start + dlc) >= msg->len_);
   if (at_end) { DecodeAndSend(msg); }
 }
 
@@ -189,7 +191,7 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
   }
   char debugbuf[128];
   size_t debug_size = 128;
-  for (size_t i = 0; i < msg->len_; ++i) {
+  for (size_t i = 0; i < (msg->len_ + 7) / 8; ++i) {
     debug_size -=
         snprintf(debugbuf + 128 - debug_size, debug_size, "0x%x ", data[i]);
   }
