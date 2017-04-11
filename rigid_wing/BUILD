@@ -13,12 +13,16 @@ cc_library(
   deps=["//util:node",
         ":rigid_wing_proto",
         "//control:util",
-        "//ui:server",
         "@gflags//:gflags",
         ],
 )
 cc_binary(
   name="rigid_wing_ping",
   srcs=["rigid_wing_ping.cc"],
+  deps=[":rigid_wing", "//ui:server"],
+)
+cc_binary(
+  name="rigid_wing_main",
+  srcs=["rigid_wing_main.cc"],
   deps=[":rigid_wing"],
 )
