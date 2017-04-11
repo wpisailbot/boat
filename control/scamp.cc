@@ -2,7 +2,7 @@
 #include "control/actuator_cmd.pb.h"
 #include "gflags.h"
 
-DEFINE_int32(full_out_pot, 300, "Pot value at winch = 90 deg");
+DEFINE_int32(full_out_pot, 500, "Pot value at winch = 90 deg");
 DEFINE_int32(full_in_pot, 800, "Pot value at winch = 0 deg");
 
 namespace sailbot {
