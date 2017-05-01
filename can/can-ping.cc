@@ -21,7 +21,7 @@ class CanPing : public Node {
     LOG(INFO) << "Sending out request to send";
     msg_->mutable_rate_turn()->set_sid(b++);
     msg_->mutable_rate_turn()->set_rate(a += 100*3e-9);
-    queue_.send(msg_);
+   // queue_.send(msg_);
   }
   ProtoQueue<msg::can::CANMaster> queue_;
   msg::can::CANMaster *msg_;
@@ -31,8 +31,8 @@ class CanPing : public Node {
 }  // namespace sailbot
 
 int main(int argc, char *argv[]) {
+  sailbot::Queue::set_testing(true);
   sailbot::util::Init(argc, argv);
-  sailbot::util::SetCurrentThreadRealtimePriority(10);
   sailbot::can::CanNode can;
   sailbot::CanPing ping;
   std::thread t(&sailbot::can::CanNode::Run, &can);

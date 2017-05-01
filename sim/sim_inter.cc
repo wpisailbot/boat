@@ -31,7 +31,6 @@ void SimulatorNode::ProcessSail(const msg::SailCmd& cmd) {
     if (impl_->get_apparent_dir() < 0) {
       pos *= -1;
     }
-    LOG(INFO) << "Goal pos: " << pos;
     sdot_ = impl_->get_sdot_for_goal(pos);
   }
 }
@@ -96,7 +95,6 @@ void SimulatorNode::Iterate() {
   euler->set_pitch(rollpitchyaw(1, 0));
   euler->set_yaw(rollpitchyaw(2, 0));
 
-  LOG(INFO) << "Deltas: " << impl_->get_deltas();
   state_msg_->mutable_internal()->set_sail(std::abs(impl_->get_deltas()));
   state_msg_->mutable_internal()->set_rudder(impl_->get_deltar());
   state_msg_->mutable_internal()->set_ballast(impl_->get_deltab());

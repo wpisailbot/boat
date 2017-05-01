@@ -57,8 +57,7 @@ StateEstimator::StateEstimator()
     if (msg.has_cog_rapid_update() && msg.cog_rapid_update().has_sog() &&
         msg.cog_rapid_update().has_cog()) {
       float speed = msg.cog_rapid_update().sog();
-      // TODO(james): Confirm the frame of reference for COG.
-      float heading = msg.cog_rapid_update().cog();
+      float heading = M_PI / 2. - msg.cog_rapid_update().cog();
       vel_[0] = speed * std::cos(heading);
       vel_[1] = speed * std::sin(heading);
     }
@@ -103,9 +102,9 @@ void StateEstimator::Iterate() {
   util::EigenToProto(pos_, state_msg_->mutable_pos());
   util::EigenToProto(vel_, state_msg_->mutable_vel());
 
-  state_msg_->mutable_euler()->set_roll(euler_angles_(0));
-  state_msg_->mutable_euler()->set_pitch(euler_angles_(1));
-  state_msg_->mutable_euler()->set_yaw(euler_angles_(2));
+  state_msg_->mutable_euler()->set_roll(euler_angles_[0]);
+  state_msg_->mutable_euler()->set_pitch(euler_angles_[1]);
+  state_msg_->mutable_euler()->set_yaw(euler_angles_[2]);
 
   Eigen::Quaterniond q = util::RollPitchYawToQuat(euler_angles_);
   state_msg_->mutable_orientation()->set_w(q.w());

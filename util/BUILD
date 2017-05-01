@@ -114,7 +114,7 @@ cc_binary(
 cc_binary(
   name="log_replay_test",
   srcs=["log-replay-main.cc"],
-  deps=[":log_replay", "//ui:server"],
+  deps=[":log_replay", "//ui:server", "//sim:csv_logger"],
 )
 
 cc_proto_library(

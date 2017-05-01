@@ -1,6 +1,7 @@
 #pragma once
 #include "util/node.h"
 #include "control/actuator_cmd.pb.h"
+#include "rigid_wing/rigid_wing.pb.h"
 #include <mutex>
 
 namespace sailbot {
@@ -17,7 +18,9 @@ class SimpleControl : public Node {
   msg::SailCmd *sail_msg_;
   msg::RudderCmd *rudder_msg_;
   msg::BallastCmd *ballast_msg_;
+  msg::RigidWingCmd *rigid_msg_;
   msg::BoatState *boat_state_;
+  int counter_{0};
   // If separate thing is dealing with tacking, listen for heading:
   std::atomic<float> heading_;
   std::mutex boat_state_mutex_;
@@ -25,6 +28,7 @@ class SimpleControl : public Node {
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
   ProtoQueue<msg::BallastCmd> ballast_cmd_;
+  ProtoQueue<msg::RigidWingCmd> rigid_cmd_;
 
   // Various useful bits
   float last_goal_ = 0;

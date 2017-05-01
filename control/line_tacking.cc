@@ -10,21 +10,24 @@ namespace control {
 constexpr int LineTacker::N_WAYPOINTS;
 
 LineTacker::LineTacker()
-    : Node(0.1), kCloseHaul(M_PI / 4), kWindTol(0.1),
+    : Node(0.1), kCloseHaul(M_PI / 3), kWindTol(0.1), kMinTackSpeed(1),
       cur_pos_({0, 0}), wind_dir_(0), cur_theta_(0),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::Vector3f>("true_wind", [this](const msg::Vector3f &msg) {
     wind_dir_ = std::atan2(msg.y(), msg.x());
   });
+  RegisterHandler<msg::Vector3f>("wind",
+                                 [this](const msg::Vector3f &msg) {
+    apparent_wind_dir_ = std::atan2(msg.y(), msg.x());
+  });
   // TODO(james): Thread-safeness.
   RegisterHandler<msg::BoatState>("boat_state",
                                   [this](const msg::BoatState &msg) {
-    Eigen::Quaternionf orientation(msg.orientation().w(), msg.orientation().x(),
-                                   msg.orientation().y(),
-                                   msg.orientation().z());
-    Eigen::Matrix3f rot = orientation.toRotationMatrix();
-    cur_theta_ = std::atan2(rot(1, 0), rot(0, 0));
+    cur_theta_ = msg.euler().yaw();
+    cur_speed_ = std::sqrt(msg.vel().x() * msg.vel().x() +
+                           msg.vel().y() * msg.vel().y());
+    cur_speed_ = 10;
     cur_pos_.x = msg.pos().x();
     cur_pos_.y = msg.pos().y();
   });
@@ -63,11 +66,13 @@ void LineTacker::Iterate() {
  *   -If over/at the boundary, to closehaul that brings us into the line.
  */
 float LineTacker::GoalHeading() {
+  FLAGS_v = 1;
   Point start = waypoints_[i_];
   Point end = waypoints_[i_+1];
   float upwind = util::norm_angle(wind_dir_ - M_PI);
   float min_closehaul = util::norm_angle(upwind - kCloseHaul);
   float max_closehaul = util::norm_angle(upwind + kCloseHaul);
+  float last_heading = heading_msg_->heading();
   float dy = end.y - cur_pos_.y;
   float dx = end.x - cur_pos_.x;
   float nominal_heading = std::atan2(dy, dx);
@@ -78,29 +83,62 @@ float LineTacker::GoalHeading() {
   }
 
   if (std::abs(goal_wind_diff) > kCloseHaul + kWindTol) {
-    // It is worth it to go ahead and go straight there.
-    LOG(INFO) << "Going straight to " << nominal_heading << " i: " << i_;
-    LOG(INFO) << "endx: " << end.x << ", endy: " << end.y
+    if (cur_speed_ > kMinTackSpeed) {
+      // It is worth it to go ahead and go straight there.
+      VLOG(1) << "Going straight to " << nominal_heading << " i: " << i_;
+      VLOG(1) << "endx: " << end.x << ", endy: " << end.y
               << ", startx: " << start.x << ", starty: " << end.y
               << ", curx: " << cur_pos_.x << ", cury: " << cur_pos_.y;
-    return nominal_heading;
+      return nominal_heading;
+    } else {
+      // Don't change tacks
+      bool starboard_goal = util::norm_angle(nominal_heading - upwind) > 0;
+      bool starboard_cur = apparent_wind_dir_ > 0;
+      if (starboard_goal == starboard_cur) {
+        return nominal_heading;
+      } else {
+        // Prevent from changing:
+        // TODO(james): Check min/max correct
+        return starboard_cur ? max_closehaul : min_closehaul;
+      }
+    }
   }
 
   float dist_to_line = DistanceFromLine(start, end, cur_pos_);
 
-  if (std::abs(dist_to_line) >= bounds_[i_]) {
-    // Too far from the path, so go back.
+  if (std::abs(dist_to_line) >= bounds_[i_] && cur_speed_ > kMinTackSpeed) {
+    // Too far from the path, so go back, but only if we will have
+    // enough speed to tack.
+    VLOG(1) << "Outside bounds and moving fast";
     if (util::norm_angle(wind_dir_ - nominal_heading) > 0) {
       return max_closehaul;
     } else {
       return min_closehaul;
     }
   } else {
-    // Close enough to the line, so go wherever is closest.
-    if (ApparentWind() > 0) {
-      return max_closehaul;
+    // Close enough to the line or too slow, so go wherever is closest.
+    //if (apparent_wind_dir_ < 0) {
+    VLOG(1) << "Inside bounds or moving slow ap wind: " << ApparentWind()
+            << " yaw: " << cur_theta_ << " wind: " << wind_dir_
+            << " app wind dir: " << apparent_wind_dir_;
+    if (std::abs(ApparentWind()) < M_PI / 2) {
+      VLOG(1) << "Going downwind";
+      if (ApparentWind() < 0) {
+        return min_closehaul;
+      } else {
+        return max_closehaul;
+      }
     } else {
-      return min_closehaul;
+      VLOG(1) << "Going upwind-ish";
+      float diff_min_close =
+          std::abs(util::norm_angle(min_closehaul - cur_theta_));
+      float diff_max_close =
+          std::abs(util::norm_angle(max_closehaul - cur_theta_));
+      if (diff_min_close < diff_max_close) {
+        return min_closehaul;
+      } else {
+        return max_closehaul;
+      }
     }
   }
 

@@ -19,11 +19,16 @@ SimpleControl::SimpleControl(bool do_rudder)
       sail_msg_(AllocateMessage<msg::SailCmd>()),
       rudder_msg_(AllocateMessage<msg::RudderCmd>()),
       ballast_msg_(AllocateMessage<msg::BallastCmd>()),
+      rigid_msg_(AllocateMessage<msg::RigidWingCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
       heading_(0),
       sail_cmd_("sail_cmd", true),
       rudder_cmd_("rudder_cmd", true),
-      ballast_cmd_("ballast_cmd", true) {
+      ballast_cmd_("ballast_cmd", true),
+      rigid_cmd_("rigid_wing_cmd", true) {
+  rigid_msg_->set_state(msg::RigidWingCmd_WingState_MANUAL);
+  rigid_msg_->set_heel(0);
+  rigid_msg_->set_max_heel(1);
   RegisterHandler<msg::BoatState>("boat_state", [this](const msg::BoatState &msg) {
     std::unique_lock<std::mutex> l(boat_state_mutex_);
     *boat_state_ = msg;
@@ -39,6 +44,7 @@ SimpleControl::SimpleControl(bool do_rudder)
 }
 
 void SimpleControl::Iterate() {
+  ++counter_;
   std::unique_lock<std::mutex> l(boat_state_mutex_);
 
   // Set angle of attack to be ~.4
@@ -65,13 +71,15 @@ void SimpleControl::Iterate() {
   // TODO(james): Temporary for testing:
   //goal = std::abs(goal_heading);
   //alphasail = boat_state_->internal().sail();
-  sail_msg_->set_voltage(3 * util::norm_angle(goal - cursail));
+  float sail_err = util::norm_angle(goal - cursail);
+  sail_msg_->set_voltage(3 * sail_err / std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(goal);
+  rigid_msg_->set_servo_pos(wind_source_dir > 0 ? 30 : 70);
 
   ballast_msg_->set_vel(-0.5 * heel);
 
   float vel = std::sqrt(vx * vx + vy * vy);
-  float max_rudder = vel < 0 ? 0.1 : (vel < 0.5 ? 0.5 : 0.7);
+  float max_rudder = vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : 0.7);
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   float goal_rudder =
@@ -82,6 +90,8 @@ void SimpleControl::Iterate() {
   rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);
+  if ((counter_ % int(.1 / dt)) == 0)
+    rigid_cmd_.send(rigid_msg_);
   if (do_rudder_) {
     rudder_cmd_.send(rudder_msg_);
   }

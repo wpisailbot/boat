@@ -27,7 +27,7 @@ SCAMP::SCAMP()
     std::unique_lock<std::mutex> lck(state_msg_mut_);
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
-    state_msg_->set_rudder((raw_rudder_ - 90.) * -M_PI / 180.);
+    state_msg_->set_rudder((raw_rudder_ - 95.) * -M_PI / 180.);
     state_queue_.send(state_msg_);
   });
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
@@ -107,7 +107,7 @@ void SCAMP::SetRawFromSailCmd(float volts) {
 }
 
 void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
-  int raw_val = -cmd.pos() / M_PI * 180. + 90;
+  int raw_val = -cmd.pos() / M_PI * 180. + 95;
 
   raw_rudder_ = raw_val;
 }

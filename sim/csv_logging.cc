@@ -94,7 +94,7 @@ void CsvLogger::Iterate() {
     }
   }
   buf[index-1] = '\n'; // Overwrite last comma
-  file_.write(buf, index);
+  if (running_) file_.write(buf, index);
 }
 
 }  // sailbot

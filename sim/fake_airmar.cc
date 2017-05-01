@@ -22,7 +22,11 @@ FakeAirmar::FakeAirmar()
 }
 
 namespace {
-  using util::Normal;
+  float Normal(float std) {
+    float r = util::Normal(0, std);
+    const int Nstd = 3;
+    return std::max(std::min(r, r + Nstd * std), r - Nstd * std);
+  }
 }
 
 void FakeAirmar::Iterate() {
@@ -30,27 +34,27 @@ void FakeAirmar::Iterate() {
 
   // Reverse sign of yaw because headings are compass headings
   out.mutable_heading()->set_heading(M_PI / 2. - state_.euler().yaw() +
-                                     Normal(0, 0.05));
+                                     Normal(0.05));
   heading_.send(&out);
   out.clear_heading();
 
   // TODO(james): Determine proper frame for rate of turn.
-  out.mutable_rate_turn()->set_rate(state_.omega().z() + Normal(0, 0.05));
+  out.mutable_rate_turn()->set_rate(state_.omega().z() + Normal(0.05));
   rate_turn_.send(&out);
   out.clear_rate_turn();
 
   // Attitude only gets sent out at 1 Hz...
   if ((counter_ % int(1 / dt)) == 0) {
-    out.mutable_attitude()->set_roll(state_.euler().roll() + Normal(0, 0.05));
-    out.mutable_attitude()->set_pitch(state_.euler().pitch() + Normal(0, 0.05));
+    out.mutable_attitude()->set_roll(state_.euler().roll() + Normal(0.05));
+    out.mutable_attitude()->set_pitch(state_.euler().pitch() + Normal(0.05));
     // TODO(james): Check whether this yaw needs to be reversed.
-    out.mutable_attitude()->set_yaw(state_.euler().yaw() + Normal(0, 0.05));
+    out.mutable_attitude()->set_yaw(state_.euler().yaw() + Normal(0.05));
     attitude_.send(&out);
     out.clear_attitude();
   }
 
-  double x = state_.pos().x() + Normal(0, .5);
-  double y = state_.pos().y() + Normal(0, .5);
+  double x = state_.pos().x() + Normal(.5);
+  double y = state_.pos().y() + Normal(.5);
   double lat = y / 111054. + 41;
   double lon = x / 84135. - 71;
   out.mutable_pos_rapid_update()->set_lon(lon);
@@ -61,18 +65,19 @@ void FakeAirmar::Iterate() {
   float vx = state_.vel().x();
   float vy = state_.vel().y();
   out.mutable_cog_rapid_update()->set_sog(std::sqrt(vx * vx + vy * vy) +
-                                          Normal(0, 0.1));
-  out.mutable_cog_rapid_update()->set_cog(std::atan2(vy, vx) + Normal(0, 0.05));
+                                          Normal(0.1));
+  out.mutable_cog_rapid_update()->set_cog(M_PI / 2. - std::atan2(vy, vx) +
+                                          Normal(0.05));
   cog_rapid_update_.send(&out);
   out.clear_cog_rapid_update();
 
   out.mutable_wind_data()->set_wind_speed(
       std::sqrt(wind_.x() * wind_.x() + wind_.y() * wind_.y()) +
-      Normal(0, 0.1));
+      Normal(0.1));
   // Invert x/y to properly spoof airmar wind from, rather than wind dir.
   // Also, handle North vs. East 0-reference
   double true_wind_angle = util::norm_angle(
-      M_PI / 2. - std::atan2(-wind_.y(), -wind_.x()) + Normal(0, 0.05));
+      M_PI / 2. - std::atan2(-wind_.y(), -wind_.x()) + Normal(0.05));
   out.mutable_wind_data()->set_wind_angle(true_wind_angle);
   out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_TRUE_NORTH_REF);
   wind_data_.send(&out);

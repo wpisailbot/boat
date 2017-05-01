@@ -16,6 +16,9 @@ class CsvLogger : public Node {
 
   ~CsvLogger();
 
+  void Stop() { running_ = false; }
+  void Start() { running_ = true; }
+
  private:
   void Iterate() override;
 
@@ -26,6 +29,7 @@ class CsvLogger : public Node {
   std::mutex data_mutex_;
   std::vector<double> data_;
   std::map<std::string, int> data_indices_;
+  std::atomic<bool> running_{true};
 
   std::ofstream file_;
 

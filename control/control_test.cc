@@ -103,12 +103,11 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
   msg::Waypoint* p3 = waypoints.add_points();
-//  msg::Waypoint* p4 = waypoints.add_points();
+  msg::Waypoint* p4 = waypoints.add_points();
   SetWaypoint(p1, 0, 0);
-  SetWaypoint(p2, 200, -100);
-  SetWaypoint(p3, 100, 300);
-//  p4->set_x(0);
-//  p4->set_y(0);
+  SetWaypoint(p2, 43, -25);
+  SetWaypoint(p3, 43, 25);
+  SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_.set_wind(0, 3);
@@ -124,14 +123,14 @@ TEST_F(SimpleControlTest, Square) {
   msg::Waypoint* p4 = waypoints.add_points();
   msg::Waypoint* p5 = waypoints.add_points();
   SetWaypoint(p1, 0, 0);
-  SetWaypoint(p2, 0, 150);
-  SetWaypoint(p3, -150, 150);
-  SetWaypoint(p4, -150, 0);
+  SetWaypoint(p2, 0, 50);
+  SetWaypoint(p3, -50, 50);
+  SetWaypoint(p4, -50, 0);
   SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
   sim_node_.set_wind(0, 6);
-  Sleep(100);
+  Sleep(150);
   ASSERT_TRUE(true);
 }
 
