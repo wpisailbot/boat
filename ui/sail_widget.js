@@ -96,6 +96,12 @@ function setTranslate(id, x, y) {
   $("."+id).attr("transform", "translate(" + x + "," + y + ")");
 }
 
+function setGridScale(id, x, y) {
+  $("#"+id).attr("width", x);
+  $("#"+id).attr("height", y);
+  $("#"+id).children("path")[0].setAttribute("d", "M " + x + " 0 L 0 0 0 " + y);
+}
+
 function quaternionListener(component) {
   quaternion[component] = fields[quaternionQueue + component].value;
   setRotation("hull_rotate", -quaternionToEuler(quaternion).yaw);
@@ -228,6 +234,16 @@ function waypointsListener() {
   $("#gps_lat_to_m").html(lat_per_meter.toFixed(10));
   var lon_per_meter = 1e-5 / GPSDistance(miny, minx, miny, minx + 1e-5);
   $("#gps_lon_to_m").html(lon_per_meter.toFixed(10));
+
+  var gridxscale = 10 * lon_per_meter.toFixed(8);
+  var gridyscale = 10 * lat_per_meter.toFixed(8);
+  var gridx = gridxscale * Math.round((posTranslate.x - inertialFramePos.x / scale) / gridxscale);
+  var gridy = gridyscale * Math.round((posTranslate.y + inertialFramePos.y / scale) / gridyscale);
+  gridx -= gridxscale;
+  gridy += gridyscale;
+  var inertialgrid = toInertialSvgCoords({x: gridx, y: gridy});
+  setTranslate("grid_trans", inertialgrid.x, inertialgrid.y);
+  setGridScale("smallGrid", gridxscale * scale, gridyscale * scale);
 }
 
 function clicked(evt){

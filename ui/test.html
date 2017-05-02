@@ -9,8 +9,18 @@
   <body>
     <!-- The main big canvas -->
     <svg id="myCanvas" width="80vw" height="90vh">
-      <rect x="0" y="0" width="100%" height="100%" style="fill-opacity:0;stroke-opacity:0" id="background" />
+      <defs>
+          <pattern id="smallGrid" width="1" height="1" patternUnits="userSpaceOnUse">
+            <path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="1"/>
+          </pattern>
+      </defs>
+
       <g transform="translate(500, 500)" class="inertial_frame">
+
+        <g transform="translate(-500, -500)" class="grid_trans">
+          <rect x="0" y="0" width="200%" height="200%" fill="url(#smallGrid)" />
+        </g>
+
         <g transform="translate(0, 0)" class="hull_position">
           <g transform="rotate(0)" class="hull_rotate">
             <g transform="translate(-50, 0)">
@@ -23,6 +33,8 @@
           </g>
         </g>
       </g>
+
+      <rect x="0" y="0" width="100%" height="100%" style="fill-opacity:0;stroke-opacity:0" id="background" />
 
       Try a different browser
     </svg>
@@ -68,6 +80,18 @@
     </table>
 
     <div>There are <span id="gps_lat_to_m"></span> degrees of latitude to the meter and <span id="gps_lon_to_m"></span> degrees of longitude to the meter</div>
+
+    <div>General Information:
+      <p>
+        The grid is 10mx10m. It is not square because the grid is in lat/lon,
+        and at different latitudes there are different numbers of degrees
+        lat/lon per meter.
+      </p>
+      <p>
+        The colored arrows on the boat are yellow for wind, purple
+        for goal heading, and green for boat velocity.
+      </p>
+    </div>
 
   </body>
 </html>
