@@ -28,6 +28,13 @@ class LineTacker : public Node {
   float DistanceFromLine(Point start, Point end, Point loc);
   float ApparentWind(); // Direction wind is coming FROM
 
+  // Utility reward functions
+  float InIronsReward(float heading);
+  float DesirabilityReward(float heading, float nominal_heading);
+  float MomentumReward(float heading);
+  float RequiresTackingReward(float heading);
+  float IndecisionReward(float heading);
+
   Point waypoints_[N_WAYPOINTS];
   float bounds_[N_WAYPOINTS] = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
   int i_ = 0;
@@ -39,6 +46,9 @@ class LineTacker : public Node {
   std::atomic<float> apparent_wind_dir_;
   std::atomic<float> cur_theta_; // The current boat heading
   std::atomic<float> cur_speed_; // m/s
+  std::atomic<float> cur_yaw_rate_; // rad/s
+
+  std::atomic<int> tack_mode_{msg::ControlMode_TACKER_REWARD};
 
   msg::HeadingCmd* heading_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_;

@@ -5,6 +5,7 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(csv_file, "sim/python/basic_replay_data.csv", "File to save CSV data to");
+DEFINE_int64(start_time, 50000, "Time of day at which to slow down");
 
 namespace sailbot {
 class Pong : public Node {
@@ -69,7 +70,7 @@ class Pong : public Node {
 
  protected:
   virtual void Iterate() {
-    if (time_ > 51400) {
+    if (time_ > FLAGS_start_time && time_ < 184000) {
       // https://photos.google.com/share/AF1QipPKE4vvzHhIxVOMlYVmTDNU-MZcG-CIdRSTCXDK-YPGFDn8JFm3YVoFXDOs0D3-oQ/photo/AF1QipPJ1aV6olSGbYjYVkOZodEsbAkSvNt0uMlDQ7qq?key=VWlrb2ZXU3lOZGU5bDJ6QkFiUFhuMkFoWmMzWHpR @ ~9:00
       // logs/2017-04-11/logfile-1486480636
       // https://photos.google.com/share/AF1QipPKE4vvzHhIxVOMlYVmTDNU-MZcG-CIdRSTCXDK-YPGFDn8JFm3YVoFXDOs0D3-oQ/photo/AF1QipMskZdUYDQ6n64tLzBnukosbA1qqopdpdANdEmy?key=VWlrb2ZXU3lOZGU5bDJ6QkFiUFhuMkFoWmMzWHpR

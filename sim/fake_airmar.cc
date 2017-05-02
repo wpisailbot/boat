@@ -86,7 +86,7 @@ void FakeAirmar::Iterate() {
   double wy = wind_.y() - vy;
   // Add M_PI to handle to vs. from wind dir.
   double alphaw =
-      util::norm_angle(M_PI + std::atan2(wy, wx) - state_.euler().yaw());
+      -util::norm_angle(std::atan2(-wy, -wx) - state_.euler().yaw());
   out.mutable_wind_data()->set_wind_speed(std::sqrt(wx * wx + wy * wy));
   out.mutable_wind_data()->set_wind_angle(alphaw);
   out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_APPARENT);

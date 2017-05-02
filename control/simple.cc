@@ -65,7 +65,7 @@ void SimpleControl::Iterate() {
   //float alphasail = util::norm_angle(alphaw - boat_state_->internal().sail());
   float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = std::min(std::max(alphaw - 0.4, 0.), 1.5);
+  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5);
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
           << " goals: " << goal;
   // TODO(james): Temporary for testing:
