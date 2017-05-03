@@ -1,7 +1,7 @@
 #!/bin/bash
-TARGET=beaglebone
+TARGET=debian@beaglebone
 if [ -n "$3" ]
-  then TARGET="$3"
+  then TARGET="debian@$3"
 fi
 set -e
 ssh $TARGET "rm -f /tmp/output.zip"
