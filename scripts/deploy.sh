@@ -10,4 +10,5 @@ scp $1 $TARGET:/tmp/output.zip
 scp $2 $TARGET:/tmp/site.zip
 ssh $TARGET "unzip -o /tmp/output.zip -d ~/bin/sailbot"
 ssh $TARGET "unzip -o /tmp/site.zip -d ~/bin/sailbot/html"
-ssh $TARGET "sync"
+# The argument to sync may not actually do anything...
+ssh $TARGET "sync ~/bin/sailbot/*"

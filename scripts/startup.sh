@@ -1,7 +1,5 @@
 #!/bin/bash
 
-touch /tmp/foobar
-
 ulimit -c unlimited
 echo "/home/debian/cores/core.%p" > /proc/sys/kernel/core_pattern
 DIR="$( cd "$( dirname $0 )" && pwd )"

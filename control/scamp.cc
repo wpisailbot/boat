@@ -4,6 +4,7 @@
 
 DEFINE_int32(full_out_pot, 400, "Pot value at winch = 90 deg");
 DEFINE_int32(full_in_pot, 700, "Pot value at winch = 0 deg");
+DEFINE_int32(rudder_zero, 115, "Rudder value when rudder is straight");
 
 namespace sailbot {
 
@@ -27,40 +28,50 @@ SCAMP::SCAMP()
     std::unique_lock<std::mutex> lck(state_msg_mut_);
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
-    state_msg_->set_rudder((raw_rudder_ - 115.) * -M_PI / 180.);
+    state_msg_->set_rudder((raw_rudder_ - FLAGS_rudder_zero) * -M_PI / 180.);
     state_queue_.send(state_msg_);
   });
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
-    if (IsAuto()) {
-      SetRawFromSailCmd(cmd.voltage());
+    if (IsAuto(WINCH)) {
+      volts_winch_ = cmd.voltage();
     }
   });
 
   RegisterHandler<msg::SailCmd>("manual_sail_cmd",
                                 [this](const msg::SailCmd &cmd) {
-    if (IsManualWiFi()) {
-      SetRawFromSailCmd(is_connected_ ? cmd.voltage() : 0.);
+    if (IsManualWiFi(WINCH)) {
+      volts_winch_ = is_connected_ ? cmd.voltage() : 0.;
     }
   });
 
   RegisterHandler<msg::RudderCmd>("rudder_cmd",
                                   [this](const msg::RudderCmd &cmd) {
-    if (IsAuto()) {
+    if (IsAuto(RUDDER)) {
       SetRawFromRudderCmd(cmd);
     }
   });
 
   RegisterHandler<msg::RudderCmd>("manual_rudder_cmd",
                                   [this](const msg::RudderCmd &cmd) {
-    if (IsManualWiFi()) {
+    if (IsManualWiFi(RUDDER)) {
       SetRawFromRudderCmd(cmd);
     }
   });
 
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
-    if (IsManualRC() && sbus.channel_size() >= 2) {
-      raw_rudder_ = (SBUSToRaw(sbus.channel(0)) - 90.) * .5 + 90;
-      raw_winch_ = SBUSToRaw(sbus.channel(1));
+    if (sbus.channel_size() >= 2) {
+      if (IsManualRC(RUDDER)) {
+        raw_rudder_ = (SBUSToRaw(sbus.channel(0)) - 90.) * .5 + 90;
+      } else if (IsFilteredRC(RUDDER)) {
+        raw_rudder_ =
+            (SBUSToRaw(sbus.channel(0)) - 90.) * .3 + FLAGS_rudder_zero;
+      }
+
+      if (IsManualRC(WINCH)) {
+        raw_winch_ = SBUSToRaw(sbus.channel(1));
+      } else if (IsFilteredRC(WINCH)) {
+        volts_winch_ = (SBUSToRaw(sbus.channel(1)) - 90.) * 6. / 90.;
+      }
     }
   });
   RegisterHandler<msg::ConnectionStatus>(
@@ -69,12 +80,17 @@ SCAMP::SCAMP()
   });
   RegisterHandler<msg::ControlMode>(
       "control_mode", [this](const msg::ControlMode &mode) {
-    if (mode.has_mode()) {
-      control_mode_ = mode.mode();
-      if (IsDisabled()) {
-        raw_winch_ = 90;
-        raw_rudder_ = 90;
-      }
+    if (mode.has_winch_mode()) {
+      winch_mode_ = mode.winch_mode();
+    }
+    if (mode.has_rudder_mode()) {
+      rudder_mode_ = mode.rudder_mode();
+    }
+    if (IsDisabled(RUDDER)) {
+      raw_rudder_ = 90;
+    }
+    if (IsDisabled(WINCH)) {
+      raw_winch_ = 90;
     }
   });
 }
@@ -82,6 +98,9 @@ SCAMP::SCAMP()
 void SCAMP::Iterate() {
   msg::can::PWMWrite *msg = pwm_msg_->mutable_pwm_write();
   VLOG(2) << "Sending message of " << msg->DebugString();
+  if (IsAuto(WINCH) || IsManualWiFi(WINCH) || IsFilteredRC(WINCH)) {
+    SetRawFromSailCmd(volts_winch_);
+  }
   msg->set_winch(raw_winch_);
   msg->set_rudder(raw_rudder_);
   pwm_queue_.send(pwm_msg_);
@@ -109,7 +128,7 @@ void SCAMP::SetRawFromSailCmd(float volts) {
 }
 
 void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
-  int raw_val = -cmd.pos() / M_PI * 180. + 115;
+  int raw_val = -cmd.pos() / M_PI * 180. + FLAGS_rudder_zero;
 
   raw_rudder_ = raw_val;
 }

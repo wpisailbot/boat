@@ -58,9 +58,12 @@
       <input type="button" class="data_submit" msg="manual_rudder_cmd" value="Send Rudder">
     </div>
     <div>
-      Current Mode: <span class="data_output" field="control_mode.mode"></span>
-      Manual Control Send (0=rc,1=auto,2=wifi,3=disable):
-      <input type="textbox" class="data_input" field="mode" msg="control_mode" value="0">
+        Mode: <span class="data_output" field="control_mode" />
+    </div>
+    <div>
+      Manual Control Send (0=rc,1=auto,2=wifi,3=disable) (winch, rudder):
+      <input type="textbox" class="data_input" field="winch_mode" msg="control_mode" value="3">
+      <input type="textbox" class="data_input" field="rudder_mode" msg="control_mode" value="3">
       <input type="button" class="data_submit" msg="control_mode" value="Send Mode">
     </div>
     <div>

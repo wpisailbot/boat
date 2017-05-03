@@ -41,14 +41,16 @@ message ControlMode {
     AUTO = 1;
     MANUAL_WIFI = 2;
     DISABLE = 3;
+    FILTERED_RC = 4;
   }
   enum TACKER {
     NONE = 0;
     LINE = 1;
     REWARD = 2;
   }
-  optional MODE mode = 1;
+  optional MODE winch_mode = 1;
   optional TACKER tacker = 2;
+  optional MODE rudder_mode = 3;
 }
 
 message Vector3f {
