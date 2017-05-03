@@ -15,4 +15,4 @@ $DIR/line_tacking_main &
 $DIR/rigid_wing_main &
 $DIR/state_estimator_main &
 $DIR/scamp_main &
-#$DIR/sbus-test-run &
+$DIR/sbus-test-run &

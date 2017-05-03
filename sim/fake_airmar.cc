@@ -38,8 +38,8 @@ void FakeAirmar::Iterate() {
   heading_.send(&out);
   out.clear_heading();
 
-  // TODO(james): Determine proper frame for rate of turn.
-  out.mutable_rate_turn()->set_rate(state_.omega().z() + Normal(0.05));
+  // Rate of turn has opposite sign for Airmar.
+  out.mutable_rate_turn()->set_rate(-state_.omega().z() + Normal(0.05));
   rate_turn_.send(&out);
   out.clear_rate_turn();
 

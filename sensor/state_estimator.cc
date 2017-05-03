@@ -24,7 +24,7 @@ StateEstimator::StateEstimator()
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     // TODO(james): Figure out what frame this is in.
     if (msg.has_rate_turn() && msg.rate_turn().has_rate()) {
-      omega_[2] = msg.rate_turn().rate();
+      omega_[2] = -msg.rate_turn().rate();
     }
   });
   // Attitude
