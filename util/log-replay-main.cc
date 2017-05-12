@@ -4,8 +4,9 @@
 #include <iomanip>
 #include <gflags/gflags.h>
 
-DEFINE_string(csv_file, "sim/python/basic_replay_data.csv", "File to save CSV data to");
+DEFINE_string(csv_file, "/tmp/basic_replay_data.csv", "File to save CSV data to");
 DEFINE_int64(start_time, 50000, "Time of day at which to slow down");
+DEFINE_double(speedup, 1, "Factor by which to speed up the replay once we hit start_time");
 
 namespace sailbot {
 class Pong : public Node {
@@ -75,7 +76,7 @@ class Pong : public Node {
       // logs/2017-04-11/logfile-1486480636
       // https://photos.google.com/share/AF1QipPKE4vvzHhIxVOMlYVmTDNU-MZcG-CIdRSTCXDK-YPGFDn8JFm3YVoFXDOs0D3-oQ/photo/AF1QipMskZdUYDQ6n64tLzBnukosbA1qqopdpdANdEmy?key=VWlrb2ZXU3lOZGU5bDJ6QkFiUFhuMkFoWmMzWHpR
       csv_->Start();
-      usleep(0.2 * 1e5);
+      usleep(1e5 / FLAGS_speedup);
     }
   }
 
