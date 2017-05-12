@@ -21,11 +21,25 @@ SimpleControl::SimpleControl(bool do_rudder)
       ballast_msg_(AllocateMessage<msg::BallastCmd>()),
       rigid_msg_(AllocateMessage<msg::RigidWingCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
+      consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       heading_(0),
       sail_cmd_("sail_cmd", true),
       rudder_cmd_("rudder_cmd", true),
       ballast_cmd_("ballast_cmd", true),
-      rigid_cmd_("rigid_wing_cmd", true) {
+      rigid_cmd_("rigid_wing_cmd", true),
+      consts_queue_("control_consts", true) {
+
+  consts_msg_->set_max_rudder(0.45);
+  consts_msg_->set_rudder_kp(0.4);
+  consts_msg_->set_winch_kp(3);
+  consts_msg_->set_sail_heel_k(1);
+  consts_msg_->set_rigid_port_servo_pos(15);
+  consts_msg_->set_rigid_starboard_servo_pos(85);
+  {
+    std::unique_lock<std::mutex> l(consts_mutex_);
+    consts_queue_.send(consts_msg_);
+  }
+
   rigid_msg_->set_state(msg::RigidWingCmd_WingState_MANUAL);
   rigid_msg_->set_heel(0);
   rigid_msg_->set_max_heel(1);
@@ -33,6 +47,11 @@ SimpleControl::SimpleControl(bool do_rudder)
     std::unique_lock<std::mutex> l(boat_state_mutex_);
     *boat_state_ = msg;
   });
+  RegisterHandler<msg::ControllerConstants>(
+      "control_consts", [this](const msg::ControllerConstants &msg) {
+        std::unique_lock<std::mutex> l(consts_mutex_);
+        *consts_msg_ = msg;
+      });
   RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {
     wind_x_ = msg.x();
     wind_y_ = msg.y();
@@ -46,6 +65,7 @@ SimpleControl::SimpleControl(bool do_rudder)
 void SimpleControl::Iterate() {
   ++counter_;
   std::unique_lock<std::mutex> l(boat_state_mutex_);
+  std::unique_lock<std::mutex> lc(consts_mutex_);
 
   // Set angle of attack to be ~.4
   float vx = boat_state_->vel().x();
@@ -65,21 +85,26 @@ void SimpleControl::Iterate() {
   //float alphasail = util::norm_angle(alphaw - boat_state_->internal().sail());
   float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5) + std::abs(heel);
+  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5) +
+               consts_msg_->sail_heel_k() * std::abs(heel);
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
           << " goals: " << goal;
   // TODO(james): Temporary for testing:
   //goal = std::abs(goal_heading);
   //alphasail = boat_state_->internal().sail();
   float sail_err = util::norm_angle(goal - cursail);
-  sail_msg_->set_voltage(3 * sail_err / std::sqrt(std::abs(sail_err)));
+  sail_msg_->set_voltage(consts_msg_->winch_kp() * sail_err /
+                         std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(goal);
-  rigid_msg_->set_servo_pos(wind_source_dir > 0 ? 15 : 85);
+  rigid_msg_->set_servo_pos(wind_source_dir > 0
+                                ? consts_msg_->rigid_port_servo_pos()
+                                : consts_msg_->rigid_starboard_servo_pos());
 
   ballast_msg_->set_vel(-0.5 * heel);
 
   float vel = std::sqrt(vx * vx + vy * vy);
-  float max_rudder = vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : 0.45);
+  float max_rudder =
+      vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   float goal_rudder =
@@ -96,6 +121,7 @@ void SimpleControl::Iterate() {
     rudder_cmd_.send(rudder_msg_);
   }
   ballast_cmd_.send(ballast_msg_);
+  consts_queue_.send(consts_msg_);
 }
 
 }  // control

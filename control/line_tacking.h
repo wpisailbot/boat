@@ -17,7 +17,6 @@ class LineTacker : public Node {
   LineTacker();
  private:
   void Iterate() override;
-  const float kCloseHaul; // How close we can sail to the wind (positive num, ~PI/4)
   const float kWindTol; // Amount of extra margin to give before tacking (small positive num)
   const float kMinTackSpeed; // Minimum speed required to execute a tack
   static constexpr int N_WAYPOINTS = 10;
@@ -34,6 +33,7 @@ class LineTacker : public Node {
   float MomentumReward(float heading);
   float RequiresTackingReward(float heading);
   float IndecisionReward(float heading);
+  float CostToGoReward(float heading);
 
   Point waypoints_[N_WAYPOINTS];
   float bounds_[N_WAYPOINTS] = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
@@ -49,6 +49,10 @@ class LineTacker : public Node {
   std::atomic<float> cur_yaw_rate_; // rad/s
 
   std::atomic<int> tack_mode_{msg::ControlMode_TACKER_REWARD};
+
+  std::mutex consts_mutex_;
+  msg::TackerConstants *consts_msg_;
+  ProtoQueue<msg::TackerConstants> consts_queue_;
 
   msg::HeadingCmd* heading_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_;

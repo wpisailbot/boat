@@ -10,10 +10,31 @@ namespace control {
 constexpr int LineTacker::N_WAYPOINTS;
 
 LineTacker::LineTacker()
-    : Node(0.1), kCloseHaul(M_PI / 4), kWindTol(0.1), kMinTackSpeed(1),
+    : Node(0.1), kWindTol(0.1), kMinTackSpeed(1),
       cur_pos_({0, 0}), wind_dir_(0), cur_theta_(0),
+      consts_msg_(AllocateMessage<msg::TackerConstants>()),
+      consts_queue_("tacker_consts", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
+
+  RegisterHandler<msg::TackerConstants>(
+      "tacker_consts", [this](const msg::TackerConstants &msg) {
+        std::unique_lock<std::mutex> lck(consts_mutex_);
+        *consts_msg_ = msg;
+      });
+
+  consts_msg_->set_close_haul_angle(M_PI / 4);
+  consts_msg_->set_in_irons_cost(3);
+  consts_msg_->set_near_goal_cost(3);
+  consts_msg_->set_hysteresis_cost(.3);
+  consts_msg_->set_diff_yaw_cost(0);
+  consts_msg_->set_momentum_cost(1);
+  consts_msg_->set_tacking_cost(0);
+  {
+    std::unique_lock<std::mutex> lck(consts_mutex_);
+    consts_queue_.send(consts_msg_);
+  }
+
   RegisterHandler<msg::Vector3f>("true_wind", [this](const msg::Vector3f &msg) {
     wind_dir_ = std::atan2(msg.y(), msg.x());
   });
@@ -63,6 +84,9 @@ void LineTacker::Iterate() {
   double gh = GoalHeading();
   heading_msg_->set_heading(gh);
   heading_cmd_.send(heading_msg_);
+
+  std::unique_lock<std::mutex> lck(consts_mutex_);
+  consts_queue_.send(consts_msg_);
 }
 
 // For all reward functions:
@@ -97,6 +121,14 @@ float LineTacker::MomentumReward(float heading) {
   return (1-diff2) * norm_yaw_rate;
 }
 
+// A penalty for goal headings that are far away from
+// our current heading. Goes hand in hand with hysteresis.
+float LineTacker::CostToGoReward(float heading) {
+  float diff = util::norm_angle(heading - cur_theta_) / M_PI;
+  float diff2 = diff * diff;
+  return 1 - diff2;
+}
+
 // Penalizes a heading for requiring that we spend time pointed upwind
 // in order to go to it.
 float LineTacker::RequiresTackingReward(float heading) {
@@ -123,12 +155,12 @@ float LineTacker::IndecisionReward(float heading) {
  *   -If over/at the boundary, to closehaul that brings us into the line.
  */
 float LineTacker::GoalHeading() {
-  FLAGS_v = 1;
+  std::unique_lock<std::mutex> lck(consts_mutex_);
   Point start = waypoints_[i_];
   Point end = waypoints_[i_+1];
   float upwind = util::norm_angle(wind_dir_ - M_PI);
-  float min_closehaul = util::norm_angle(upwind - kCloseHaul);
-  float max_closehaul = util::norm_angle(upwind + kCloseHaul);
+  float min_closehaul = util::norm_angle(upwind - consts_msg_->close_haul_angle());
+  float max_closehaul = util::norm_angle(upwind + consts_msg_->close_haul_angle());
   float last_heading = heading_msg_->heading();
   float dy = end.y - cur_pos_.y;
   float dx = end.x - cur_pos_.x;
@@ -151,10 +183,13 @@ float LineTacker::GoalHeading() {
 
     for (int i = 0; i < NHEAD; ++i) {
       float h = possible_headings[i];
-      float reward = 3 * InIronsReward(h) +
-                     3 * DesirabilityReward(h, nominal_heading) +
-                     0.3 * IndecisionReward(h) +
-                     1 * MomentumReward(h) + 0 * 1 * RequiresTackingReward(h);
+      float reward = consts_msg_->in_irons_cost() * InIronsReward(h) +
+                     consts_msg_->near_goal_cost() *
+                         DesirabilityReward(h, nominal_heading) +
+                     consts_msg_->hysteresis_cost() * IndecisionReward(h) +
+                     consts_msg_->diff_yaw_cost() * CostToGoReward(h) +
+                     consts_msg_->momentum_cost() * MomentumReward(h) +
+                     consts_msg_->tacking_cost() * RequiresTackingReward(h);
       if (reward > max_reward) {
         max_reward = reward;
         best_heading = h;
@@ -164,7 +199,7 @@ float LineTacker::GoalHeading() {
     return best_heading;
   } else if (tack_mode_ == msg::ControlMode_TACKER_LINE) {
 
-    if (std::abs(goal_wind_diff) > kCloseHaul + kWindTol) {
+    if (std::abs(goal_wind_diff) > consts_msg_->close_haul_angle() + kWindTol) {
       // It is worth it to go ahead and go straight there.
       VLOG(1) << "Going straight to " << nominal_heading << " i: " << i_;
       VLOG(1) << "endx: " << end.x << ", endy: " << end.y

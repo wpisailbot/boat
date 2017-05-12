@@ -64,7 +64,8 @@ class SimpleControlTest : public TestWrapper {
 
     ProtoQueue<msg::ControlMode> mode_queue("control_mode", true);
     msg::ControlMode mode_msg;
-    mode_msg.set_mode(msg::ControlMode_MODE_AUTO);
+    mode_msg.set_winch_mode(msg::ControlMode_MODE_AUTO);
+    mode_msg.set_rudder_mode(msg::ControlMode_MODE_AUTO);
     mode_queue.send(&mode_msg);
   }
 

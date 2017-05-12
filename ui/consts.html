@@ -1,0 +1,90 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <script src="jquery-3.1.1.min.js"></script>
+    <script src="retrieve_data.js"></script>
+    <script src="sail_widget.js"></script>
+    <link rel="stylesheet" href="main.css">
+  </head>
+  <body>
+    <div class="boxed">
+      <h4>Tacking Constants</h4>
+      <table>
+        <tr>  <td> Constant </td> <td> Current Value </td> <td> Set Value </td> </tr>
+      <tr>
+        <td> Close-hauled angle: </td>
+        <td> <span class="data_output" field="tacker_consts.close_haul_angle"></span> </td>
+        <td> <input type="textbox" class="data_input" field="close_haul_angle" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> In-Irons Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.in_irons_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="in_irons_cost" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> Near Goal Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.near_goal_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="near_goal_cost" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> Hysteresis Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.hysteresis_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="hysteresis_cost" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> Cost To Go Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.diff_yaw_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="diff_yaw_cost" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> Momentum Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.momentum_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="momentum_cost" msg="tacker_consts"> </td>
+      </tr>
+      <tr>
+        <td> Tacking Weight: </td>
+        <td> <span class="data_output" field="tacker_consts.tacking_cost"></span> </td>
+        <td> <input type="textbox" class="data_input" field="tacking_cost" msg="tacker_consts"> </td>
+      </tr>
+      </table>
+      <input type="button" class="data_submit" msg="tacker_consts" value="Send Tacking Constants">
+    </div>
+    <div class="boxed">
+      <h4>Controller Constants</h4>
+      <table>
+        <tr>  <td> Constant </td> <td> Current Value </td> <td> Set Value </td> </tr>
+      <tr>
+        <td> Max rudder angle: </td>
+        <td> <span class="data_output" field="control_consts.max_rudder"></span> </td>
+        <td> <input type="textbox" class="data_input" field="max_rudder" msg="control_consts"> </td>
+      </tr>
+      <tr>
+        <td> Rudder Kp: </td>
+        <td> <span class="data_output" field="control_consts.rudder_kp"></span> </td>
+        <td> <input type="textbox" class="data_input" field="rudder_kp" msg="control_consts"> </td>
+      </tr>
+      <tr>
+        <td> Winch Kp: </td>
+        <td> <span class="data_output" field="control_consts.winch_kp"></span> </td>
+        <td> <input type="textbox" class="data_input" field="winch_kp" msg="control_consts"> </td>
+      </tr>
+      <tr>
+        <td> Heel Comp Weight: </td>
+        <td> <span class="data_output" field="control_consts.sail_heel_k"></span> </td>
+        <td> <input type="textbox" class="data_input" field="sail_heel_k" msg="control_consts"> </td>
+      </tr>
+      <tr>
+        <td> Rigid Port Servo: </td>
+        <td> <span class="data_output" field="control_consts.rigid_port_servo_pos"></span> </td>
+        <td> <input type="textbox" class="data_input" field="rigid_port_servo_pos" msg="control_consts"> </td>
+      </tr>
+      <tr>
+        <td> Rigid S'brd Servo: </td>
+        <td> <span class="data_output" field="control_consts.rigid_starboard_servo_pos"></span> </td>
+        <td> <input type="textbox" class="data_input" field="rigid_starboard_servo_pos" msg="control_consts"> </td>
+      </tr>
+      </table>
+      <input type="button" class="data_submit" msg="control_consts" value="Send Controller Constants">
+    </div>
+  </body>
+</html>

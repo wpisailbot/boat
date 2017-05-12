@@ -20,15 +20,18 @@ class SimpleControl : public Node {
   msg::BallastCmd *ballast_msg_;
   msg::RigidWingCmd *rigid_msg_;
   msg::BoatState *boat_state_;
+  msg::ControllerConstants *consts_msg_;
   int counter_{0};
   // If separate thing is dealing with tacking, listen for heading:
   std::atomic<float> heading_;
   std::mutex boat_state_mutex_;
+  std::mutex consts_mutex_;
   std::atomic<float> wind_x_{0}, wind_y_{0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
   ProtoQueue<msg::BallastCmd> ballast_cmd_;
   ProtoQueue<msg::RigidWingCmd> rigid_cmd_;
+  ProtoQueue<msg::ControllerConstants> consts_queue_;
 
   // Various useful bits
   float last_goal_ = 0;

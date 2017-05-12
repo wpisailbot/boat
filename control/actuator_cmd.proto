@@ -53,6 +53,26 @@ message ControlMode {
   optional MODE rudder_mode = 3;
 }
 
+message TackerConstants {
+  optional float close_haul_angle = 1;
+  optional float in_irons_cost = 2;
+  optional float near_goal_cost = 3;
+  optional float hysteresis_cost = 4;
+  optional float diff_yaw_cost = 5;
+  optional float momentum_cost = 6;
+  optional float tacking_cost = 7;
+}
+
+message ControllerConstants {
+  optional float max_rudder = 1;
+  optional float rudder_kp = 2;
+  optional float winch_kp = 3;
+  optional float sail_heel_k = 4;
+
+  optional float rigid_port_servo_pos = 20;
+  optional float rigid_starboard_servo_pos = 21;
+}
+
 message Vector3f {
   optional float x = 1;
   optional float y = 2;

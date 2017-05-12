@@ -45,6 +45,10 @@ message LogEntry {
   optional SailCmd manual_sail_cmd = 512;
   optional RudderCmd manual_rudder_cmd = 513;
 
+  // Constants channels
+  optional TackerConstants tacker_consts = 700;
+  optional ControllerConstants control_consts = 701;
+
   // Test Messages
   optional PingMsg ping = 2000;
   optional PongMsg pong = 2001;
