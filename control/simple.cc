@@ -65,7 +65,7 @@ void SimpleControl::Iterate() {
   //float alphasail = util::norm_angle(alphaw - boat_state_->internal().sail());
   float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5);
+  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5) + std::abs(heel);
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
           << " goals: " << goal;
   // TODO(james): Temporary for testing:
@@ -74,16 +74,16 @@ void SimpleControl::Iterate() {
   float sail_err = util::norm_angle(goal - cursail);
   sail_msg_->set_voltage(3 * sail_err / std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(goal);
-  rigid_msg_->set_servo_pos(wind_source_dir > 0 ? 30 : 70);
+  rigid_msg_->set_servo_pos(wind_source_dir > 0 ? 15 : 85);
 
   ballast_msg_->set_vel(-0.5 * heel);
 
   float vel = std::sqrt(vx * vx + vy * vy);
-  float max_rudder = vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : 0.7);
+  float max_rudder = vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : 0.45);
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   float goal_rudder =
-      std::min(std::max(-util::norm_angle(goal_heading - cur_heading /*yaw*/),
+      std::min(std::max(-float(0.4) * util::norm_angle(goal_heading - cur_heading /*yaw*/),
                         -max_rudder),
                max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;

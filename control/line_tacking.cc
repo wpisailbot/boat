@@ -153,7 +153,7 @@ float LineTacker::GoalHeading() {
       float h = possible_headings[i];
       float reward = 3 * InIronsReward(h) +
                      3 * DesirabilityReward(h, nominal_heading) +
-                     1 * IndecisionReward(h) +
+                     0.3 * IndecisionReward(h) +
                      1 * MomentumReward(h) + 0 * 1 * RequiresTackingReward(h);
       if (reward > max_reward) {
         max_reward = reward;
