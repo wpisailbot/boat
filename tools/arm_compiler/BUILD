@@ -70,7 +70,7 @@ filegroup(
     name = "linaro_linux_all_gnueabi_files",
     srcs = [
         "//tools/arm_compiler/linaro_linux_gcc/gnueabi:tool-wrappers",
-        "@org_linaro_components_toolchain_gcc_5_3_1_gnueabi//:compiler_pieces",
+        "@rpi_gcc_5_4_1_gnueabihf//:compiler_pieces",
     ],
 )
 
@@ -80,7 +80,7 @@ filegroup(
         "//tools/arm_compiler/linaro_linux_gcc/gnueabi:ar",
         "//tools/arm_compiler/linaro_linux_gcc/gnueabi:gcc",
         "//tools/arm_compiler/linaro_linux_gcc/gnueabi:ld",
-        "@org_linaro_components_toolchain_gcc_5_3_1_gnueabi//:compiler_pieces",
+        "@rpi_gcc_5_4_1_gnueabihf//:compiler_pieces",
     ],
 )
 

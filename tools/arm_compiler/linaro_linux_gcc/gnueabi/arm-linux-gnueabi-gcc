@@ -1,6 +1,6 @@
 #!/bin/bash --norc
 
-PATH="external/org_linaro_components_toolchain_gcc_5_3_1_gnueabi/libexec/gcc/arm-linux-gnueabi/4.9.3:$PATH" \
+PATH="external/rpi_gcc_5_4_1_gnueabihf/libexec/gcc/arm-rpi-linux-gnueabihf/5.4.1:$PATH" \
     exec \
-    external/org_linaro_components_toolchain_gcc_5_3_1_gnueabi/bin/arm-linux-gnueabi-gcc \
+    external/rpi_gcc_5_4_1_gnueabihf/bin/arm-rpi-linux-gnueabihf-gcc \
     "$@"

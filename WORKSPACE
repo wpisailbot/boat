@@ -43,11 +43,17 @@ new_http_archive(
 )
 
 # For Pi
+#new_http_archive(
+#  name = 'org_linaro_components_toolchain_gcc_5_3_1_gnueabi',
+#  build_file = 'compilers/linaro_linux_gcc_5.3.1_gnueabi.BUILD',
+#  url = 'https://releases.linaro.org/components/toolchain/binaries/5.3-2016.05/arm-linux-gnueabi/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi.tar.xz',
+#  strip_prefix = 'gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi',
+#)
 new_http_archive(
-  name = 'org_linaro_components_toolchain_gcc_5_3_1_gnueabi',
-  build_file = 'compilers/linaro_linux_gcc_5.3.1_gnueabi.BUILD',
-  url = 'https://releases.linaro.org/components/toolchain/binaries/5.3-2016.05/arm-linux-gnueabi/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi.tar.xz',
-  strip_prefix = 'gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi',
+  name = 'rpi_gcc_5_4_1_gnueabihf',
+  build_file = 'compilers/manual_rpi.BUILD',
+  url = 'http://users.wpi.edu/~jbkuszmaul/sailbot/arm-rpi-linux-gnueabihf.tar.xz',
+  strip_prefix = 'arm-rpi-linux-gnueabihf',
 )
 
 new_http_archive(

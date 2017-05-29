@@ -3,65 +3,65 @@ package(default_visibility = ['//visibility:public'])
 filegroup(
   name = 'gcc',
   srcs = [
-    'bin/arm-linux-gnueabi-gcc',
+    'bin/arm-rpi-linux-gnueabihf-gcc',
   ],
 )
 
 filegroup(
   name = 'ar',
   srcs = [
-    'bin/arm-linux-gnueabi-ar',
+    'bin/arm-rpi-linux-gnueabihf-ar',
   ],
 )
 
 filegroup(
   name = 'ld',
   srcs = [
-    'bin/arm-linux-gnueabi-ld',
+    'bin/arm-rpi-linux-gnueabihf-ld',
   ],
 )
 
 filegroup(
   name = 'nm',
   srcs = [
-    'bin/arm-linux-gnueabi-nm',
+    'bin/arm-rpi-linux-gnueabihf-nm',
   ],
 )
 
 filegroup(
   name = 'objcopy',
   srcs = [
-    'bin/arm-linux-gnueabi-objcopy',
+    'bin/arm-rpi-linux-gnueabihf-objcopy',
   ],
 )
 
 filegroup(
   name = 'objdump',
   srcs = [
-    'bin/arm-linux-gnueabi-objdump',
+    'bin/arm-rpi-linux-gnueabihf-objdump',
   ],
 )
 
 filegroup(
   name = 'strip',
   srcs = [
-    'bin/arm-linux-gnueabi-strip',
+    'bin/arm-rpi-linux-gnueabihf-strip',
   ],
 )
 
 filegroup(
   name = 'as',
   srcs = [
-    'bin/arm-linux-gnueabi-as',
+    'bin/arm-rpi-linux-gnueabihf-as',
   ],
 )
 
 filegroup(
   name = 'compiler_pieces',
   srcs = glob([
-    'arm-linux-gnueabi/**',
+    'arm-rpi-linux-gnueabihf/**',
     'libexec/**',
-    'lib/gcc/arm-linux-gnueabi/**',
+    'lib/gcc/arm-rpi-linux-gnueabihf/**',
     'include/**',
   ]),
 )
