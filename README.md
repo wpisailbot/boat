@@ -185,3 +185,7 @@ ws = create_connection("ws://192.168.0.21:13000")
 ws.send('{"mult_req":{"a":2,"b":4},"mult_resp":null}')
 print ws.recv()
 ```
+
+Note: The server may respond before the node itself is able to send off
+its results, so in reality you would need to wait a moment before
+requesting the results from the server.
