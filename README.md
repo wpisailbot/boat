@@ -29,6 +29,12 @@ To deploy code, do `bazel run --cpu=bbb -c opt //scripts:deploy -- 192.192.X.X`
 replacing the IP address as appropriate. The `-c opt` builds the code
 with sundry optimization options enabled.
 
+## BBB Setup
+
+1) Create BBB with debian jessie running on it
+2) `apt-get install unzip g++-4.7 libatomic-ops-dev`
+3) Createsymlink between sailbot html files and /var/www/sailbot/
+
 ### Tests and Examples
 
 There are a few tests/examples that I have throughout the code:
