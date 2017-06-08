@@ -2,33 +2,38 @@
 #include "control/actuator_cmd.pb.h"
 #include "gflags.h"
 
-DEFINE_int32(full_out_pot, 400, "Pot value at winch = 90 deg");
-DEFINE_int32(full_in_pot, 700, "Pot value at winch = 0 deg");
-DEFINE_int32(rudder_zero, 115, "Rudder value when rudder is straight");
-
 namespace sailbot {
-
-namespace {
-
-float WinchPotToAngle(float pot_val) {
-  const int kPotRange = FLAGS_full_out_pot - FLAGS_full_in_pot;
-  return (pot_val - FLAGS_full_in_pot) / kPotRange * M_PI / 2;
-}
-
-}  // namespace
 
 SCAMP::SCAMP()
     : Node(0.05), state_queue_("internal_state", true),
       state_msg_(AllocateMessage<msg::InternalBoatState>()),
       pwm_queue_("can65282", true),
-      pwm_msg_(AllocateMessage<msg::can::CANMaster>()) {
+      pwm_msg_(AllocateMessage<msg::can::CANMaster>()),
+      consts_queue_("zeroing_consts", true),
+      consts_msg_(AllocateMessage<msg::ZeroingConstants>()) {
   pwm_msg_->set_outgoing(true);
+
+  consts_msg_->set_rudder_zero(115);
+  consts_msg_->set_winch_0_pot(700);
+  consts_msg_->set_winch_90_pot(400);
+
+  RegisterHandler<msg::ZeroingConstants>(
+      "zeroing_consts", [this](const msg::ZeroingConstants &msg) {
+        if (msg.has_winch_0_pot() && msg.has_winch_90_pot()) {
+          consts_msg_->set_winch_0_pot(msg.winch_0_pot());
+          consts_msg_->set_winch_90_pot(msg.winch_90_pot());
+        }
+        if (msg.has_rudder_zero()) {
+          consts_msg_->set_rudder_zero(msg.rudder_zero());
+        }
+      });
+
   RegisterHandler<msg::can::CANMaster>("can65281" /*Analog Pot*/,
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
-    state_msg_->set_rudder((raw_rudder_ - FLAGS_rudder_zero) * -M_PI / 180.);
+    state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
     state_queue_.send(state_msg_);
   });
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
@@ -64,7 +69,7 @@ SCAMP::SCAMP()
         raw_rudder_ = (SBUSToRaw(sbus.channel(0)) - 90.) * .5 + 90;
       } else if (IsFilteredRC(RUDDER)) {
         raw_rudder_ =
-            (SBUSToRaw(sbus.channel(0)) - 90.) * .3 + FLAGS_rudder_zero;
+            (SBUSToRaw(sbus.channel(0)) - 90.) * .3 + consts_msg_->rudder_zero();
       }
 
       if (IsManualRC(WINCH)) {
@@ -104,6 +109,7 @@ void SCAMP::Iterate() {
   msg->set_winch(raw_winch_);
   msg->set_rudder(raw_rudder_);
   pwm_queue_.send(pwm_msg_);
+  consts_queue_.send(consts_msg_);
 }
 
 void SCAMP::SetRawFromSailCmd(float volts) {
@@ -121,16 +127,22 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   volts = std::abs(volts) < 1 ? 0 : volts;
   // And only permit 6V, until we know what we are doing:
   volts = std::min(std::max(volts, (float)-6.), (float)6.);
-  volts *= (FLAGS_full_out_pot > FLAGS_full_in_pot) ? -1 : 1;
+  volts *= (consts_msg_->winch_90_pot() > consts_msg_->winch_0_pot()) ? -1 : 1;
   int raw_val = volts / 12. * 90. + 90;
 
   raw_winch_ = raw_val;
 }
 
 void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
-  int raw_val = -cmd.pos() / M_PI * 180. + FLAGS_rudder_zero;
+  int raw_val = -cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
 
   raw_rudder_ = raw_val;
+}
+
+float SCAMP::WinchPotToAngle(float pot_val) {
+  const int kPotRange =
+      consts_msg_->winch_90_pot() - consts_msg_->winch_0_pot();
+  return (pot_val - consts_msg_->winch_0_pot()) / kPotRange * M_PI / 2;
 }
 
 }  // namespace sailbot

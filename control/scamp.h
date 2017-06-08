@@ -18,6 +18,8 @@ class SCAMP : public Node {
   void SetRawFromSailCmd(float volts);
   void SetRawFromRudderCmd(const msg::RudderCmd &cmd);
 
+  float WinchPotToAngle(float pot_val);
+
   enum Actuator {
     RUDDER = 0,
     WINCH = 1,
@@ -44,6 +46,8 @@ class SCAMP : public Node {
   std::mutex state_msg_mut_;
   ProtoQueue<msg::can::CANMaster> pwm_queue_;
   msg::can::CANMaster *pwm_msg_;
+  ProtoQueue<msg::ZeroingConstants> consts_queue_;
+  msg::ZeroingConstants *consts_msg_;
   std::atomic<int> raw_winch_{90};
   std::atomic<int> volts_winch_{90};
   std::atomic<int> raw_rudder_{90};;

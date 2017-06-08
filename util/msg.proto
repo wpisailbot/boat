@@ -48,6 +48,7 @@ message LogEntry {
   // Constants channels
   optional TackerConstants tacker_consts = 700;
   optional ControllerConstants control_consts = 701;
+  optional ZeroingConstants zeroing_consts = 702;
 
   // Test Messages
   optional PingMsg ping = 2000;

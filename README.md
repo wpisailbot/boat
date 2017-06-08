@@ -33,7 +33,7 @@ with sundry optimization options enabled.
 
 1) Create BBB with debian jessie running on it
 2) `apt-get install unzip g++-4.7 libatomic-ops-dev`
-3) Createsymlink between sailbot html files and /var/www/sailbot/
+3) Create symlink between sailbot html files and /var/www/sailbot/
 
 ### Tests and Examples
 

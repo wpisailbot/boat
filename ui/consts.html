@@ -4,6 +4,7 @@
     <script src="jquery-3.1.1.min.js"></script>
     <script src="retrieve_data.js"></script>
     <script src="sail_widget.js"></script>
+    <script src="consts.js"></script>
     <link rel="stylesheet" href="main.css">
   </head>
   <body>
@@ -86,5 +87,28 @@
       </table>
       <input type="button" class="data_submit" msg="control_consts" value="Send Controller Constants">
     </div>
+    <div class="boxed">
+      <h4>Zeroing Constants</h4>
+      <table>
+        <tr>  <td> Constant </td> <td> Current Value </td> <td> Set Value </td> </tr>
+      <tr>
+        <td> Rudder value at zero (0-180): </td>
+        <td> <span class="data_output" field="zeroing_consts.rudder_zero"></span> </td>
+        <td> <input type="textbox" id="zeroing_consts-rudder_zero"> </td>
+      </tr>
+      <tr>
+        <td> Winch Pot value at 0 deg </td>
+        <td> <span class="data_output" field="zeroing_consts.winch_0_pot"></span> </td>
+        <td> <input type="textbox" id="zeroing_consts-winch_0_pot"> </td>
+      </tr>
+      <tr>
+        <td> Winch Pot value at 90 deg </td>
+        <td> <span class="data_output" field="zeroing_consts.winch_90_pot"></span> </td>
+        <td> <input type="textbox" id="zeroing_consts-winch_90_pot"> </td>
+      </tr>
+      </table>
+      <input type="button" onclick="checkAndSendZeros();" value="Send Zeroing Constants">
+    </div>
+  </body>
   </body>
 </html>

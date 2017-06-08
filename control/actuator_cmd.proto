@@ -73,6 +73,12 @@ message ControllerConstants {
   optional float rigid_starboard_servo_pos = 21;
 }
 
+message ZeroingConstants {
+  optional int32 rudder_zero = 1;
+  optional int32 winch_0_pot = 2;
+  optional int32 winch_90_pot = 3;
+}
+
 message Vector3f {
   optional float x = 1;
   optional float y = 2;
