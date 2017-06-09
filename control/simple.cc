@@ -62,11 +62,10 @@ SimpleControl::SimpleControl(bool do_rudder)
   });
   RegisterHandler<msg::ControlMode>("control_mode",
                                     [this](const msg::ControlMode &mode) {
-    if (mode.has_winch_mode()) {
-      switch (mode.winch_mode()) {
+    if (mode.has_rigid_mode()) {
+      switch (mode.rigid_mode()) {
       case msg::ControlMode::MANUAL_RC:
       case msg::ControlMode::FILTERED_RC:
-      case msg::ControlMode::DISABLE:
         auto_rigid_wing_ = false;
         break;
       default:
