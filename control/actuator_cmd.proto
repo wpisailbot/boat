@@ -51,6 +51,7 @@ message ControlMode {
   optional MODE winch_mode = 1;
   optional TACKER tacker = 2;
   optional MODE rudder_mode = 3;
+  // TODO(james): Add separate mode for rigid wing, rather than piggy-backing on winch.
 }
 
 message TackerConstants {

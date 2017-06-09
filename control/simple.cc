@@ -60,6 +60,26 @@ SimpleControl::SimpleControl(bool do_rudder)
     heading_ = msg.heading();
     VLOG(2) << "Got heading cmd: " << heading_.load();
   });
+  RegisterHandler<msg::ControlMode>("control_mode",
+                                    [this](const msg::ControlMode &mode) {
+    if (mode.has_winch_mode()) {
+      switch (mode.winch_mode()) {
+      case msg::ControlMode::MANUAL_RC:
+      case msg::ControlMode::FILTERED_RC:
+      case msg::ControlMode::DISABLE:
+        auto_rigid_wing_ = false;
+        break;
+      default:
+        auto_rigid_wing_ = true;
+        break;
+      }
+    }
+  });
+  RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
+    // TODO(james): Have separate mutex or atomic variable just for rigid wing.
+    std::unique_lock<std::mutex> l(boat_state_mutex_);
+    rigid_msg_->set_servo_pos(sbus.channel(1) * 100. / 2050.);
+  });
 }
 
 void SimpleControl::Iterate() {
@@ -96,9 +116,11 @@ void SimpleControl::Iterate() {
   sail_msg_->set_voltage(consts_msg_->winch_kp() * sail_err /
                          std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(goal);
-  rigid_msg_->set_servo_pos(wind_source_dir > 0
-                                ? consts_msg_->rigid_port_servo_pos()
-                                : consts_msg_->rigid_starboard_servo_pos());
+  if (auto_rigid_wing_) {
+    rigid_msg_->set_servo_pos(wind_source_dir > 0
+                                  ? consts_msg_->rigid_port_servo_pos()
+                                  : consts_msg_->rigid_starboard_servo_pos());
+  }
 
   ballast_msg_->set_vel(-0.5 * heel);
 
