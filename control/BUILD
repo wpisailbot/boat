@@ -41,6 +41,17 @@ cc_binary(
   srcs=["scamp_main.cc"],
   deps=[":scamp"],
 )
+cc_library(
+  name="waypoint_manager",
+  srcs=["waypoint_manager.cc"],
+  hdrs=["waypoint_manager.h"],
+  deps=[":actuator_cmd_proto", "//util:node"],
+)
+cc_binary(
+  name="waypoint_manager_main",
+  srcs=["waypoint_manager_main.cc"],
+  deps=[":waypoint_manager"],
+)
 cc_binary(
   name="simple_control_main",
   srcs=["simple_main.cc"],

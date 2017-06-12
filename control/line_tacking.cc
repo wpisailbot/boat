@@ -3,6 +3,12 @@
 #include "util.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include "gflags/gflags.h"
+#include "google/protobuf/text_format.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+
+DEFINE_string(initial_waypoints, "waypoints.pba",
+              "The initial set of waypoints to use when starting up");
 
 namespace sailbot {
 namespace control {
@@ -15,7 +21,11 @@ LineTacker::LineTacker()
       consts_msg_(AllocateMessage<msg::TackerConstants>()),
       consts_queue_("tacker_consts", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
-      heading_cmd_("heading_cmd", true) {
+      heading_cmd_("heading_cmd", true),
+      state_msg_(AllocateMessage<msg::TackerState>()),
+      state_queue_("tacker_state", true) {
+
+  ReadWaypointsFromFile(FLAGS_initial_waypoints.c_str());
 
   RegisterHandler<msg::TackerConstants>(
       "tacker_consts", [this](const msg::TackerConstants &msg) {
@@ -62,23 +72,56 @@ LineTacker::LineTacker()
     }
   });
 
-  RegisterHandler<msg::WaypointList>("waypoints",
-                                     [this](const msg::WaypointList &msg) {
-    // TODO(james): Thread-safety
-    int starti = msg.restart() ? 0 : msg_i_offset_ + i_;
-    int cnt = std::min(msg.points_size()-starti, N_WAYPOINTS);
-    for (int i = 0; i < cnt; ++i) {
-      waypoints_[i] = {msg.points(i + starti).x(), msg.points(i + starti).y()};
-    }
-    i_ = 0;
-    msg_i_offset_ = starti;
-    way_len_ = cnt;
-  });
+  RegisterHandler<msg::WaypointList>(
+      "waypoints",
+      std::bind(&LineTacker::ProcessWaypoints, this, std::placeholders::_1));
+}
+
+void LineTacker::ProcessWaypoints(const msg::WaypointList &msg) {
+  // TODO(james): Thread-safety
+  int starti = msg.restart() ? 0 : msg_i_offset_ + i_;
+  recalc_zero_ = !msg.defined_start();
+  int offset = recalc_zero_ ? 1 : 0;
+
+  int cnt = std::min(msg.points_size() - starti, N_WAYPOINTS - offset);
+  for (int i = 0; i < cnt; ++i) {
+    waypoints_[i + offset] = {msg.points(i + starti).x(),
+                              msg.points(i + starti).y()};
+  }
+  i_ = 0;
+  msg_i_offset_ = starti;
+  way_len_ = cnt + offset;
+}
+
+void LineTacker::ReadWaypointsFromFile(const char *fname) {
+  if (fname == nullptr) {
+    return;
+  }
+  int fd = open(fname, O_RDONLY);
+  if (fd < 0) {
+    PLOG(WARNING) << "Failed to open file " << fname;
+    return;
+  }
+  google::protobuf::io::FileInputStream finput(fd);
+  finput.SetCloseOnDelete(true);
+  msg::WaypointList way_list;
+  if (!google::protobuf::TextFormat::Parse(&finput, &way_list)) {
+    LOG(WARNING) << "Failed to parse protobuf";
+    return;
+  }
+  ProtoQueue<msg::WaypointList> q("waypoints", true);
+  q.send(&way_list);
+  ProcessWaypoints(way_list);
+  LOG(INFO) << way_list.DebugString();
 }
 
 void LineTacker::Iterate() {
   if (way_len_ == 0) {
     LOG(INFO) << "No Waypoints--not doing anything";
+    return;
+  }
+  if (tack_mode_ == msg::ControlMode::DISABLED) {
+    LOG(INFO) << "Tacking disabled--not doing anything";
     return;
   }
   double gh = GoalHeading();
@@ -156,6 +199,9 @@ float LineTacker::IndecisionReward(float heading) {
  */
 float LineTacker::GoalHeading() {
   std::unique_lock<std::mutex> lck(consts_mutex_);
+  if (recalc_zero_) {
+    waypoints_[0] = cur_pos_;
+  }
   Point start = waypoints_[i_];
   Point end = waypoints_[i_+1];
   float upwind = util::norm_angle(wind_dir_ - M_PI);
@@ -168,9 +214,16 @@ float LineTacker::GoalHeading() {
   float dist = std::sqrt(dy * dy + dx * dx);
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
 
-  if (dist < 5e-5 && i_ < way_len_ - 2) {
-    ++i_;
+  bool done = false;
+  if (dist < 5e-5) {
+    done = true;
+    if (i_ < way_len_ - 2) {
+      ++i_;
+      done = false;
+    }
   }
+  state_msg_->set_done(done);
+  state_queue_.send(state_msg_);
 
   if (tack_mode_ == msg::ControlMode_TACKER_REWARD) {
     constexpr int NHEAD = 4;

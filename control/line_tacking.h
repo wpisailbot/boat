@@ -23,6 +23,9 @@ class LineTacker : public Node {
 
   float GoalHeading();
 
+  void ProcessWaypoints(const msg::WaypointList &msg);
+  void ReadWaypointsFromFile(const char *fname);
+
   // Distance of loc from the line between start and end
   float DistanceFromLine(Point start, Point end, Point loc);
   float ApparentWind(); // Direction wind is coming FROM
@@ -40,6 +43,7 @@ class LineTacker : public Node {
   int i_ = 0;
   int msg_i_offset_ = 0;
   int way_len_ = 0;
+  std::atomic<bool> recalc_zero_{false};
 
   Point cur_pos_;
   std::atomic<float> wind_dir_; // The direction the wind is blowing TO
@@ -56,6 +60,9 @@ class LineTacker : public Node {
 
   msg::HeadingCmd* heading_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_;
+
+  msg::TackerState* state_msg_;
+  ProtoQueue<msg::TackerState> state_queue_;
 };
 
 }  // namespace control

@@ -13,9 +13,9 @@ SCAMP::SCAMP()
       consts_msg_(AllocateMessage<msg::ZeroingConstants>()) {
   pwm_msg_->set_outgoing(true);
 
-  consts_msg_->set_rudder_zero(115);
-  consts_msg_->set_winch_0_pot(700);
-  consts_msg_->set_winch_90_pot(400);
+  consts_msg_->set_rudder_zero(99);
+  consts_msg_->set_winch_0_pot(985);
+  consts_msg_->set_winch_90_pot(685);
 
   RegisterHandler<msg::ZeroingConstants>(
       "zeroing_consts", [this](const msg::ZeroingConstants &msg) {

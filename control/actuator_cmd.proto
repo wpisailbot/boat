@@ -32,7 +32,14 @@ message Waypoint {
 message WaypointList {
   repeated Waypoint points = 1;
   // Whether or not to start these waypoints from the start.
+  // If restart = false, then will start by going from points[0] to points[1].
+  // If restart = true, then takes the current waypoint index, and starts from
+  // there in the new waypoints.
   optional bool restart = 2 [default = true];
+  // Whether or not we have defined the start point. If false, will attempt to go
+  // to points[0] first; if true, will attempt to go to points[1], treating points[0]
+  // as the start point (has implications for tacking).
+  optional bool defined_start = 3 [default = true];
 }
 
 message ControlMode {
@@ -47,6 +54,7 @@ message ControlMode {
     NONE = 0;
     LINE = 1;
     REWARD = 2;
+    DISABLED = 3;
   }
   optional MODE winch_mode = 1;
   optional TACKER tacker = 2;
@@ -106,6 +114,17 @@ message InternalBoatState {
   optional float saildot = 4;
   optional float rudderdot = 5;
   optional float ballastdot = 6;
+}
+
+message TackerState {
+  optional bool done = 1; // Whether the tacker has reached its last waypoint
+}
+
+message ChallengeControl {
+  enum ChallengeType {
+    STATION_KEEP = 1;
+    WAYPOINT = 2;
+  }
 }
 
 message BoatState {

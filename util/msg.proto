@@ -44,6 +44,7 @@ message LogEntry {
   optional Vector3f true_wind = 511;
   optional SailCmd manual_sail_cmd = 512;
   optional RudderCmd manual_rudder_cmd = 513;
+  optional TackerState tacker_state = 514;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;
