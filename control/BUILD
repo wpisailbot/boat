@@ -45,7 +45,7 @@ cc_library(
   name="waypoint_manager",
   srcs=["waypoint_manager.cc"],
   hdrs=["waypoint_manager.h"],
-  deps=[":actuator_cmd_proto", "//util:node"],
+  deps=[":actuator_cmd_proto", "//util:node", ":util"],
 )
 cc_binary(
   name="waypoint_manager_main",
@@ -108,6 +108,7 @@ cc_test(
   deps=[":simple_control",
         ":line_tacking",
         ":rudder_controller",
+        ":waypoint_manager",
         "//sensor:state_estimator",
         "//util:testing",
         "//sim:sim_inter",

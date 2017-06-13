@@ -14,9 +14,9 @@ var scale = 4;
 function normalizeAngle(a) {
   var tau = 2 * Math.PI;
   if (a > Math.PI) {
-    a -= int(a / tau + .5) * tau;
+    a -= Math.floor(a / tau + .5) * tau;
   } else if (a < -Math.PI) {
-    a -= int(a / tau - .5) * tau;
+    a -= Math.floor(a / tau - .5) * tau;
   }
   return a;
 }

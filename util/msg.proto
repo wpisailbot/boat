@@ -45,6 +45,8 @@ message LogEntry {
   optional SailCmd manual_sail_cmd = 512;
   optional RudderCmd manual_rudder_cmd = 513;
   optional TackerState tacker_state = 514;
+  optional ChallengeControl challenge_control = 515;
+  optional VisionData vision_data = 516;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;

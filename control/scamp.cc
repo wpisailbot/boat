@@ -14,8 +14,8 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   consts_msg_->set_rudder_zero(99);
-  consts_msg_->set_winch_0_pot(985);
-  consts_msg_->set_winch_90_pot(685);
+  consts_msg_->set_winch_0_pot(980);
+  consts_msg_->set_winch_90_pot(750);
 
   RegisterHandler<msg::ZeroingConstants>(
       "zeroing_consts", [this](const msg::ZeroingConstants &msg) {
@@ -69,13 +69,13 @@ SCAMP::SCAMP()
         raw_rudder_ = (SBUSToRaw(sbus.channel(0)) - 90.) * .5 + 90;
       } else if (IsFilteredRC(RUDDER)) {
         raw_rudder_ =
-            (SBUSToRaw(sbus.channel(0)) - 90.) * .3 + consts_msg_->rudder_zero();
+            -(SBUSToRaw(sbus.channel(0)) - 90.) * .6 + consts_msg_->rudder_zero();
       }
 
       if (IsManualRC(WINCH)) {
         raw_winch_ = SBUSToRaw(sbus.channel(1));
       } else if (IsFilteredRC(WINCH)) {
-        volts_winch_ = (SBUSToRaw(sbus.channel(1)) - 90.) * 6. / 90.;
+        volts_winch_ = -(SBUSToRaw(sbus.channel(1)) - 90.) * 6. / 90.;
       }
     }
   });

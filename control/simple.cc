@@ -57,7 +57,12 @@ SimpleControl::SimpleControl(bool do_rudder)
     wind_y_ = msg.y();
   });
   RegisterHandler<msg::HeadingCmd>("heading_cmd", [this](const msg::HeadingCmd &msg) {
-    heading_ = msg.heading();
+    if (msg.has_heading()) {
+      heading_ = msg.heading();
+    }
+    if (msg.has_extra_sail()) {
+      extra_sail_ = msg.extra_sail();
+    }
     VLOG(2) << "Got heading cmd: " << heading_.load();
   });
   RegisterHandler<msg::ControlMode>("control_mode",
@@ -105,7 +110,8 @@ void SimpleControl::Iterate() {
   float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
   float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5) +
-               consts_msg_->sail_heel_k() * std::abs(heel);
+               consts_msg_->sail_heel_k() * std::abs(heel)
+               + extra_sail_;
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
           << " goals: " << goal;
   // TODO(james): Temporary for testing:

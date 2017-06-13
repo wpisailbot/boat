@@ -223,6 +223,7 @@ float LineTacker::GoalHeading() {
     }
   }
   state_msg_->set_done(done);
+  state_msg_->set_last_waypoint(i_);
   state_queue_.send(state_msg_);
 
   if (tack_mode_ == msg::ControlMode_TACKER_REWARD) {

@@ -21,6 +21,7 @@ message BallastCmd {
 
 message HeadingCmd {
   optional float heading = 9;
+  optional float extra_sail = 10;
 }
 
 message Waypoint {
@@ -118,13 +119,27 @@ message InternalBoatState {
 
 message TackerState {
   optional bool done = 1; // Whether the tacker has reached its last waypoint
+  optional int32 last_waypoint = 2; // The current waypoint
 }
 
 message ChallengeControl {
   enum ChallengeType {
     STATION_KEEP = 1;
     WAYPOINT = 2;
+    VISION = 3;
   }
+  optional ChallengeType challenge = 1;
+}
+
+message VisionData {
+  message Buoy {
+    optional float x = 1;
+    optional float y = 2;
+    optional float radius = 3;
+  }
+  optional float heading = 1;
+  optional float confidence = 2;
+  repeated Buoy buoys = 3;
 }
 
 message BoatState {

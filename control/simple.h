@@ -24,6 +24,7 @@ class SimpleControl : public Node {
   int counter_{0};
   // If separate thing is dealing with tacking, listen for heading:
   std::atomic<float> heading_;
+  std::atomic<float> extra_sail_;
   std::mutex boat_state_mutex_;
   std::mutex consts_mutex_;
   std::atomic<float> wind_x_{0}, wind_y_{0};
