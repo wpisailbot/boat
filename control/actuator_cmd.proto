@@ -127,6 +127,7 @@ message ChallengeControl {
     STATION_KEEP = 1;
     WAYPOINT = 2;
     VISION = 3;
+    OBSTACLE = 4;
   }
   optional ChallengeType challenge = 1;
 }
