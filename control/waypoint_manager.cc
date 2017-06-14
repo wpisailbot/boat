@@ -6,7 +6,7 @@ namespace control {
 
 static constexpr int kVisionConfidenceThreshold = 2;
 static constexpr int kVisionFoundThreshold = 30;
-static constexpr int kVisionObstacleThreshold = 100;
+static constexpr int kVisionObstacleThreshold = 30;
 
 WaypointManager::WaypointManager()
     : Node(0.1), station_keep_end_(Time()),
@@ -189,6 +189,8 @@ void WaypointManager::DoVisionSearch() {
 }
 
 void WaypointManager::DoObstacleAvoid() {
+//  float turnleftwind = util::norm_angle(M_PI / 2 + boat_yaw_ ;
+//  float turnrightwind = -turnleft;
   switch (obstacle_state_) {
     case WAYPOINT:
       if (vision_confidence_ > kVisionObstacleThreshold) {

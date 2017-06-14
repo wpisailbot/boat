@@ -91,5 +91,10 @@
     <div>
       Tacker State: <span class="data_output" field="tacker_state" /> </td>
     </div>
+    <div>
+      Waypoints: <span class="data_output" field="waypoints"></span> </td>
+      Send Waypoints: <input type="textbox" id="wp_many"> </td>
+    <input type="button" onclick='sendMessage("waypoints", {restart: true, defined_start: false, points: JSON.parse($("#wp_many").val())});' value="Send Waypoints">
+    </div>
   </body>
 </html>
