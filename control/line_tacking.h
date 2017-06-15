@@ -38,14 +38,18 @@ class LineTacker : public Node {
   float IndecisionReward(float heading);
   float CostToGoReward(float heading);
 
+  bool IsValidHeading(float heading);
+
   Point waypoints_[N_WAYPOINTS];
   float bounds_[N_WAYPOINTS] = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
+  float waypoint_moe_[N_WAYPOINTS] = {10, 10, 10, 50, 10, 10, 10, 10, 10, 10};
   int i_ = 0;
   int msg_i_offset_ = 0;
   int way_len_ = 0;
   std::atomic<bool> recalc_zero_{false};
 
   Point cur_pos_;
+  std::atomic<float> cur_dist_; // Distance to next waypoint
   std::atomic<float> wind_dir_; // The direction the wind is blowing TO
   std::atomic<float> apparent_wind_dir_;
   std::atomic<float> cur_theta_; // The current boat heading

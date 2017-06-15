@@ -55,8 +55,8 @@ void FakeAirmar::Iterate() {
 
   double x = state_.pos().x() + Normal(.5);
   double y = state_.pos().y() + Normal(.5);
-  double lat = y / 111054. + 41;
-  double lon = x / 84135. - 71;
+  double lat = y / 111015. + 38.9816688;
+  double lon = x / 86647. - 76.47591338;
   out.mutable_pos_rapid_update()->set_lon(lon);
   out.mutable_pos_rapid_update()->set_lat(lat);
   pos_rapid_update_.send(&out);

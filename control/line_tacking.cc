@@ -33,11 +33,11 @@ LineTacker::LineTacker()
         *consts_msg_ = msg;
       });
 
-  consts_msg_->set_close_haul_angle(M_PI / 4);
+  consts_msg_->set_close_haul_angle(0.9);
   consts_msg_->set_in_irons_cost(3);
   consts_msg_->set_near_goal_cost(3);
   consts_msg_->set_hysteresis_cost(.3);
-  consts_msg_->set_diff_yaw_cost(0);
+  consts_msg_->set_diff_yaw_cost(1);
   consts_msg_->set_momentum_cost(1);
   consts_msg_->set_tacking_cost(0);
   {
@@ -149,7 +149,7 @@ float LineTacker::InIronsReward(float heading) {
 // goal in an ideal world.
 float LineTacker::DesirabilityReward(float heading, float nominal_heading) {
   float normdiff = util::norm_angle(heading - nominal_heading) / M_PI;
-  return (1 - normdiff * normdiff);
+  return (1 - normdiff * normdiff) * std::min(cur_dist_ / 20., 3.);
 }
 
 // An estimate of how much momentum is working in our favor
@@ -188,6 +188,13 @@ float LineTacker::IndecisionReward(float heading) {
   return 1 - diff2;
 }
 
+bool LineTacker::IsValidHeading(float heading) {
+  if (std::abs(util::norm_angle(heading - wind_dir_ + M_PI)) < M_PI / 4) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Basic algorithm:
  * If we have a straight-line path from our current position to the goal
@@ -212,10 +219,11 @@ float LineTacker::GoalHeading() {
   float dx = end.x - cur_pos_.x;
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
+  cur_dist_ = dist / 1e-5;
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
 
   bool done = false;
-  if (dist < 5e-5) {
+  if (dist < waypoint_moe_[i_] * 1e-5) {
     done = true;
     if (i_ < way_len_ - 2) {
       ++i_;
@@ -244,7 +252,7 @@ float LineTacker::GoalHeading() {
                      consts_msg_->diff_yaw_cost() * CostToGoReward(h) +
                      consts_msg_->momentum_cost() * MomentumReward(h) +
                      consts_msg_->tacking_cost() * RequiresTackingReward(h);
-      if (reward > max_reward) {
+      if (IsValidHeading(h) && reward > max_reward) {
         max_reward = reward;
         best_heading = h;
       }

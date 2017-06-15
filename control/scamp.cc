@@ -66,10 +66,10 @@ SCAMP::SCAMP()
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
     if (sbus.channel_size() >= 2) {
       if (IsManualRC(RUDDER)) {
-        raw_rudder_ = (SBUSToRaw(sbus.channel(0)) - 90.) * .5 + 90;
+        raw_rudder_ = (SBUSToRaw(sbus.channel(3)) - 90.) * .5 + 90;
       } else if (IsFilteredRC(RUDDER)) {
         raw_rudder_ =
-            -(SBUSToRaw(sbus.channel(0)) - 90.) * .6 + consts_msg_->rudder_zero();
+            -(SBUSToRaw(sbus.channel(3)) - 90.) * .6 + consts_msg_->rudder_zero();
       }
 
       if (IsManualRC(WINCH)) {

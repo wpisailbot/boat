@@ -90,10 +90,10 @@ class SimpleControlTest : public TestWrapper {
 
 namespace {
 double ToLat(double y) {
-  return y / 111054. + 41;
+  return y / 111015. + 38.9816688;
 }
 double ToLon(double x) {
-  return x / 84135. - 71;
+  return x / 86647. - 76.47591338;
 }
 void SetWaypoint(msg::Waypoint* p, double x, double y) {
   p->set_x(ToLon(x));
@@ -115,7 +115,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
 //  way_q.send(&waypoints);
   sim_node_.set_wind(0, 1.5);
-  Sleep(750);
+  Sleep(75000);
   ASSERT_TRUE(true);
 }
 
