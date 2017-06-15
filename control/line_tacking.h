@@ -47,6 +47,7 @@ class LineTacker : public Node {
   int msg_i_offset_ = 0;
   int way_len_ = 0;
   std::atomic<bool> recalc_zero_{false};
+  std::atomic<bool> repeat_{false};
 
   Point cur_pos_;
   std::atomic<float> cur_dist_; // Distance to next waypoint

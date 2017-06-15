@@ -114,7 +114,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
 //  way_q.send(&waypoints);
-  sim_node_.set_wind(0, 1.5);
+  sim_node_.set_wind(3 * M_PI / 4, 1.5);
   Sleep(75000);
   ASSERT_TRUE(true);
 }

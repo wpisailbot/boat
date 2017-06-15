@@ -36,7 +36,7 @@ LineTacker::LineTacker()
   consts_msg_->set_close_haul_angle(0.9);
   consts_msg_->set_in_irons_cost(3);
   consts_msg_->set_near_goal_cost(3);
-  consts_msg_->set_hysteresis_cost(.3);
+  consts_msg_->set_hysteresis_cost(1.3);
   consts_msg_->set_diff_yaw_cost(1);
   consts_msg_->set_momentum_cost(1);
   consts_msg_->set_tacking_cost(0);
@@ -81,7 +81,9 @@ void LineTacker::ProcessWaypoints(const msg::WaypointList &msg) {
   // TODO(james): Thread-safety
   int starti = msg.restart() ? 0 : msg_i_offset_ + i_;
   recalc_zero_ = !msg.defined_start();
+  repeat_ = msg.repeat();
   int offset = recalc_zero_ ? 1 : 0;
+  repeat_ = msg.repeat();
 
   int cnt = std::min(msg.points_size() - starti, N_WAYPOINTS - offset);
   for (int i = 0; i < cnt; ++i) {
@@ -210,7 +212,7 @@ float LineTacker::GoalHeading() {
     waypoints_[0] = cur_pos_;
   }
   Point start = waypoints_[i_];
-  Point end = waypoints_[i_+1];
+  Point end = waypoints_[(i_+1) % way_len_];
   float upwind = util::norm_angle(wind_dir_ - M_PI);
   float min_closehaul = util::norm_angle(upwind - consts_msg_->close_haul_angle());
   float max_closehaul = util::norm_angle(upwind + consts_msg_->close_haul_angle());
@@ -223,11 +225,14 @@ float LineTacker::GoalHeading() {
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
 
   bool done = false;
-  if (dist < waypoint_moe_[i_] * 1e-5) {
+  if (dist < waypoint_moe_[(i_ + 1) % way_len_] * 1e-5) {
     done = true;
     if (i_ < way_len_ - 2) {
       ++i_;
       done = false;
+    } else if (repeat_) {
+      ++i_;
+      i_ = i_ % way_len_;
     }
   }
   state_msg_->set_done(done);
