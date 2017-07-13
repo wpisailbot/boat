@@ -49,6 +49,9 @@ new_http_archive(
 #  url = 'https://releases.linaro.org/components/toolchain/binaries/5.3-2016.05/arm-linux-gnueabi/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi.tar.xz',
 #  strip_prefix = 'gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi',
 #)
+# This compiler was compiled using https://github.com/wpisailbot/rpi-compiler
+# Couldn't figure out how/if it was possible to use the BBB compiler for the
+# RPI. Tested on the RPI Zero W.
 new_http_archive(
   name = 'rpi_gcc_5_4_1_gnueabihf',
   build_file = 'compilers/manual_rpi.BUILD',
