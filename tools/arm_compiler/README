@@ -1,3 +1,4 @@
 See https://github.com/bazelbuild/bazel/tree/master/src/test/shell/bazel/testdata/bazel_toolchain_test_data for original source of this.
 
-The gnueabihf references are all for the Beaglebone Black. The gnueabi is for the Raspberry Pi
+In some places, gnueabi is used to refer to the rpi, even though it is an armhf compiler; expect similar errors and inconsistencies throughout,
+although I do believe that it all *works*. See the top-level WORKSPACE file for where I get my compilers from.
