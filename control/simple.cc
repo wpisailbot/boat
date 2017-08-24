@@ -31,7 +31,7 @@ SimpleControl::SimpleControl(bool do_rudder)
 
   consts_msg_->set_max_rudder(1.0);
   consts_msg_->set_rudder_kp(1.);
-  consts_msg_->set_winch_kp(3);
+  consts_msg_->set_winch_kp(13);
   consts_msg_->set_sail_heel_k(1);
   consts_msg_->set_rigid_port_servo_pos(15);
   consts_msg_->set_rigid_starboard_servo_pos(85);
@@ -109,7 +109,7 @@ void SimpleControl::Iterate() {
   //float alphasail = util::norm_angle(alphaw - boat_state_->internal().sail());
   float cursail = boat_state_->internal().sail();
   // If we are on port tack, want alphasail > 0, if on starboard, alphasail < 0.
-  float goal = std::min(std::max(alphaw - 0.6, 0.), 1.5) +
+  float goal = std::min(std::max(alphaw - 0.8, 0.), 1.5) +
                consts_msg_->sail_heel_k() * std::abs(heel)
                + extra_sail_;
   VLOG(2) << "Alphaw: " << alphaw << " alphas: " << cursail
@@ -131,7 +131,8 @@ void SimpleControl::Iterate() {
 
   float vel = std::sqrt(vx * vx + vy * vy);
   float max_rudder =
-      vel < 0 ? 0.1 : (vel < 0.5 ? 0.25 : consts_msg_->max_rudder());
+      vel < 0 ? 0.3 : (vel < 0.5 ? 0.75 * consts_msg_->max_rudder()
+                                 : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   float goal_rudder =

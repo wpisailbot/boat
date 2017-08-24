@@ -151,7 +151,7 @@ float LineTacker::InIronsReward(float heading) {
 // goal in an ideal world.
 float LineTacker::DesirabilityReward(float heading, float nominal_heading) {
   float normdiff = util::norm_angle(heading - nominal_heading) / M_PI;
-  return (1 - normdiff * normdiff) * std::min(cur_dist_ / 20., 3.);
+  return (1 - normdiff * normdiff) * std::max(std::min(cur_dist_ / 20., 3.), 0.33);
 }
 
 // An estimate of how much momentum is working in our favor

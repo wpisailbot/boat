@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import numpy as np
+import sys
 from matplotlib import pyplot as plt
 
 def norm_theta(theta):
@@ -9,7 +10,7 @@ def norm_theta(theta):
     theta += 2 * np.pi
   return theta
 
-data = np.genfromtxt("basic_replay_data.csv", delimiter=',')[1:]
+data = np.genfromtxt("endurance_replay.csv", delimiter=',')[1:]
 x = []
 y = []
 vx = []
@@ -29,8 +30,8 @@ for row in data:
   for i in range(len(row)):
     if abs(row[i]) > 1e5:
       row[i] = float("nan")
-  if row[0] > 4485:
-    break
+#  if row[0] > 4485:
+#    break
   t.append(row[0])
   sail.append(row[3])
   rudder.append(row[4] * 180. / np.pi)
@@ -38,6 +39,7 @@ for row in data:
   heel.append(norm_theta(row[6]) * 180. / np.pi)
   x.append(row[7])
   y.append(row[8])
+  continue
   vx.append(row[10])
   vy.append(row[9])
   heading.append(np.arctan2(vy[-1], vx[-1]) * 180. / np.pi)
@@ -47,14 +49,17 @@ for row in data:
   true_alphaw.append(norm_theta(np.arctan2(-row[12], -row[11]) - row[5])* 180. / np.pi)
   true_wind_speed.append(np.sqrt(row[11] ** 2 + row[12] ** 2))
 
-#plt.plot(x, y, 'o')
-plt.plot([-71.756546, -71.756248, -71.756866, -71.756577], [42.2903, 42.290348, 42.29037, 42.290039], '*-', label="waypoints")
-plt.quiver(x, y, vx, vy, np.hypot(vx, vy))
-plt.colorbar(label="Speed (m/s)")
-plt.title("Boat Position (Wind is blowing bottom-right-to-top-left on screen)--Arrows and colors represent velocities")
-plt.xlabel("X position (deg longitude)")
-plt.ylabel("Y position (deg latitude)")
+plt.plot(x, y, label="Boat Path")
+#plt.plot([-76.477516, -76.475533, -76.474373, -76.477615, -76.479126], [38.98278, 38.98209, 38.98365, 38.985771, 38.983952], '*-', label="waypoints")
+if False:
+  plt.quiver(x, y, vx, vy, np.hypot(vx, vy))
+  plt.colorbar(label="Speed (m/s)")
+  plt.title("Boat Position (Wind is blowing bottom-right-to-top-left on screen)--Arrows and colors represent velocities")
+  plt.xlabel("X position (deg longitude)")
+  plt.ylabel("Y position (deg latitude)")
 plt.legend()
+plt.show()
+sys.exit()
 plt.figure()
 ax = plt.subplot(111)
 ax.plot(t, x - x[0], label='x less bias')

@@ -29,18 +29,21 @@ def rotfromdiff(p1, p2):
   R = np.matrix([[ca, -sa],[sa, ca]])
   return R
 
-finalpts = []
+finalpts = [data[0, :]]
 #diff = (data[1, 0] - data[0, 0], data[1, 1] - data[0, 1])
-R0 = rotfromdiff(data[0, :], data[2, :])
-R1 = rotfromdiff(data[1, :], data[3, :])
+R0 = rotfromdiff(data[1, :], data[3, :])
+R1 = rotfromdiff(data[2, :], data[4, :])
 #latprop = diff[0] / (diff[0] + diff[1])
 #lonprop = diff[1] / (diff[0] + diff[1])
-finalpts.append(getrelm(data[0, :], R0 * np.matrix([[-10],[-10]])))
-finalpts.append(getrelm(data[1, :], R1 * np.matrix([[-10],[-10]])))
-finalpts.append(getrelm(data[2, :], R0 * np.matrix([[10],[10]])))
-finalpts.append(getrelm(data[3, :], R1 * np.matrix([[10],[10]])))
-finalpts.append(np.mean(data[(1,2,3,4), :], axis=0))
-finalpts.append(finalpts[0])
+finalpts.append(getrelm(data[1, :], R0 * np.matrix([[-10],[-10]])))
+finalpts.append(getrelm(data[2, :], R1 * np.matrix([[-10],[-10]])))
+finalpts.append(getrelm(data[3, :], R0 * np.matrix([[10],[10]])))
+finalpts.append(getrelm(data[4, :], R1 * np.matrix([[10],[10]])))
+finalpts.append(data[1, :])
+finalpts.append(data[2, :])
+finalpts.append(data[3, :])
+finalpts.append(data[4, :])
+#finalpts.append(np.mean(data[(0,1,2,3), :], axis=0))
 
 #####TODO######
 # Figure out how to repeat waypoints
