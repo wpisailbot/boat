@@ -458,6 +458,24 @@ Pgn pgnList[] =
   }
 }
 
+// A message to give the SCAMP 8 bytes with which to do
+// testing and random junk with; 2 messages for sending
+// and receiving
+,
+{ "Debug SCAMP1", 0xFF03, true, 8, 0,
+  { { "D1", BYTES(4), 1, false, 0, "" } // Raw data
+  , { "D2", BYTES(4), 1, false, 0, "" } // Raw data
+  , { 0 }
+  }
+}
+,
+{ "Debug SCAMP2", 0xFF04, true, 8, 0,
+  { { "D1", BYTES(4), 1, false, 0, "" } // Raw data
+  , { "D2", BYTES(4), 1, false, 0, "" } // Raw data
+  , { 0 }
+  }
+}
+
 ,
 { "Attitude", 127257, true, 7, 0,
   { { "SID", BYTES(1), 1, false, 0, "" }

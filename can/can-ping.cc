@@ -1,41 +1,32 @@
-#include "can.h"
-#include <thread>
+#include "util/msg.pb.h"
+#include "util/node.h"
 
 namespace sailbot {
 
-// Just sends out a rate-of-turn message regularly.
 class CanPing : public Node {
  public:
    CanPing()
-       : Node(0.1), queue_("can127251", true),
-         msg_(AllocateMessage<msg::can::CANMaster>()) {
+       : Node(0.5), msg_(AllocateMessage<msg::can::CANMaster>()),
+         queue_("can65284", true) {
      msg_->set_outgoing(true);
-     RegisterHandler<msg::can::CANMaster>("can127251",
-                                          [](const msg::can::CANMaster &msg) {
-       LOG(INFO) << "Got rate turn message";
-     });
+     RegisterHandler<msg::can::CANMaster>(
+         "can65283", [this](const msg::can::CANMaster &msg) {
+           msg_->mutable_debug_scamp2()->set_data1(123);
+           msg_->mutable_debug_scamp2()->set_data2(msg.debug_scamp1().data1());
+           queue_.send(msg_);
+         });
    }
 
  private:
-  void Iterate() override {
-    LOG(INFO) << "Sending out request to send";
-    msg_->mutable_rate_turn()->set_sid(b++);
-    msg_->mutable_rate_turn()->set_rate(a += 100*3e-9);
-   // queue_.send(msg_);
-  }
-  ProtoQueue<msg::can::CANMaster> queue_;
+   void Iterate() override {}
   msg::can::CANMaster *msg_;
-  uint8_t b = 0;
-  double a = 0;
+  ProtoQueue<msg::can::CANMaster> queue_;
 };
 }  // namespace sailbot
 
 int main(int argc, char *argv[]) {
-  sailbot::Queue::set_testing(true);
+  sailbot::util::SetCurrentThreadRealtimePriority(10);
   sailbot::util::Init(argc, argv);
-  sailbot::can::CanNode can;
   sailbot::CanPing ping;
-  std::thread t(&sailbot::can::CanNode::Run, &can);
   ping.Run();
-  t.join();
 }

@@ -77,4 +77,6 @@ message LogEntry {
   optional can.CANMaster can130306 = 130306; // Wind Data
   optional can.CANMaster can65281 = 65281; // Analog Pot
   optional can.CANMaster can65282 = 65282; // PWM Write
+  optional can.CANMaster can65283 = 65283; // Debug SCAMP1
+  optional can.CANMaster can65284 = 65284; // Debug SCAMP2
 }

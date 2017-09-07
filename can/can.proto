@@ -146,6 +146,12 @@ message PWMWrite {
   optional uint32 rudder = 2;
 }
 
+// Purely a testing message:
+message DebugSCAMP {
+  optional uint32 data1 = 1;
+  optional uint32 data2 = 2;
+}
+
 message CANMaster {
   optional bool outgoing = 1 [default = true]; // Whether to send out over wire
   optional SystemTime sys_tme = 126992;
@@ -161,4 +167,6 @@ message CANMaster {
 
   optional AnalogPot analog_pot = 65281;
   optional PWMWrite pwm_write = 65282;
+  optional DebugSCAMP debug_scamp1 = 65283;
+  optional DebugSCAMP debug_scamp2 = 65284;
 }
