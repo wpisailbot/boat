@@ -24,14 +24,16 @@ class CanNode : public Node {
 
     CANMessage(const Pgn *p, const char *queue_name, msg::can::CANMaster* store)
         : pgn(p), is_long_(p->size > 8), len_(p->size), base_(0),
-          data_(std::make_unique<uint8_t[]>(len_)),
+          data_(std::make_unique<uint8_t[]>(((int)(len_ / 8) + 1) * 8)),
           queue_(std::make_unique<ProtoQueue<msg::can::CANMaster>>(queue_name,
                                                                    true)),
           store_msg_(store) {}
+    CANMessage(CANMessage &&) = default;
     CANMessage() {}
   };
  public:
   CanNode();
+  ~CanNode() { close(s_); }
   void Iterate();
  private:
   int s_;

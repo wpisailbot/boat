@@ -17,7 +17,7 @@ namespace can {
 namespace {
   bool IsReserved(int64_t val, int64_t maxval) {
     return ((maxval >= 15) && ((maxval - val) <= 2)) ||
-           ((maxval > 1) && ((maxval - val) <= 1));
+           ((maxval > 1) && ((maxval - val) <= 1)) || (maxval == val);
   }
   void SetProtoNumberField(google::protobuf::Message* msg, int field_num, double val) {
     VLOG(2) << "Setting field to " << val;
@@ -79,8 +79,8 @@ CanNode::CanNode() : Node(0/**/), s_(socket(PF_CAN, SOCK_RAW, CAN_RAW)) {
     }
     char queue_name[16]; // TODO: Figure this out.
     snprintf(queue_name, 16, "can%u", pgn);
-    msgs_[pgn] =
-        CANMessage(p, queue_name, AllocateMessage<msg::can::CANMaster>());
+    msgs_.emplace(
+        pgn, CANMessage(p, queue_name, AllocateMessage<msg::can::CANMaster>()));
 
     RegisterHandler<msg::can::CANMaster>(
         queue_name, [this, pgn](const msg::can::CANMaster &msg) {
@@ -151,7 +151,7 @@ void CanNode::Iterate() {
   if (msg->is_long_) {
     uint8_t index = data[0] & 0x1F;
     uint8_t base = data[0] & 0xE0;
-    data_start = index * 7 - 1;
+    data_start = index == 0 ? 0 : index * 7 - 1;
     VLOG(2) << "Index: " << (int)index
             << " base: " << (int)base << " data_start: " << (int)data_start;
     --dlc;
@@ -254,7 +254,11 @@ void CanNode::DecodeAndSend(const CANMessage* msg) {
         int64_t max_val = 0;
         int64_t val = ExtractNumberField(f, data, cur_bit, &max_val);
         VLOG(2) << "Extracted " << val << " for field " << f->name;
-        SetProtoNumberField(pgn_msg, i+1, val);
+        if (IsReserved(val, max_val)) {
+         VLOG(2) << "Reserved lookup field";
+        } else {
+          SetProtoNumberField(pgn_msg, i+1, val);
+        }
       } else {
         // For now, assume we don't care about anything else (which is incorrect).
       }
