@@ -109,7 +109,7 @@ class ProtoQueue {
   // TODO(james): Parameterize number of messages.
   // @param name name of the queue to use.
   ProtoQueue(const char *name, bool writer)
-      : impl_(name, writer, 10 /*number of messages*/, BUF_SIZE) {
+      : impl_(name, writer, 20 /*number of messages*/, BUF_SIZE) {
     arena_settings_.start_block_size = 10000;
     arena_settings_.max_block_size = 0;
     arena_.reset(new google::protobuf::Arena(arena_settings_));
