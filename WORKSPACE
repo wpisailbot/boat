@@ -61,7 +61,7 @@ new_http_archive(
 
 new_http_archive(
   name = "boost",
-  url = "https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.zip/download",
+  url = "http://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.zip?r=&ts=1505781564&use_mirror=phoenixnap",
   build_file = "third_party/boost.BUILD",
   type = "zip",
   strip_prefix = "boost_1_62_0/",
