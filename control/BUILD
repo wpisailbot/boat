@@ -81,16 +81,6 @@ cc_test(
   deps=[":util", "@gtest//:main"],
 )
 cc_library(
-  name="elqr_lib",
-  srcs=["elqr_routing.cc"],
-  hdrs=["elqr_routing.h"],
-  deps=[":util"],
-)
-cc_binary(
-  name="elqr_bin",
-  deps=[":elqr_lib"],
-)
-cc_library(
   name="rudder_controller",
   srcs=["rudder.cc"],
   hdrs=["rudder.h", "//control/python:rudder_gains.h"],

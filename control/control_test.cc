@@ -80,7 +80,7 @@ class SimpleControlTest : public TestWrapper {
   std::vector<std::thread> threads_;
   CsvLogger csv_logger_;
   WebSocketServer server_;
-  sim::SimulatorNode sim_node_;
+  sim::SimulatorNode sim_node_{-1};
   control::SimpleControl simple_ctrl_;
 //  control::RudderController rudder_;
   control::LineTacker tacker_;

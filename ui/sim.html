@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <script src="jquery-3.1.1.min.js"></script>
+    <script src="retrieve_data.js"></script>
+    <script src="sail_widget.js"></script>
+    <link rel="stylesheet" href="main.css">
+  </head>
+  <body>
+    <!-- The main big canvas -->
+    <svg id="myCanvas" width="80vw" height="90vh">
+      <defs>
+          <pattern id="smallGrid" width="1" height="1" patternUnits="userSpaceOnUse">
+            <path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="1"/>
+          </pattern>
+      </defs>
+
+      <g transform="translate(500, 500)" class="inertial_frame">
+
+        <g transform="translate(-500, -500)" class="grid_trans">
+          <rect x="0" y="0" width="200%" height="200%" fill="url(#smallGrid)" />
+        </g>
+
+        <g transform="translate(0, 0)" class="hull_position">
+          <g transform="rotate(0)" class="hull_rotate">
+          <!-- TODO(james): Separate rudder/sail out -->
+            <g transform="translate(-50, 0)">
+              <path d="M 0 -10 q 50 -10 100 10 q -50 20 -100 10 l 0 -20 z" stroke="blue" stroke-width="3" fill="none" />
+              <path d="M 0 0 l -15 0" stroke="red" stroke-width="3" fill="none" transform="rotate(10)" class="rudder_path" />
+              <g transform="translate(50, 0)">
+                <path d="M 0 0 l -40 0" stroke="red" stroke-width="3" fill="none" transform="rotate(20)" class="sail_path" />
+              </g>
+            </g>
+          </g>
+        </g>
+
+        <g transform="translate(0, 0)" class="shadow_hull_position">
+          <g transform="rotate(0)" class="shadow_hull_rotate">
+            <g transform="translate(-50, 0)">
+              <path d="M 0 -10 q 50 -10 100 10 q -50 20 -100 10 l 0 -20 z" stroke="blue" stroke-width="1" fill="none" />
+              <path d="M 0 0 l -15 0" stroke="red" stroke-width="1" fill="none" transform="rotate(10)" class="rudder_path" />
+              <g transform="translate(50, 0)">
+                <path d="M 0 0 l -40 0" stroke="red" stroke-width="1" fill="none" transform="rotate(20)" class="sail_path" />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <rect x="0" y="0" width="100%" height="100%" style="fill-opacity:0;stroke-opacity:0" id="background" />
+
+      Try a different browser
+    </svg>
+    <!-- The pull-out diagram with vectors -->
+    <svg id="diagramCanvas" width="200px" height="200px">
+      <g transform="translate(100, 100)" id="demo_hull_loc">
+        <g transform="rotate(0)" class="hull_rotate" id="demo_hull_rotate">
+          <g transform="translate(-50, 0)">
+            <path d="M 0 -10 q 50 -10 100 10 q -50 20 -100 10 l 0 -20 z" stroke="blue" stroke-width="2" stroke-opacity="50%" fill="none" />
+            <path d="M 0 0 l -15 0" stroke="red" stroke-width="2" fill="none" stroke-opacity="50%" transform="rotate(10)" class="rudder_path" />
+            <path d="M -100 0 l 300 0" stroke="black" stroke-dasharray="5, 5" stroke-width="1" fill="none" />
+            <g transform="translate(50, 0)">
+              <path d="M 0 0 l -40 0" stroke="red" stroke-width="2" fill="none" stroke-opacity="50%" transform="rotate(20)" class="sail_path" />
+            </g>
+          </g>
+        </g>
+      </g>
+
+      Try a different browser
+    </svg>
+    <br>
+    <table>
+      <tr>
+        <td> Goto X: <input type="textbox" id="goto-x"> </td>
+        <td> Goto Y: <input type="textbox" id="goto-y"> </td>
+        <td> <input type="button" id="goto-submit" value="Go"> </td>
+      </tr>
+      <tr>
+        <td> Goto X rel m: <input type="textbox" id="goto-rel-x"> </td>
+        <td> Goto Y rel m: <input type="textbox" id="goto-rel-y"> </td>
+        <td> <input type="button" id="goto-rel-submit" value="Go"> </td>
+      </tr>
+      <tr>
+        <td> Time: <span class="data_output" field="time"></span> sec </td>
+        <td> Heel: <span class="data_output" field="sim_true_boat_state.euler.roll"></span> radians </td>
+        <td> Yaw: <span class="data_output" field="sim_true_boat_state.euler.yaw"></span> radians </td>
+        <td> Ballast Angle: <span class="data_output" field="sim_true_boat_state.internal.ballast"></span> radians </td>
+      </tr>
+        <td> True Sail Angle: <span class="data_output" field="sim_true_boat_state.internal.sail"></span> radians </td>
+        <td> Known Sail Angle: <span class="data_output" field="boat_state.internal.sail"></span> radians </td>
+      <tr>
+        <td>
+          Winch:
+          <select class="data_input" field="winch_mode" msg="control_mode">
+            <option value="0">RC Control</option>
+            <option value="4">Filtered RC</option>
+            <option value="1" selected>Autonomous</option>
+            <option value="2">WiFi Joystick</option>
+            <option value="3">Disable</option>
+          </select>
+          Rigid:
+          <select class="data_input" field="rigid_mode" msg="control_mode">
+            <option value="0">RC Control</option>
+            <option value="4">Filtered RC</option>
+            <option value="1" selected>Autonomous</option>
+            <option value="2">WiFi Joystick</option>
+            <option value="3">Disable</option>
+          </select>
+        </td>
+        <td>
+          Rudder:
+          <select class="data_input" field="rudder_mode" msg="control_mode">
+            <option value="0">RC Control</option>
+            <option value="4">Filtered RC</option>
+            <option value="1" selected>Autonomous</option>
+            <option value="2">WiFi Joystick</option>
+            <option value="3">Disable</option>
+          </select>
+
+          <select class="data_input" field="tacker" msg="control_mode">
+            <option value="0">No Tacker</option>
+            <option value="1">Old "Line" Tacker</option>
+            <option value="2" selected>New Tacker</option>
+          </select>
+        </td>
+        <td>
+          <input type="button" class="data_submit" msg="control_mode" value="Send Mode">
+        </td>
+        <td>
+          <input type="button" value="DISABLE" onclick="sendMessage('control_mode', {winch_mode: 3, rudder_mode: 3})">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <select class="data_input" field="challenge" msg="challenge_control">
+            <option value="1">Station Keeping</option>
+            <option value="2">Waypoint</option>
+            <option value="3">Vision</option>
+            <option value="4" selected>Obstacle</option>
+          </select>
+          <span type="button" class="data_output" field="challenge_control"></span>
+        </td>
+        <td>
+          <input type="button" class="data_submit" msg="challenge_control" value="Send Challenge">
+        </td>
+      </tr>
+    </table>
+
+    <div>There are <span id="gps_lat_to_m"></span> degrees of latitude to the meter and <span id="gps_lon_to_m"></span> degrees of longitude to the meter</div>
+
+    <div>General Information:
+      <p>
+        The grid is 10mx10m. It is not square because the grid is in lat/lon,
+        and at different latitudes there are different numbers of degrees
+        lat/lon per meter.
+      </p>
+      <p>
+        The colored arrows on the boat are yellow for wind, purple
+        for goal heading, and green for boat velocity.
+      </p>
+    </div>
+
+  </body>
+</html>

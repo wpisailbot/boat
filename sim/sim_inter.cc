@@ -1,11 +1,16 @@
 #include "sim_inter.h"
 #include <Eigen/Geometry>
+#include <gflags/gflags.h>
+
+DEFINE_double(starttime, 0, "Process time at which to start the simulation");
+DEFINE_double(endtime, 9999, "Process time at which to end the simulation");
 
 namespace sailbot {
 namespace sim {
 
-SimulatorNode::SimulatorNode()
+SimulatorNode::SimulatorNode(double reset_period)
     : Node(dt),
+      reset_period_(reset_period),
       // impl_(new SimulatorSaoud2013(dt)),
       impl_(new TrivialDynamics(dt)), sdot_(0), rdot_(0), bdot_(0),
       state_queue_("sim_true_boat_state", true),
@@ -21,6 +26,16 @@ SimulatorNode::SimulatorNode()
     RegisterHandler<msg::BallastCmd>(
         "ballast_cmd",
         std::bind(&SimulatorNode::ProcessBallast, this, std::placeholders::_1));
+    RegisterHandler<msg::Vector3f>("sim_set_wind",
+                                   [this](const msg::Vector3f &msg) {
+      set_wind(msg.x(), msg.y(), msg.z());
+    });
+    // For when doing log replay, retrieve logged state.
+    RegisterHandler<msg::BoatState>("orig_boat_state",
+                                    [this](const msg::BoatState &msg) {
+      std::unique_lock<std::mutex> lck(last_state_mutex_);
+      last_state_ = msg;
+    });
 }
 
 void SimulatorNode::ProcessSail(const msg::SailCmd& cmd) {
@@ -57,6 +72,28 @@ void SimulatorNode::Run() {
 }
 
 void SimulatorNode::Iterate() {
+  const double systime =
+      std::chrono::nanoseconds(util::monotonic_clock::now().time_since_epoch())
+          .count() /
+      1e9;
+  if (systime < FLAGS_starttime) {
+    return;
+  }
+  if (systime > FLAGS_endtime) {
+    util::RaiseShutdown();
+    return;
+  }
+  if (reset_period_ > 0 && systime > next_reset_) {
+    started_ = false;
+    next_reset_ = systime + reset_period_;
+  }
+  if (!started_) {
+    std::unique_lock<std::mutex> lck(last_state_mutex_);
+    impl_->set_from_state(last_state_);
+    fake_airmar_.set_gps_zero(last_state_.pos().y(), last_state_.pos().x());
+    started_ = true;
+  }
+  usleep(dt * 1e6 / 2.);
   static float time = 0;
   VLOG(2) << "Time: " << (time += dt);
   VLOG(1) << "s, r: " << sdot_ << ", " << rdot_;

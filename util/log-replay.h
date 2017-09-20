@@ -17,7 +17,8 @@ namespace sailbot {
 
 class LogReplay {
  public:
-  LogReplay();
+  LogReplay(const std::map<std::string, std::string> &rename,
+            bool default_ignore = false);
   void Run();
  private:
   void Init();
@@ -25,6 +26,8 @@ class LogReplay {
   util::ClockInstance clock_;
   std::ifstream input_;
   std::map<std::string, std::unique_ptr<Queue>> queues_;
+  std::map<std::string, std::string> rename_;
+  const bool default_ignore_;
 };
 
 }  // sailbot

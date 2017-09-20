@@ -9,7 +9,12 @@ DEFINE_string(input_log, "/tmp/logfilename",
 
 namespace sailbot {
 
-LogReplay::LogReplay() : input_(FLAGS_input_log) { Init(); }
+LogReplay::LogReplay(const std::map<std::string, std::string> &rename,
+                     bool default_ignore)
+    : input_(FLAGS_input_log), rename_(rename),
+      default_ignore_(default_ignore) {
+  Init();
+}
 
 void LogReplay::Init() {
   util::ClockManager::SetFakeClock(true);
@@ -48,7 +53,13 @@ void LogReplay::Run() {
       } else {
         queue_name = field->lowercase_name();
         if (queues_.count(queue_name) == 0) {
-          queues_[queue_name].reset(new Queue(queue_name.c_str(), true));
+          std::string qname = default_ignore_ ? "" : queue_name;
+          if (rename_.count(queue_name)) {
+            qname = rename_[queue_name];
+          }
+          if (qname.size() > 0) {
+            queues_[queue_name].reset(new Queue(qname.c_str(), true));
+          }
         }
       }
     }
@@ -57,8 +68,29 @@ void LogReplay::Run() {
       clock_.SleepUntil(msg_time);
       cur_time = clock_.Time();
     }
-    if (queue_name.size() > 0)
+    // Handle moving the fields around within the LogEntry prot
+    if (rename_.count(queue_name) > 0 && rename_[queue_name] != queue_name) {
+      const google::protobuf::FieldDescriptor *new_field =
+          entry.GetDescriptor()->FindFieldByName(rename_[queue_name]);
+      const google::protobuf::FieldDescriptor *old_field =
+          entry.GetDescriptor()->FindFieldByName(queue_name);
+      if (old_field == nullptr || new_field == nullptr) {
+        LOG(FATAL) << "Queue \"" << rename_[queue_name] << "\" or \""
+                   << queue_name
+                   << "\" does not exist in the LogEntry proto...";
+      }
+      google::protobuf::Message *field_content =
+          entry.GetReflection()->MutableMessage(&entry, new_field);
+      field_content->CopyFrom(
+          entry.GetReflection()->GetMessage(entry, old_field));
+      entry.GetReflection()->ClearField(&entry, old_field);
+      entry.SerializeToArray(msg_buffer, Logger::MAX_BUF);
+      n = entry.ByteSize();
+    }
+
+    if (queue_name.size() > 0 && queues_[queue_name]) {
       queues_[queue_name]->send(msg_buffer, n);
+    }
   }
 }
 

@@ -38,7 +38,7 @@ void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
   y += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
 }
 
-// Takes lat/lon in RADIANS, returns distance
+// Takes lat/lon in RADIANS, returns distance, in m
 float GPSDistance(float lat1, float lon1, float lat2, float lon2);
 
 // Takes lat/lon in RADIANS, returns bearing

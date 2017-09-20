@@ -7,7 +7,7 @@ option cc_enable_arenas = true;
 message SystemTime {
   optional uint32 SID = 1;
   optional uint32 date = 4; // 2 bytes, days since epoch
-  optional uint32 time = 5; // 4 bytes, seconds since midnight
+  optional uint32 time = 5; // 4 bytes, 1/10000 seconds since midnight
 }
 
 enum DIRECTION_REFERENCE {
@@ -155,7 +155,7 @@ message DebugSCAMP {
 
 message CANMaster {
   optional bool outgoing = 1 [default = true]; // Whether to send out over wire
-  optional SystemTime sys_tme = 126992;
+  optional SystemTime sys_time = 126992;
   optional VesselHeading heading = 127250;
   optional RateOfTurn rate_turn = 127251;
   optional Attitude attitude = 127257;

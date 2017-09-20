@@ -7,6 +7,7 @@
 
 #include "glog/logging.h"
 #include "gflags.h"
+#include <iostream>
 
 namespace sailbot {
 namespace util {

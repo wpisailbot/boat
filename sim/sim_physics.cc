@@ -79,16 +79,27 @@ TrivialDynamics::TrivialDynamics(float _dt)
   RBI = RBI.Identity();
 }
 
-std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
-    double sdot, double rdot, double bdot) {
-  sailbot::msg::SimDebugMsg msg;
+std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d>
+TrivialDynamics::Update(double sdot, double rdot, double bdot) {
   VLOG(1) << "sdot, rdot: " << sdot << ", " << rdot;
   deltas += sdot * dt;
   deltar += rdot * dt;
   deltab += bdot * dt;
-  deltas = util::norm_angle(deltas);
-  deltar = util::norm_angle(deltar);
-  deltab = util::norm_angle(deltab);
+  Update(deltas, deltar);
+}
+
+std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d>
+TrivialDynamics::Update(double deltas_in, double deltar_in) {
+  sailbot::msg::SimDebugMsg msg;
+  deltas = std::max(util::norm_angle(deltas_in), 0.);
+  // If the wind is blowing from our starboard, flip the sail angle.
+  const double apparent_wind_dir =
+      util::norm_angle(std::atan2(wind.y(), wind.x()) - yaw);
+  if (apparent_wind_dir < 0) {
+    deltas *= -1;
+  }
+  deltar = util::norm_angle(deltas);
+  deltab = util::norm_angle(deltar_in);
   deltar = std::min(std::max(deltar, -0.6), 0.6);
   deltab = std::min(std::max(deltab, -1.5), 1.5);
   Vector3d Fs = SailForces();
@@ -176,6 +187,27 @@ std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d> TrivialDynamics::Update(
   Vector6d nu;
   nu << x, v;
   return {nu, RBI};
+}
+
+void TrivialDynamics::set_from_state(const msg::BoatState &state) {
+  deltas = state.internal().sail();
+  deltar = state.internal().rudder();
+  deltab = state.internal().ballast();
+  x *= 0;
+  v.x() = state.vel().x();
+  v.y() = state.vel().y();
+  yaw = state.euler().yaw();
+  heel = state.euler().roll();
+  omega.x() = state.omega().x();
+  omega.y() = state.omega().y();
+  omega.z() = state.omega().z();
+  double ch = std::cos(heel);
+  double sh = std::sin(heel);
+  double cy = std::cos(yaw);
+  double sy = std::sin(yaw);
+  RBI << cy, -sy * ch, sy * sh
+      , sy, ch * cy , -cy * sh
+      , 0 , sh      , ch;
 }
 
 Eigen::Matrix<double, TrivialDynamics::kNumXStates, 1>

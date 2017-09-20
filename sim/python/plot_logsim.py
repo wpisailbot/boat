@@ -10,8 +10,7 @@ def norm_theta(theta):
     theta += 2 * np.pi
   return theta
 
-data = np.genfromtxt("endurance-final.csv", delimiter=',')[144:, :]
-#data = np.genfromtxt("sep11replay.csv", delimiter=',')[144:, :]
+data = np.genfromtxt("sep11logsim.csv", delimiter=',')[:, :]
 x = []
 y = []
 vx = []
@@ -32,7 +31,10 @@ true_alphaw = []
 true_wind_speed = []
 heading_cmd = []
 rudder_mode = []
+orig_yaw = []
 for row in data:
+  if row[0] < 4000:
+    continue
   for i in range(len(row)):
     if abs(row[i]) > 1e5:
       row[i] = float("nan")
@@ -42,14 +44,15 @@ for row in data:
   sail.append(row[3] * 180. / np.pi)
   rudder.append(row[4] * 180. / np.pi)
   yaw.append(norm_theta(row[5]) * 180. / np.pi)
+  orig_yaw.append(norm_theta(row[20]) * 180. / np.pi)
   heel.append(norm_theta(row[6]) * 180. / np.pi)
   pitch.append(norm_theta(row[7]) * 180. / np.pi)
   pitchvarstart = max(-100, -len(pitch))
   pitchvar.append(np.std(pitch[pitchvarstart:]))
   x.append(row[8])
   y.append(row[9])
-  vx.append(row[11])
-  vy.append(row[10])
+  vx.append(row[10])
+  vy.append(row[11])
   speed.append(np.hypot(vx[-1], vy[-1]))
   heading.append(np.arctan2(vy[-1], vx[-1]) * 180. / np.pi)
   leeway.append(norm_theta((heading[-1] - yaw[-1]) * np.pi / 180.) * 180. / np.pi)
@@ -86,6 +89,7 @@ ax2.legend(loc='upper right')
 plt.figure()
 axyh = plt.subplot(111, sharex=ax)
 axyh.plot(t, yaw, label='Yaw')
+axyh.plot(t, orig_yaw, '--', label='Original Yaw')
 axyh.plot(t, heel, label='Heel')
 axyh.plot(t, pitch, label='Pitch')
 axyh.plot(t, [n * 100 for n in pitchvar], label='Pitch Stddev * 100')
@@ -93,10 +97,11 @@ axyh.legend()
 
 plt.figure()
 axyaw = plt.subplot(111, sharex=ax)
-axyaw.plot(np.matrix(t).T, np.matrix(yaw).T + 0, label='Heading')
-axyaw.plot(t, alphaw, label='Apparent Wind Angle')
-axyaw.plot(t, heading_cmd, 'b--', label='Heading Cmd')
-axyaw.plot(t, rudder_mode, '*', label='Rudder Mode')
+axyaw.plot(np.matrix(t).T, np.matrix(yaw).T + 0, 'b', label='Heading')
+axyaw.plot(t, yaw, 'b--', label='Orig Yaw')
+axyaw.plot(t, alphaw, 'g', label='Apparent Wind Angle')
+axyaw.plot(t, heading_cmd, 'b-.', label='Heading Cmd')
+axyaw.plot(t, rudder_mode, 'r*', label='Rudder Mode')
 #axyaw.plot(t, true_alphaw, 'm', label='True Wind Angle')
 axrudder = axyaw.twinx()
 axrudder.plot(t, rudder, 'r', label='Rudder')
@@ -121,15 +126,5 @@ axwinddir = axwind.twinx();
 axwinddir.plot(t, true_alphaw, 'c', label="True Wind Dir (deg)")
 axwind.legend(loc='upper left')
 axwinddir.legend(loc='upper right')
-
-plt.figure()
-pitchfft = np.fft.fft(pitch)
-plt.plot(pitchfft)
-plt.title("Pitch FFT")
-
-plt.figure()
-windfft = np.fft.fft(true_wind_speed)
-plt.plot(windfft)
-plt.title("Wind Speed FFT")
 
 plt.show()
