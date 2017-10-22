@@ -240,6 +240,8 @@ class Physics(object):
     cheel = np.cos(heel)
     cdeltas = np.cos(deltas)
     sdeltas = np.sin(deltas)
+    return Fs * ((self.rs - self.ls * cdeltas) * np.sin(gammas) * cheel
+                 + self.hk * np.cos(gammas) * sheel), 0.0
     r = np.sqrt((self.rs - self.ls * cdeltas) ** 2 + (self.hs * sheel) ** 2)
     drds = ((self.rs - self.ls * cdeltas) * (self.ls * sdeltas) \
         + (self.hs * sheel) * (self.hs * cheel) * deltaheel) \
@@ -265,6 +267,8 @@ class Physics(object):
     """
       Calculate yaw torque from keel, using output from KeelForces
     """
+    return Fk * (self.rk * np.sin(gammak) * np.cos(heel)
+                 + self.hk * np.cos(gammak) * np.sin(heel))
     r = np.sqrt(self.rk ** 2 + (self.hk * np.sin(heel)) ** 2)
     theta = gammak - np.arctan2(-self.hk * np.sin(heel), self.rk)
     return r * Fk * np.sin(theta) * np.cos(heel)
@@ -394,8 +398,29 @@ class Physics(object):
 
     return x, y, vx, vy, yaw, omega, heel, thetac, vc, thetaw, vw
 
-  def RunBase(self, ts, winds, x0, v0, yaw0, omega0, heel0, deltass, deltars,
+  def RunBase(self, ts, winds, x0, v0, yaw0, omega0, heel0, control,
               flopsail=False, debugf=None):
+    """
+      ts: Times to simulate over, e.g. [0, .1, .2, .3, .4]
+         to simulate 4 steps of 0.1sec each
+      winds: list of two lists, where each sublist
+         is of length ts and contains the true wind
+         at that time
+      x0: list of length 2 = (x, y) initial positoin
+      v0: list of length 2 = (x, y) initial velocity
+      yaw0: float, initial yaw
+      omega0: float, initial time derivative of yaw
+      heel0: float, intitial heel
+      control: Function, of the form:
+        Params:
+          i: current index from ts/winds that we are at
+          t: ts[i]
+          thetaw: Apparent wind dir
+          vw: Apparent wind vel
+          thetac: Apparent current
+          vc: Apparent water speed
+        Returns: deltas, deltar
+    """
     xs = [x0[0]]
     ys = [x0[1]]
     vxs = [v0[0]]
@@ -407,12 +432,16 @@ class Physics(object):
     thetacs = [Norm(np.arctan2(v0[1], v0[0]) + yaws[0])]
     vws = [0.0]
     thetaws = [0.0]
+    deltass = []
+    deltars = []
     for i in range(1, len(ts)):
       dt = np.clip(ts[i] - ts[i - 1], 0.001, 0.2)
       wx = winds[0][i]
       wy = winds[1][i]
-      deltas = deltass[i]
-      deltar = deltars[i]
+      deltas, deltar = control(
+          i, ts[i], thetaws[-1], vws[-1], thetacs[-1], vcs[-1])
+      deltass.append(deltas)
+      deltars.append(deltar)
       x, y, vx, vy, yaw, omega, heel, thetac, vc, thetaw, vw = self.Update(
           wx, wy, xs[-1], ys[-1], vxs[-1], vys[-1], yaws[-1], omegas[-1],
           deltas, deltar, heels[-1], dt, flopsail, debugf)
@@ -435,17 +464,19 @@ class Physics(object):
       thetaws.append(thetaw)
       vws.append(vw)
 
-    return xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws
+    deltass.append(0.0)
+    deltars.append(0.0)
 
-  def Run(self, wind, v0, omega0, heel0, deltas, deltar, dt=0.01, niter=200, flopsail=True, debugf=None):
+    return xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs,\
+        thetaws, vws, deltass, deltars
+
+  def Run(self, wind, v0, omega0, heel0, control, dt=0.01, niter=200, flopsail=True, debugf=None):
     wx = [wind[0]] * niter
     wy = [wind[1]] * niter
     winds = [wx, wy]
-    deltass = deltas if isinstance(deltas, list) else [deltas] * niter
-    deltars = deltar if isinstance(deltar, list) else [deltar] * niter
     ts = [i * dt for i in range(niter)]
     return self.RunBase(ts, winds, [0.0, 0.0], v0, 0.0, omega0, heel0,
-                        deltass, deltars, flopsail=flopsail, debugf=debugf)
+                        control, flopsail=flopsail, debugf=debugf)
     xs = [0]
     ys = [0]
     vxs = [v0[0]]
@@ -492,6 +523,12 @@ class Controller(object):
   def ClipRudder(self, deltar, thetac):
     return np.clip(deltar, min(-self.maxrud - thetac, 0.0), max(self.maxrud - thetac, 0.0))
 
+  def Control(self, i, t, thetaw, vw, thetac, vc):
+    ds = np.clip(Norm(np.pi - thetaw), -np.pi / 2.0, np.pi / 2.0)
+    print("thetaw ", thetaw, " ds ", ds)
+    deltari = 0.25
+    return self.MaxForceForTorque(thetaw, vw, thetac, vc, ds, deltari)
+
   def MaxForceForTorque(self, thetaw, vw, thetac, vc, deltasi, deltari):
     """
       Given a particular set of conditions, adjusts deltar
@@ -506,33 +543,34 @@ class Controller(object):
     clips = deltasi
     deltar = deltari
     deltas = deltasi
-    print("thetaw ", thetaw, " vw ", vw)
+    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    print("thetaw ", thetaw, " vw ", vw, " thetac ", thetac, " vc ", vc, " deltasi ", deltasi, " deltari ", deltari)
     while deltasstep * laststep >= 0.0:# or np.isnan(taunom):
       print("Iter")
       Fs, gammas, dFsds, dgsds = self.physics.SailForces(thetaw, vw, deltas)
-      print("Fs ", Fs, " gammas ", gammas, " dFsds ", dFsds, " dgsds ", dgsds)
+#      print("Fs ", Fs, " gammas ", gammas, " dFsds ", dFsds, " dgsds ", dgsds)
       Fk, gammak = self.physics.KeelForces(thetac, vc)
       heel, dheelds = self.physics.ApproxHeel(Fs, gammas, Fk, gammak, dFsds, dgsds)
       Fr, gammar, dFrdr, dgrdr = self.physics.RudderForces(thetac, vc, deltar)
       taus, dtausds = self.physics.SailTorque(Fs, gammas, deltas, heel, dFsds, dgsds, dheelds)
       # Ignore the keel...
-      print("Fr ", Fr, " gammar ", gammar, " dFrdr ", dFrdr, " dgrdr", dgrdr)
+#      print("Fr ", Fr, " gammar ", gammar, " dFrdr ", dFrdr, " dgrdr", dgrdr)
       taur, dtaurdr, dtaurds = self.physics.RudderTorque(Fr, gammar, heel, dFrdr, dgrdr, dheelds)
       taunet = taus + taur
       if np.isnan(taunom):
         taunom = taunet
-        print("Taunom: ", taunom)
+#        print("Taunom: ", taunom)
       tauerr = taunet - taunom
       print("tauerr: ", tauerr)
 
       dFlonds = dFsds * np.cos(gammas) - Fs * np.sin(gammas) * dgsds
-      print("dFlonds: ", dFlonds, " taunet: ", taunet)
+#      print("dFlonds: ", dFlonds, " taunet: ", taunet)
 
       laststep = deltasstep
       deltasstep = 0.01 * Sign(dFlonds)
       deltas += deltasstep
       dtau = dtausds * deltasstep + dtaurds * deltasstep
-      print("dtau ", dtau, " dtausds ", dtausds, " dtaurds ", dtaurds, " dtaurdr ", dtaurdr)
+#      print("dtau ", dtau, " dtausds ", dtausds, " dtaurds ", dtaurds, " dtaurdr ", dtaurdr)
       deltarstep = -(dtau + tauerr) / dtaurdr
       deltar += deltarstep
 
@@ -540,7 +578,7 @@ class Controller(object):
       clipr = self.ClipRudder(deltar, thetac)
       print("clips ", clips, " clipr ", clipr)
       if clips != deltas or clipr != deltar:
-        print("breaking due to limit")
+#        print("breaking due to limit")
         break
 
     return clips, clipr
@@ -556,6 +594,55 @@ class Controller(object):
 # to improve forwards force by following the gradient (we adjust the
 # sail and then adjust the rudder, iteratively).
 
+def SailForcesAndTorque(physics, thetaw, vw, thetac, vc, deltas):
+  Fs, gammas, _, _ = physics.SailForces(thetaw, vw, deltas)
+  Fk, gammak = physics.KeelForces(thetac, vc)
+  heel, _ = physics.ApproxHeel(Fs, gammas, Fk, gammak, 0.0, 0.0)
+  taus, _ = physics.SailTorque(Fs, gammas, deltas, heel, 0, 0, 0)
+  Fslon = Fs * np.cos(gammas)
+  return Fslon, taus, heel
+
+def PlotSail(physics, thetaw, vw, thetac, vc, fname=None):
+  maxsail = abs(Norm(np.pi - thetaw))
+  minsail = maxsail - np.pi / 2.0
+  minds = max(0.0, minsail) if thetaw > 0.0 else -maxsail
+  maxds = maxsail if thetaw > 0.0 else min(-minsail, 0.0)
+
+  Fss = []
+  tauss = []
+  heels = []
+  deltass = np.arange(minds, maxds, 0.01)
+  for deltas in deltass:
+    Fs, taus, heel = SailForcesAndTorque(
+        physics, thetaw, vw, thetac, vc, deltas)
+    Fss.append(Fs)
+    tauss.append(taus)
+    heels.append(heel)
+
+  tack = "running" if abs(thetaw) < 0.5 else \
+             "broad reach" if abs(thetaw) < 1.4 else \
+                 "beam reach" if abs(thetaw) < 1.8 else \
+                     "close reach" if abs(thetaw) < 2.5 else \
+                         "close hauled" if abs(thetaw) < 2.8 else \
+                             "in irons"
+
+  plt.figure()
+  plt.title("Sail Forces for Various $\delta_s$, thetaw=%f (%s)" % (thetaw, tack))
+  plt.plot(deltass, Fss, label="Sail forward force ($F_{s,lon}$)")
+  plt.plot(deltass, tauss, label="Sail yaw torque ($\\tau_s$)")
+  plt.xlabel("Sail angle, $\delta_s$ (radians), from %s (left) to %s (right)"
+      % ("fully stalled" if thetaw > 0 else "luffing",
+         "fully stalled" if thetaw <= 0 else "luffing"))
+  plt.ylabel("Force (N), Torque (N-m)")
+  plt.legend(loc='upper left')
+  ax = plt.twinx()
+  ax.plot(deltass, heels, 'r', label="Heel angle ($\psi$)")
+  ax.set_ylabel("Heel Angle (radians)")
+  ax.legend(loc='upper right')
+
+  plt.xlim((minds, maxds))
+  if fname != None:
+    plt.savefig(fname)
 
 if __name__ == "__main__":
   sim = Physics()
@@ -564,30 +651,45 @@ if __name__ == "__main__":
   omega0 = 0.0
   heel0 = 0.0
   deltas = 0.0
-  deltar = -0.2
+  deltar = 0.25
   dt = 0.01
-  niter = 3500
+  niter = 1450
   t = [dt * n for n in range(niter)]
   forces = DebugForces()
-  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws = sim.Run(
-      wind, v0, omega0, heel0, deltas, deltar, dt, niter, debugf=forces)
-  forces.UpdateZero()
+  control = lambda i, t, tw, vw, tc, vc: (deltas, deltar)
+  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws, _, _ =\
+      sim.Run(
+      wind, v0, omega0, heel0, control, dt=dt, niter=niter)
+
+  PlotSail(sim, 0.001, 3.0, 0.0, 1.0)
+  PlotSail(sim, np.pi / 4.0, 3.0, 0.0, 1.0)
+  PlotSail(sim, np.pi / 2.0, 3.0, 0.0, 1.0, 'sail_forces_beam.eps')
+  PlotSail(sim, 3 * np.pi / 4.0, 3.0, 0.0, 1.0)
+  PlotSail(sim, 7 * np.pi / 8.0, 3.0, 0.0, 1.0)
+  PlotSail(sim, 3.0, 3.0, 0.0, 1.0)
 
   control = Controller(sim)
-  deltasopt = []
-  deltaropt = []
-  for i in range(len(thetaws)):
-    print(i)
-    ds = deltasopt[-1] if len(deltasopt) > 0 else deltas
-    ds = abs(ds) if thetaws[i] > 0 else -abs(ds)
-    dsopt, dropt = control.MaxForceForTorque(
-        thetaws[i], vws[i], thetacs[i], vcs[i], ds, deltar)
-    print("ds ", dsopt, " dr ", dropt)
-    deltasopt.append(dsopt)
-    deltaropt.append(dropt)
-
-  plt.plot(xs, ys, 'o')
-  plt.title("Overall X/Y")
+#  control.MaxForceForTorque(-1.51716946346, 4.56503205727,
+#      -0.0564452767422, 0.648521086573, -1.57079632679, 0.25)
+#  control.MaxForceForTorque(-1.51638429183, 4.56599217829,
+#      -0.0695781219434, 0.640581832306, -1.57079632679, 0.25)
+#  control.MaxForceForTorque(-1.51716946346, 4.56503205727,
+#      -0.0564452767422, 0.648521086573, -1.57079632679, 0.25)
+#  control.MaxForceForTorque(-1.51638429183, 4.56599217829,
+#      -0.0695781219434, 0.640581832306, -1.57079632679, 0.25)
+#  sys.exit()
+  #deltasopt = []
+  #deltaropt = []
+  #for i in range(len(thetaws)):
+  #  print(i)
+  #  ds = deltasopt[-1] if len(deltasopt) > 0 else deltas
+  #  ds = np.clip(Norm(np.pi - thetaws[i]), -np.pi / 2.0, np.pi / 2.0)
+  #  ds = abs(ds) if thetaws[i] > 0 else -abs(ds)
+  #  dsopt, dropt = control.MaxForceForTorque(
+  #      thetaws[i], vws[i], thetacs[i], vcs[i], ds, deltar)
+  #  print("ds ", dsopt, " dr ", dropt)
+  #  deltasopt.append(dsopt)
+  #  deltaropt.append(dropt)
 
   plt.figure()
   axxy = plt.subplot(111)
@@ -600,13 +702,23 @@ if __name__ == "__main__":
   axang.plot(t, omegas, 'y', label="omega")
   axang.plot(t, heels, 'r', label="heel")
   axang.plot(t, thetacs, 'm', label="Leeway")
+  axang.plot(t, thetaws, 'k', label="Apparent Wind")
   axxy.legend(loc='upper left')
   axang.legend(loc='upper right')
   axxy.grid()
   axang.grid()
 
-  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, _, _, _ = sim.Run(
-      wind, v0, omega0, heel0, deltasopt, deltaropt, dt, niter)
+  plt.show()
+  sys.exit()
+
+  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws,\
+      deltasopt, deltaropt = sim.Run(
+      wind, v0, omega0, heel0, control.Control, dt, niter, debugf=forces)
+  forces.UpdateZero()
+
+  plt.figure()
+  plt.plot(xs, ys, 'o')
+  plt.title("Overall X/Y")
 
   plt.figure()
   axxy = plt.subplot(111, sharex=axxy, sharey=axxy)
@@ -614,12 +726,15 @@ if __name__ == "__main__":
   axxy.plot(t, ys, 'g', label="y")
   axxy.plot(t, vxs, 'b*', label="vx")
   axxy.plot(t, vys, 'g*', label="vy")
+  axxy.plot(t, vcs, 'm--', label="vc")
+  axxy.plot(t, vws, 'k--', label="vw")
   axang2 = axxy.twinx()
   axang2.get_shared_y_axes().join(axang, axang2)
   axang2.plot(t, yaws, 'c', label="yaw")
   axang2.plot(t, omegas, 'y', label="omega")
   axang2.plot(t, heels, 'r', label="heel")
   axang2.plot(t, thetacs, 'm', label="Leeway")
+  axang2.plot(t, thetaws, 'k', label="Apparent Wind")
   axxy.legend(loc='upper left')
   axang2.legend(loc='upper right')
   axxy.grid()

@@ -52,9 +52,10 @@ for i in range(len(startsegs)-1):
   omega0 = oomega[starti]
   heel0 = oheel[starti]
 
-  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws = \
+  control = lambda i, t, tw, vw, tc, vc: (deltass[i], deltars[i])
+  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws, _, _ = \
       physics.RunBase(
-      ts, winds, x0, v0, yaw0, omega0, heel0, deltass, deltars,
+      ts, winds, x0, v0, yaw0, omega0, heel0, control,
       flopsail=True, debugf=forces)
 
   for j in range(len(thetaws)):
