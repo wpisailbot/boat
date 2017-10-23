@@ -144,6 +144,7 @@ message AnalogPot {
 message PWMWrite {
   optional uint32 winch = 1;
   optional uint32 rudder = 2;
+  optional uint32 ballast = 3;
 }
 
 // Purely a testing message:

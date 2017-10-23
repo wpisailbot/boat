@@ -454,6 +454,7 @@ Pgn pgnList[] =
 { "PWM Write", 0xFF02, true, 1, 0,
   { { "Winch", BYTES(1), 1, false, 0, "" } // Range 0-180
   , { "Rudder", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { "Ballast", BYTES(1), 1, false, 0, "" } // Range 0-180
   , { 0 }
   }
 }

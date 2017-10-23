@@ -17,12 +17,14 @@ class SCAMP : public Node {
 
   void SetRawFromSailCmd(float volts);
   void SetRawFromRudderCmd(const msg::RudderCmd &cmd);
+  void SetRawFromBallastCmd(const msg::BallastCmd &cmd);
 
   float WinchPotToAngle(float pot_val);
 
   enum Actuator {
     RUDDER = 0,
     WINCH = 1,
+    BALLAST = 2,
   };
 
   int GetMode(Actuator a) { return a == RUDDER ? rudder_mode_ : winch_mode_; }
@@ -50,9 +52,11 @@ class SCAMP : public Node {
   msg::ZeroingConstants *consts_msg_;
   std::atomic<int> raw_winch_{90};
   std::atomic<int> volts_winch_{90};
-  std::atomic<int> raw_rudder_{90};;
+  std::atomic<int> raw_rudder_{90};
+  std::atomic<int> raw_ballast_{90};
   std::atomic<int> rudder_mode_{msg::ControlMode_MODE_DISABLE};
   std::atomic<int> winch_mode_{msg::ControlMode_MODE_DISABLE};
+  std::atomic<int> ballast_mode_{msg::ControlMode_MODE_DISABLE};
   std::atomic<bool> is_connected_{true};
 };  // class SCAMP
 
