@@ -62,6 +62,7 @@ message ControlMode {
   optional TACKER tacker = 2;
   optional MODE rudder_mode = 3;
   optional MODE rigid_mode = 4;
+  optional MODE ballast_mode = 5;
 }
 
 message TackerConstants {

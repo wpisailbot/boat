@@ -34,6 +34,7 @@ SCAMP::SCAMP()
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
     state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
+    state_msg_->set_ballast(raw_ballast_);
     state_queue_.send(state_msg_);
   });
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
@@ -60,6 +61,13 @@ SCAMP::SCAMP()
                                   [this](const msg::RudderCmd &cmd) {
     if (IsManualWiFi(RUDDER)) {
       SetRawFromRudderCmd(cmd);
+    }
+  });
+
+  RegisterHandler<msg::BallastCmd>("manual_ballast_cmd",
+                                  [this](const msg::BallastCmd &cmd) {
+    if (IsManualWiFi(BALLAST)) {
+      SetRawFromBallastCmd(cmd);
     }
   });
 
@@ -91,11 +99,17 @@ SCAMP::SCAMP()
     if (mode.has_rudder_mode()) {
       rudder_mode_ = mode.rudder_mode();
     }
+    if (mode.has_ballast_mode()) {
+      ballast_mode_ = mode.ballast_mode();
+    }
     if (IsDisabled(RUDDER)) {
       raw_rudder_ = 90;
     }
     if (IsDisabled(WINCH)) {
       raw_winch_ = 90;
+    }
+    if (IsDisabled(BALLAST)) {
+      raw_ballast_ = 90;
     }
   });
 }
@@ -108,6 +122,7 @@ void SCAMP::Iterate() {
   }
   msg->set_winch(raw_winch_);
   msg->set_rudder(raw_rudder_);
+  msg->set_ballast(raw_ballast_);
   pwm_queue_.send(pwm_msg_);
   consts_queue_.send(consts_msg_);
 }
@@ -137,6 +152,11 @@ void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
   int raw_val = -cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
 
   raw_rudder_ = raw_val;
+}
+
+void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
+  int raw_val = -cmd.vel() / M_PI * 180.;
+  raw_ballast_ = raw_val;
 }
 
 float SCAMP::WinchPotToAngle(float pot_val) {
