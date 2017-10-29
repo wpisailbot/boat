@@ -64,7 +64,7 @@ Eigen::Quaterniond RollPitchYawToQuat(const Vector3d &angles) {
   return Eigen::Quaterniond(RollPitchYawToMatrix(angles));
 }
 
-float norm_angle(float a) {
+double norm_angle(double a) {
   double tau = 2. * M_PI;
   if (a > M_PI) {
     a -= int(a / tau + .5) * tau;

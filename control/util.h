@@ -27,7 +27,7 @@ Vector3d GetRollPitchYawFromQuat(Eigen::Quaterniond q);
 
 Eigen::Quaterniond RollPitchYawToQuat(const Vector3d &angles);
 
-float norm_angle(float a);
+double norm_angle(double a);
 
 template <typename M>
 void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
