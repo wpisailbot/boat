@@ -43,9 +43,13 @@ int main(int argc, char *argv[]) {
                              {"rudder_cmd", "rudder_cmd"},
                             },
                             true);
-  sailbot::sim::SimulatorNode sim(5);
+  sailbot::sim::SimulatorNode sim(50, true);
   sailbot::WebSocketServer server;
   sailbot::control::StateEstimator state_estimator;
+#define LOG_VECTOR(path, name)                                                 \
+  { path ".x", name " X" }                                                     \
+  , {path ".y", name " Y"}, {                                                  \
+  path ".z", name " Z"}
   sailbot::CsvLogger csv(
       {
        {"wind.x", "Wind X"},                               // 0
@@ -55,8 +59,8 @@ int main(int argc, char *argv[]) {
        {"sim_true_boat_state.euler.yaw", "Yaw"},           // 4
        {"sim_true_boat_state.euler.roll", "Heel"},         // 5
        {"sim_true_boat_state.euler.pitch", "Pitch"},       // 6
-       {"sim_true_boat_state.pos.x", "Longitude"},         // 7
-       {"sim_true_boat_state.pos.y", "Latitude"},          // 8
+       {"boat_state.pos.x", "Longitude"},         // 7
+       {"boat_state.pos.y", "Latitude"},          // 8
        {"sim_true_boat_state.vel.x", "Vel X"},             // 9
        {"sim_true_boat_state.vel.y", "Vel Y"},             // 10
        {"true_wind.x", "True Wind X"},                     // 11
@@ -74,8 +78,20 @@ int main(int argc, char *argv[]) {
        {"orig_boat_state.pos.y", "Orig Latitude"},         // 23
        {"orig_boat_state.vel.x", "Orig Vel X"},            // 24
        {"orig_boat_state.vel.y", "Orig Vel Y"},            // 25
+       LOG_VECTOR("sim_debug.fs", "Sail Force"), // 26-28
+       LOG_VECTOR("sim_debug.fr", "Rudder Force"), // 29-31
+       LOG_VECTOR("sim_debug.fk", "Keel Force"), // 32-34
+       LOG_VECTOR("sim_debug.fh", "Hull Force"), // 35-37
+       LOG_VECTOR("sim_debug.fnet", "Net Force"), // 38-40
+       LOG_VECTOR("sim_debug.taus", "Sail Torque"), // 41-43
+       LOG_VECTOR("sim_debug.taur", "Rudder Torque"), // 44-46
+       LOG_VECTOR("sim_debug.tauk", "Keel Torque"), // 47-49
+       LOG_VECTOR("sim_debug.tauh", "Hull Torque"), // 50-52
+       LOG_VECTOR("sim_debug.tauright", "Righting Moment"), // 53-55
+       LOG_VECTOR("sim_debug.taunet", "Net Torque"), // 56-58
       },
       FLAGS_csv_file, 0.1);
+#undef LOG_VECTOR
   sailbot::Pong pong;
 
   std::thread rthread(&sailbot::LogReplay::Run, &replay);
