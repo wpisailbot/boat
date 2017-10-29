@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ulimit -c unlimited
-echo "/home/debian/cores/core.%p" > /proc/sys/kernel/core_pattern
+#ulimit -c unlimited
+#echo "/home/debian/cores/core.%p" > /proc/sys/kernel/core_pattern
 DIR="$( cd "$( dirname $0 )" && pwd )"
 $DIR/bringup-can.sh
 sleep 1 # Shouldn't be necessary, but give can interface time to come up
