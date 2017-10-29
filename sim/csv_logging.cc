@@ -3,12 +3,16 @@
 #include "ipc/queue.hpp"
 #include "util/msg.pb.h"
 #include "util/proto_util.h"
+#include <gflags/gflags.h>
+
+DEFINE_double(start_csv, 0.0, "Log clock time to start csv");
 
 namespace sailbot {
 
 CsvLogger::CsvLogger(std::vector<std::pair<std::string, std::string>> data,
                      std::string fname, float dt)
     : Node(dt), file_(fname) {
+  running_ = FLAGS_start_csv == 0.0;
   std::map<std::string, std::vector<std::string>> fields;
   file_ << "#Time";
   for (const auto& d : data) {
@@ -79,14 +83,16 @@ double CsvLogger::GetField(const msg::LogEntry& msg, const std::string& field) {
 }
 
 void CsvLogger::Iterate() {
-  size_t BUF_LEN = 1024;
+  size_t BUF_LEN = 40000;
   char buf[BUF_LEN];
   int index = 0;
+  const double time =
+      std::chrono::nanoseconds(Time().time_since_epoch()).count() / 1e9;
+  if (time > FLAGS_start_csv) {
+    running_ = true;
+  }
   index += snprintf(
-      buf, BUF_LEN, "%f,",
-      std::chrono::nanoseconds(util::monotonic_clock::now().time_since_epoch())
-              .count() /
-          1e9);
+      buf, BUF_LEN, "%f,", time);
   {
     std::unique_lock<std::mutex> lck(data_mutex_);
     for (const auto &item : data_) {
