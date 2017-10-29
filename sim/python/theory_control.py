@@ -221,11 +221,12 @@ class Physics(object):
         deltagamma: dgammar / ddeltar
     """
     alphar = -Norm(thetac + deltar)
-    atanC, _ = self.rudder.atanClCd(alphar)
+    alphar = np.clip(alphar, -.25, .25)
     atanC = (np.pi / 2.0 - 0.05) * Sign(alphar)
-    Fr, deltaFr = self.rudder.F(alphar, vc)
+    Fr = 0.5 * self.rudder.A * self.rudder.rho * vc ** 2 * 5.0 * abs(alphar)
     gammar = Norm(atanC - thetac + np.pi)
-    deltaFr = deltaFr * -1.0 # dalphar / ddeltar = -1
+
+    deltaFr = 0.5 * self.rudder.A * self.rudder.rho * vc ** 2 * 5.0 * -Sign(alphar)
     deltagamma = 0.0
     return Fr, gammar, deltaFr, deltagamma
 
@@ -273,15 +274,15 @@ class Physics(object):
     theta = gammak - np.arctan2(-self.hk * np.sin(heel), self.rk)
     return r * Fk * np.sin(theta) * np.cos(heel)
 
-  def RudderTorque(self, Fr, gammar, heel, deltaFr, deltagammar, deltaheel):
+  def RudderTorque(self, Fr, gammar, heel, deltaFr, deltaheel):
     """
       Calculate yaw torque from rudder, using output from RudderForces
       Assumes self.hr is negligible.
     """
     tau = self.rr * Fr * np.sin(gammar) * np.cos(heel)
-    dtaudr = self.rr * np.cos(heel) \
-        * (Fr * np.cos(gammar) * deltagammar + deltaFr * np.sin(gammar))
+    dtaudr = self.rr * np.cos(heel) * deltaFr * np.sin(gammar)
     dtauds = -self.rr * Fr * np.sin(gammar) * np.sin(heel) * deltaheel
+    dtauds = 0.0 # Not sure if above dtauds is still good.
     return tau, dtaudr, dtauds
 
   def ApproxHeel(self, Fs, gammas, Fk, gammak, deltaFs, deltagammas):
@@ -318,7 +319,7 @@ class Physics(object):
     Fr, gammar, dFrdr, dgrdr = self.RudderForces(thetac, vc, deltar)
     taus, dtausds = self.SailTorque(Fs, gammas, deltas, heel, dFsds, dgsds, dheelds)
     tauk = self.KeelTorque(Fk, gammak, heel)
-    taur, dtaurdr, dtaurds = self.RudderTorque(Fr, gammar, heel, dFrdr, dgrdr, dheelds)
+    taur, dtaurdr, dtaurds = self.RudderTorque(Fr, gammar, heel, dFrdr, dheelds)
     tauB = -self.Bomega * omega * abs(omega)
     FBlon = -self.Blon * vc * abs(vc) * np.cos(thetac)
     FBlat = self.Blat * vc * np.sin(thetac)
@@ -337,6 +338,34 @@ class Physics(object):
           gammak, gammar, FBlon, FBlat, taus, tauk, taur, tauB)
     return Flon, Flat, taunet, newheel
 
+  def Yadaptive(self, thetaw, vw, thetac, vc, yaw, omega, deltas, deltar):
+    """
+      Using: u = {F_lon, tau_net}
+          beta = {Blon, Bomega, Ar, rs, taubias, 1}
+    """
+
+    YFlonBlon = -vc * abs(vc) * np.cos(thetac)
+    Fr, gammar, _, _ = self.RudderForces(thetac, vc, deltar)
+    YFlonAr = Fr * np.cos(gammar) / self.rudder.A
+    Fs, gammas, _, _= self.SailForces(thetaw, vw, deltas)
+    Fk, gammak = self.KeelForces(thetac, vc)
+    YFlonconst = Fs * np.cos(gammas) + Fk * np.cos(gammak)
+    YFlon = np.matrix([[YFlonBlon, 0.0, YFlonAr, 0.0, 0.0, YFlonconst]])
+
+    heel, _ = self.ApproxHeel(Fs, gammas, Fk, gammak, 0.0, 0.0)
+    taur, _, _ = self.RudderTorque(Fr, gammar, heel, 0.0, 0.0)
+    tauk = self.KeelTorque(Fk, gammak, heel)
+    taus, _ = self.SailTorque(Fs, gammas, deltas, heel, 0.0, 0.0, 0.0)
+    YtauBomega = -omega * abs(omega)
+    YtauAr = taur / self.rudder.A
+    Ytaurs = Fs * np.sin(gammas) * np.cos(heel)
+    Ytauconst = tauk + (taus - Ytaurs * self.rs)
+    Ytau = np.matrix([[0.0, YtauBomega, YtauAr, Ytaurs, 1.0, Ytauconst]])
+    print("Ytau: ", Ytau)
+    print("YFlon: ", YFlon)
+
+    return np.concatenate((YFlon, Ytau), axis=0)
+
   def Update(self, truewx, truewy, x, y, vx, vy, yaw, omega, deltas, deltar,
              heel, dt, flopsail=False, debugf=None):
     thetac = -Norm(np.arctan2(vy, vx) - yaw)
@@ -354,7 +383,6 @@ class Physics(object):
 
     Flon, Flat, tau, newheel = self.NetForce(
         thetaw, vw, thetac, vc, deltas, deltar, heel, omega, debugf)
-
 
     if False:
       # For approximating damping force, with overall force as input,
@@ -439,7 +467,7 @@ class Physics(object):
       wx = winds[0][i]
       wy = winds[1][i]
       deltas, deltar = control(
-          i, ts[i], thetaws[-1], vws[-1], thetacs[-1], vcs[-1])
+          i, ts[i], thetaws[-1], vws[-1], thetacs[-1], vcs[-1], yaws[-1], omegas[-1])
       deltass.append(deltas)
       deltars.append(deltar)
       x, y, vx, vy, yaw, omega, heel, thetac, vc, thetaw, vw = self.Update(
@@ -515,19 +543,190 @@ class Controller(object):
     self.physics = physics
     self.maxrud = 0.25
 
+    self.Qtau = 0.01
+    self.Qf = 1.0
+
+    self.Kbeta = np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
+    self.beta = np.matrix([[physics.Blon],
+                           [physics.Bomega],
+                           [physics.rudder.A],
+                           [physics.rs],
+                           [0.0],
+                           [1.0]])
+    self.betamin = np.matrix([[0.0],
+                              [0.0],
+                              [0.01],
+                              [-1.0],
+                              [-10.0],
+                              [1.0]])
+    self.betamax = np.matrix([[1000.0],
+                              [10000.0],
+                              [1.0],
+                              [1.0],
+                              [10.0],
+                              [1.0]])
+    self.Lambda = np.diag([1.0, 1.0])
+    self.lastt = float("nan")
+    self.betas = []
+
   def ClipSail(self, deltas, thetaw):
     maxsail = abs(Norm(np.pi - thetaw))
     return np.clip(deltas, 0.0 if thetaw > 0.0 else -maxsail,
                            maxsail if thetaw > 0.0 else 0.0)
 
   def ClipRudder(self, deltar, thetac):
-    return np.clip(deltar, min(-self.maxrud - thetac, 0.0), max(self.maxrud - thetac, 0.0))
+    return np.clip(deltar, -self.maxrud - thetac, self.maxrud - thetac)
 
-  def Control(self, i, t, thetaw, vw, thetac, vc):
+  def Adapt(self, thetaw, vw, thetac, vc, yaw, omega, deltas, deltar,
+            goalyaw, goalomega):
+    # u = Y beta
+    # u = u_r + diff = Y beta
+    Y = self.physics.Yadaptive(
+        thetaw, vw, thetac, vc, yaw, omega, deltas, deltar)
+    yawdiff = Norm(goalyaw - yaw)
+    omegadiff = goalomega - omega
+    vcgoal = vc
+    diff = np.matrix([[0.0], [omegadiff]]) +\
+           self.Lambda * np.matrix([[vcgoal - vc], [yawdiff]])
+    print("diff: ", diff)
+    print("dot: ", (Y.T * diff).T)
+    betadot = -self.Kbeta * Y.T * diff
+    return betadot
+
+  def ControlMaxForce(self, i, t, thetaw, vw, thetac, vc, yaw, omega):
+    dt = t - self.lastt
+    if np.isnan(self.lastt):
+      dt = 0.0
+    self.lastt = t
+#    self.Qtau = 1.0
+    goalyaw = 0.0
+    goalomega = 0.0
+    taue = 4.0 * Norm(goalyaw - yaw) + (goalomega - omega) * 10.0\
+           - self.beta[4, 0]
+    #taue = 0.0
+    constraint = 0.0
+    _, _, _, _, _, deltas, deltar = control.GlobalMaxForceTorque(
+        thetaw, vw, thetac, vc, taue, constraint, 20)
+
+    if np.isnan(deltas) and constraint == 0.0:
+      return 0.0, 0.0
+
+    betadot = self.Adapt(
+        thetaw, vw, thetac, vc, yaw, omega, deltas, deltar,
+        goalyaw, goalomega)
+
+    self.beta += betadot * dt
+    self.beta = np.clip(self.beta, self.betamin, self.betamax)
+    self.betas.append(self.beta)
+    print(self.beta.T)
+    self.physics.rudder.A = self.beta[2, 0]
+    self.physics.rs = self.beta[3, 0]
+
+    if np.isnan(deltas) and constraint != 0:
+      taue = -np.sign(constraint) * float("inf")
+      _, _, _, _, _, deltas, deltar = control.GlobalMaxForceTorque(
+          thetaw, vw, thetac, vc, taue, constraint, 20)
+    return deltas, deltar
+
+  def ControlGradDescent(self, i, t, thetaw, vw, thetac, vc, omega):
     ds = np.clip(Norm(np.pi - thetaw), -np.pi / 2.0, np.pi / 2.0)
     print("thetaw ", thetaw, " ds ", ds)
     deltari = 0.25
     return self.MaxForceForTorque(thetaw, vw, thetac, vc, ds, deltari)
+
+  def TorqueConstrainedRudder(
+      self, taus, tauk, taug, heel, thetac, vc):
+    CR = 5.0 # TODO: parameterize properly.
+    denom = 0.5 * self.physics.rudder.rho * self.physics.rudder.A\
+        * vc ** 2 * CR * np.cos(thetac) * np.cos(heel) * self.physics.rr
+    return -(taus + tauk - taug) / denom - thetac
+
+  def GlobalMaxForceTorque(
+    self, thetaw, vw, thetac, vc, taug, constraint, nsteps):
+    """
+      Parameters:
+        thetaw, vw, thetac, vc: Wind and current directions and speeds
+        taug: Nominal torque to work to
+        constraint: Whether we should attempt equality (0.0),
+          maximize (1.0), or minimize (-1.0) torque, using taug
+          as a constraint either for the equality or as a lower/upper
+          bound on the torque.
+        nsteps: Number of sail positions to consider.
+    """
+    maxsail = abs(Norm(np.pi - thetaw))
+    minsail = maxsail - np.pi / 2.0
+    minds = max(0.0, minsail) if thetaw > 0.0 else -maxsail
+    maxds = maxsail if thetaw > 0.0 else min(-minsail, 0.0)
+    mindr = -self.maxrud - thetac
+    maxdr = self.maxrud - thetac
+
+    deltass = []
+    deltars = []
+    Flons = []
+    taues = []
+    costs = []
+
+    mincost = float("inf")
+    deltasmax = float("nan")
+    deltarmax = float("nan")
+
+    hardtorque = constraint == 0.0
+    maximizetau = constraint > 0.0 # Worry about Q_F?
+
+    for deltas in np.linspace(minds, maxds, num=nsteps):
+      Fs, gammas, dFsds, dgsds = self.physics.SailForces(
+          thetaw, vw, deltas)
+      Fk, gammak = self.physics.KeelForces(thetac, vc)
+      heel, dheelds = self.physics.ApproxHeel(
+          Fs, gammas, Fk, gammak, dFsds, dgsds)
+      taus, dtausds = self.physics.SailTorque(
+          Fs, gammas, deltas, heel, dFsds, dgsds, dheelds)
+      tauk = self.physics.KeelTorque(Fk, gammak, heel)
+
+      deltarconstrained = self.TorqueConstrainedRudder(
+          taus, tauk, taug, heel, thetac, vc)
+
+      deltar = deltarconstrained
+      if hardtorque:
+        deltar = self.ClipRudder(deltar, thetac)
+      else:
+        # Increasing deltar decreases torque (normally)
+        if maximizetau:
+          deltar = min(deltarconstrained, mindr)
+        else:
+          deltar = max(deltarconstrained, maxdr)
+
+      if self.ClipRudder(deltar, thetac) != deltar:
+        # Invalid result for rudder.
+        continue
+
+      Fr, gammar, dFrdr, dgrdr = self.physics.RudderForces(
+          thetac, vc, deltar)
+      taur, dtaurdr, dtaurds = self.physics.RudderTorque(
+          Fr, gammar, heel, dFrdr, dheelds)
+
+      Flon = Fs * np.cos(gammas) + Fk * np.cos(gammak) \
+             + Fr * np.cos(gammar)
+
+      taue = taus + tauk + taur
+      # Could be signtau = -np.sign(constraint)
+      signtau = 0.0 if hardtorque else (-1.0 if maximizetau else 1.0)
+      cost = signtau * self.Qtau * taue - self.Qf * Flon
+      if hardtorque:
+        cost += self.Qtau * taue * taue
+
+      deltass.append(deltas)
+      deltars.append(deltar)
+      Flons.append(Flon)
+      taues.append(taue)
+      costs.append(cost)
+
+      if cost < mincost:
+        mincost = cost
+        deltasmax = deltas
+        deltarmax = deltar
+
+    return deltass, deltars, Flons, taues, mincost, deltasmax, deltarmax
 
   def MaxForceForTorque(self, thetaw, vw, thetac, vc, deltasi, deltari):
     """
@@ -555,7 +754,7 @@ class Controller(object):
       taus, dtausds = self.physics.SailTorque(Fs, gammas, deltas, heel, dFsds, dgsds, dheelds)
       # Ignore the keel...
 #      print("Fr ", Fr, " gammar ", gammar, " dFrdr ", dFrdr, " dgrdr", dgrdr)
-      taur, dtaurdr, dtaurds = self.physics.RudderTorque(Fr, gammar, heel, dFrdr, dgrdr, dheelds)
+      taur, dtaurdr, dtaurds = self.physics.RudderTorque(Fr, gammar, heel, dFrdr, dheelds)
       taunet = taus + taur
       if np.isnan(taunom):
         taunom = taunet
@@ -644,31 +843,55 @@ def PlotSail(physics, thetaw, vw, thetac, vc, fname=None):
   if fname != None:
     plt.savefig(fname)
 
+def PlotMaxForceForTorque(control, thetaw, vw, thetac, vc, taue, nsteps):
+  deltass, deltars, Flons, taues, mincost, deltasmax, deltarmax = \
+      control.GlobalMaxForceTorque(thetaw, vw, thetac, vc, taue, 0.0, nsteps)
+
+  plt.figure()
+  plt.plot(deltass, Flons, label="$F_{lon}$")
+  plt.plot(deltass, taues, label="$\\tau_e$")
+  plt.legend(loc='upper left')
+  ax = plt.twinx()
+  ax.plot(deltass, deltars, 'r', label="$\delta_r$")
+  ax.legend(loc='upper right')
+
 if __name__ == "__main__":
   sim = Physics()
   wind = [0.0, -3.0]
-  v0 = [1.0, 0.0]
+  v0 = [0.0, 0.0]
   omega0 = 0.0
   heel0 = 0.0
   deltas = 0.0
   deltar = 0.25
   dt = 0.01
-  niter = 1450
+  niter = 2000
   t = [dt * n for n in range(niter)]
   forces = DebugForces()
-  control = lambda i, t, tw, vw, tc, vc: (deltas, deltar)
+  control = lambda i, t, tw, vw, tc, vc, yaw, om: (deltas, deltar)
   xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws, _, _ =\
       sim.Run(
       wind, v0, omega0, heel0, control, dt=dt, niter=niter)
 
-  PlotSail(sim, 0.001, 3.0, 0.0, 1.0)
-  PlotSail(sim, np.pi / 4.0, 3.0, 0.0, 1.0)
-  PlotSail(sim, np.pi / 2.0, 3.0, 0.0, 1.0, 'sail_forces_beam.eps')
-  PlotSail(sim, 3 * np.pi / 4.0, 3.0, 0.0, 1.0)
-  PlotSail(sim, 7 * np.pi / 8.0, 3.0, 0.0, 1.0)
-  PlotSail(sim, 3.0, 3.0, 0.0, 1.0)
+  if 0:
+    PlotSail(sim, 0.001, 3.0, 0.0, 1.0)
+    PlotSail(sim, np.pi / 4.0, 3.0, 0.0, 1.0)
+    PlotSail(sim, np.pi / 2.0, 3.0, 0.0, 1.0, 'sail_forces_beam.eps')
+    PlotSail(sim, 3 * np.pi / 4.0, 3.0, 0.0, 1.0)
+    PlotSail(sim, 7 * np.pi / 8.0, 3.0, 0.0, 1.0)
+    PlotSail(sim, 3.0, 3.0, 0.0, 1.0)
 
-  control = Controller(sim)
+  sim.rs += 0.03
+  sim.Blon += 10
+  sim.keel.A *= 1.2
+#  sim.sail.A *= 0.8
+  sim.rr *= 0.85
+  sim.Blat *= 1.1
+  sim.Bomega *= 1.5
+  controlsim = Physics()
+  control = Controller(controlsim)
+
+  if 0:
+    PlotMaxForceForTorque(control, np.pi / 2.0, 3.0, 0.05, 0.4, -2.0, 50)
 #  control.MaxForceForTorque(-1.51716946346, 4.56503205727,
 #      -0.0564452767422, 0.648521086573, -1.57079632679, 0.25)
 #  control.MaxForceForTorque(-1.51638429183, 4.56599217829,
@@ -708,17 +931,15 @@ if __name__ == "__main__":
   axxy.grid()
   axang.grid()
 
-  plt.show()
-  sys.exit()
-
   xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws,\
       deltasopt, deltaropt = sim.Run(
-      wind, v0, omega0, heel0, control.Control, dt, niter, debugf=forces)
+      wind, v0, omega0, heel0, control.ControlMaxForce, dt, niter, debugf=forces)
   forces.UpdateZero()
 
   plt.figure()
   plt.plot(xs, ys, 'o')
   plt.title("Overall X/Y")
+  plt.savefig('circles_sim_starboard_turn.eps')
 
   plt.figure()
   axxy = plt.subplot(111, sharex=axxy, sharey=axxy)
@@ -728,6 +949,7 @@ if __name__ == "__main__":
   axxy.plot(t, vys, 'g*', label="vy")
   axxy.plot(t, vcs, 'm--', label="vc")
   axxy.plot(t, vws, 'k--', label="vw")
+  axxy.set_ylim([-2, 2])
   axang2 = axxy.twinx()
   axang2.get_shared_y_axes().join(axang, axang2)
   axang2.plot(t, yaws, 'c', label="yaw")
@@ -737,16 +959,21 @@ if __name__ == "__main__":
   axang2.plot(t, thetaws, 'k', label="Apparent Wind")
   axxy.legend(loc='upper left')
   axang2.legend(loc='upper right')
+  axang2.set_ylim([-np.pi, np.pi])
   axxy.grid()
   axang2.grid()
 
   plt.figure()
-  axopt = plt.subplot(111, sharex=axxy)
+  axopts = plt.subplot(111, sharex=axxy)
   plt.title("Controller values for deltas, deltar")
-  axopt.plot(t, deltasopt, label="Sail Opt")
-  axopt.plot(t, deltaropt, label="Rudder Opt")
-  axopt.set_ylim([-0.8, 0.8])
-  axopt.legend()
+  axopts.plot(t, deltasopt, 'b', label="Sail Opt")
+  axopts.plot(t,
+      [-Norm(ds + w + np.pi) for ds, w in zip(deltasopt, thetaws)],
+      'r', label="Sail Angle of Attack")
+  axoptr = axopts.twinx()
+  axoptr.plot(t, deltaropt, 'g', label="Rudder Opt")
+  axoptr.legend(loc='upper right')
+  axopts.legend(loc='upper left')
   plt.grid()
 
   plt.figure()

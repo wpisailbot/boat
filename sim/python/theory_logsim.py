@@ -24,8 +24,6 @@ heel = []
 leeway = []
 thetaw = []
 wind_speed = []
-deltasopt = []
-deltaropt = []
 
 # Create list of segments to run simulation over
 startsegs = [0]
@@ -52,19 +50,12 @@ for i in range(len(startsegs)-1):
   omega0 = oomega[starti]
   heel0 = oheel[starti]
 
-  control = lambda i, t, tw, vw, tc, vc: (deltass[i], deltars[i])
+  control = lambda i, t, tw, vw, tc, vc, yaw, omega: (deltass[i], deltars[i])
   xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws, _, _ = \
       physics.RunBase(
       ts, winds, x0, v0, yaw0, omega0, heel0, control,
       flopsail=True, debugf=forces)
 
-  for j in range(len(thetaws)):
-    ds = deltass[j]
-    ds = abs(ds) if thetaws[j] > 0 else -abs(ds)
-    dsopt, dropt = control.MaxForceForTorque(
-        thetaws[j], vws[j], thetacs[j], vcs[j], ds, deltars[j])
-    deltasopt.append(dsopt)
-    deltaropt.append(dropt)
   forces.UpdateZero()
   x += xs
   y += ys
@@ -165,14 +156,5 @@ axflat.plot(t, Frlat, label="Rudder")
 axflat.plot(t, forces.FBlat, label="Damping")
 axflat.set_ylim([-20, 20])
 axflat.legend()
-
-plt.figure()
-axopt = plt.subplot(111, sharex=ax)
-plt.title("Controller values for deltas, deltar")
-axopt.plot(t, deltasopt, label="Sail Opt")
-axopt.plot(t, deltaropt, label="Rudder Opt")
-axopt.set_ylim([-0.8, 0.8])
-axopt.legend()
-plt.grid()
 
 plt.show()
