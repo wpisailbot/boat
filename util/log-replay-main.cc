@@ -126,16 +126,17 @@ int main(int argc, char *argv[]) {
                           {"boat_state.euler.yaw", "Yaw"}, // 4
                           {"boat_state.euler.roll", "Heel"}, // 5
                           {"boat_state.euler.pitch", "Pitch"}, // 6
-                          {"boat_state.pos.x", "Longitude"}, // 7
-                          {"boat_state.pos.y", "Latitude"}, // 8
-                          {"boat_state.vel.x", "Vel X"}, // 9
-                          {"boat_state.vel.y", "Vel Y"}, // 10
-                          {"true_wind.x", "True Wind X"}, // 11
-                          {"true_wind.y", "True Wind Y"}, // 12
-                          {"can126992.sys_time.time", "True Time"}, // 13
-                          {"heading_cmd.heading", "Heading Cmd"}, // 14
-                          {"control_mode.rudder_mode", "Rudder Mode"}, // 15
-                          }, FLAGS_csv_file, 0.1);
+                          {"boat_state.omega.z", "Rate of Turn"}, // 7
+                          {"boat_state.pos.x", "Longitude"}, // 8
+                          {"boat_state.pos.y", "Latitude"}, // 9
+                          {"boat_state.vel.x", "Vel X"}, // 10
+                          {"boat_state.vel.y", "Vel Y"}, // 11
+                          {"true_wind.x", "True Wind X"}, // 12
+                          {"true_wind.y", "True Wind Y"}, // 13
+                          {"can126992.sys_time.time", "True Time"}, // 14
+                          {"heading_cmd.heading", "Heading Cmd"}, // 15
+                          {"control_mode.rudder_mode", "Rudder Mode"}, // 16
+                          }, FLAGS_csv_file, 0.01);
   csv.Stop();
   csv.Start();
   sailbot::Pong pong(&csv);

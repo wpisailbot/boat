@@ -6,6 +6,8 @@
 
 DEFINE_string(input_log, "/tmp/logfilename",
               "The log file to read from when replaying");
+DEFINE_double(start_log_replay, 0.0,
+              "Time at which to start actually playing back messages");
 
 namespace sailbot {
 
@@ -62,6 +64,10 @@ void LogReplay::Run() {
           }
         }
       }
+    }
+    if (std::chrono::nanoseconds(msg_time.time_since_epoch()).count() / 1e9 <
+        FLAGS_start_log_replay) {
+      continue;
     }
     if (msg_time > cur_time) {
       // Wait for the time to come...
