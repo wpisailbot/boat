@@ -11,7 +11,10 @@ namespace sim {
 
 class SimulatorNode : public Node {
  public:
-  SimulatorNode(double reset_period);
+  // The period at which to reset simulation to logged
+  // values and whether to use position or velocity
+  // based sail/rudder commands.
+  SimulatorNode(double reset_period, bool set_pos=false);
 
   void Run() override;
 
@@ -42,8 +45,9 @@ class SimulatorNode : public Node {
 
   static constexpr double dt = 0.001;
   const double reset_period_;
+  const bool set_pos_;
   std::unique_ptr<TrivialDynamics> impl_;
-  std::atomic<double> sdot_, rdot_, bdot_;
+  std::atomic<double> sdot_, rdot_, bdot_, deltas_, deltar_;
   bool started_{false};
   std::atomic<double> next_reset_{-1};
 

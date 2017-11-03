@@ -29,6 +29,8 @@ Eigen::Quaterniond RollPitchYawToQuat(const Vector3d &angles);
 
 double norm_angle(double a);
 
+template <typename T> int Sign(T val) { return (T(0) < val) - (val < T(0)); }
+
 template <typename M>
 void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
   M k1 = f(t0, y);
@@ -48,6 +50,11 @@ template <typename T> T ToRad(T a) { return a * M_PI / 180.; }
 template <typename T> T ToDeg(T a) { return a * 180. / M_PI; }
 
 float Normal(float mean = 0, float std = 1);
+
+template <typename T>
+T Clip(T a, T min, T max) {
+  return std::max(std::min(a, max), min);
+}
 
 }  // namespace util
 }  // namespace sailbot

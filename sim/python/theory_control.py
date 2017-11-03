@@ -546,7 +546,7 @@ class Controller(object):
     self.Qtau = 0.01
     self.Qf = 1.0
 
-    self.Kbeta = np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
+    self.Kbeta = 0.0 * np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
     self.beta = np.matrix([[physics.Blon],
                            [physics.Bomega],
                            [physics.rudder.A],
@@ -599,9 +599,9 @@ class Controller(object):
       dt = 0.0
     self.lastt = t
 #    self.Qtau = 1.0
-    goalyaw = 0.0
+    goalyaw = -np.pi / 2.0
     goalomega = 0.0
-    taue = 4.0 * Norm(goalyaw - yaw) + (goalomega - omega) * 10.0\
+    taue = 10.0 * Norm(goalyaw - yaw) + (goalomega - omega) * 0.0\
            - self.beta[4, 0]
     #taue = 0.0
     constraint = 0.0
@@ -713,7 +713,7 @@ class Controller(object):
       signtau = 0.0 if hardtorque else (-1.0 if maximizetau else 1.0)
       cost = signtau * self.Qtau * taue - self.Qf * Flon
       if hardtorque:
-        cost += self.Qtau * taue * taue
+        cost += self.Qtau * (taue - taug) * (taue - taug)
 
       deltass.append(deltas)
       deltars.append(deltar)
@@ -857,14 +857,14 @@ def PlotMaxForceForTorque(control, thetaw, vw, thetac, vc, taue, nsteps):
 
 if __name__ == "__main__":
   sim = Physics()
-  wind = [0.0, -3.0]
+  wind = [3.0, 0.0]
   v0 = [0.0, 0.0]
   omega0 = 0.0
   heel0 = 0.0
   deltas = 0.0
   deltar = 0.25
   dt = 0.01
-  niter = 2000
+  niter = 5000
   t = [dt * n for n in range(niter)]
   forces = DebugForces()
   control = lambda i, t, tw, vw, tc, vc, yaw, om: (deltas, deltar)
@@ -880,13 +880,15 @@ if __name__ == "__main__":
     PlotSail(sim, 7 * np.pi / 8.0, 3.0, 0.0, 1.0)
     PlotSail(sim, 3.0, 3.0, 0.0, 1.0)
 
-  sim.rs += 0.03
+  sim.rs -= 0.1
+  sim.hs *= 1.5
   sim.Blon += 10
   sim.keel.A *= 1.2
 #  sim.sail.A *= 0.8
   sim.rr *= 0.85
   sim.Blat *= 1.1
-  sim.Bomega *= 1.5
+  sim.Bomega *= 0.2
+  sim.J *= 1.5
   controlsim = Physics()
   control = Controller(controlsim)
 

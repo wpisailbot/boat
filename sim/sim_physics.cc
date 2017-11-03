@@ -66,12 +66,12 @@ SimulatorSaoud2013::SimulatorSaoud2013(float _dt)
 }
 
 TrivialDynamics::TrivialDynamics(float _dt)
-    : dt(_dt), rr(-1), rs(.25), rk(0), ls(.5), lr(.03), hs(2), hr(-.2), hk(-.7),
-      lm(1), mm(15), CoM(0, 0, -1.5), mass(30), deltas(1.3), deltar(0),
+    : dt(_dt), rr(-1), rs(0.2), rk(0), ls(.3), lr(.03), hs(1), hr(-.2), hk(-.7),
+      lm(1), mm(15), CoM(0, 0, -0.5), mass(30), deltas(1.3), deltar(0),
       deltab(1), yaw(0), heel(0), debug_queue_("sim_debug", true) {
   J << 25, 0, 0,
        0, 25, 0,
-       0, 0, 5;
+       0, 0, 20;
   x = x.Zero();
   v = v.Zero();
   wind = wind.Zero();
@@ -82,10 +82,11 @@ TrivialDynamics::TrivialDynamics(float _dt)
 std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d>
 TrivialDynamics::Update(double sdot, double rdot, double bdot) {
   VLOG(1) << "sdot, rdot: " << sdot << ", " << rdot;
+  deltas = std::abs(deltas);
   deltas += sdot * dt;
   deltar += rdot * dt;
   deltab += bdot * dt;
-  Update(deltas, deltar);
+  return Update(deltas, deltar);
 }
 
 std::pair<Eigen::Matrix<double, 6, 1>, Eigen::Matrix3d>
@@ -94,13 +95,12 @@ TrivialDynamics::Update(double deltas_in, double deltar_in) {
   deltas = std::max(util::norm_angle(deltas_in), 0.);
   // If the wind is blowing from our starboard, flip the sail angle.
   const double apparent_wind_dir =
-      util::norm_angle(std::atan2(wind.y(), wind.x()) - yaw);
-  if (apparent_wind_dir < 0) {
-    deltas *= -1;
+      util::norm_angle(std::atan2(wind.y() - v.x(), wind.x() - v.y()) - yaw);
+  if (apparent_wind_dir > 0) {
+    deltas = -deltas;
   }
-  deltar = util::norm_angle(deltas);
-  deltab = util::norm_angle(deltar_in);
-  deltar = std::min(std::max(deltar, -0.6), 0.6);
+  deltas = util::norm_angle(deltas);
+  deltar = std::min(std::max(deltar_in, -0.6), 0.6);
   deltab = std::min(std::max(deltab, -1.5), 1.5);
   Vector3d Fs = SailForces();
   Vector3d Fr = RudderForces();
@@ -124,8 +124,15 @@ TrivialDynamics::Update(double deltas_in, double deltar_in) {
   VLOG(1) << "heel: " << heel << " yaw: " << yaw;
   heel += omega(0, 0) * dt;
   yaw += yawdot * dt;
+  if (std::abs(yawdot * dt) > 0.4) {
+    bool a = false;
+    while (a) {
+      continue;
+    }
+  }
   heel = util::norm_angle(heel);
   yaw = util::norm_angle(yaw);
+//  LOG(INFO) << "yaw: " << yaw;
   double ch = std::cos(heel);
   double sh = std::sin(heel);
   double cy = std::cos(yaw);
@@ -198,9 +205,9 @@ void TrivialDynamics::set_from_state(const msg::BoatState &state) {
   v.y() = state.vel().y();
   yaw = state.euler().yaw();
   heel = state.euler().roll();
-  omega.x() = state.omega().x();
-  omega.y() = state.omega().y();
-  omega.z() = state.omega().z();
+//  omega.x() = state.omega().x();
+//  omega.y() = state.omega().y();
+//  omega.z() = state.omega().z();
   double ch = std::cos(heel);
   double sh = std::sin(heel);
   double cy = std::cos(yaw);
@@ -265,37 +272,50 @@ TrivialDynamics::CalcXdot(
 Vector3d TrivialDynamics::AeroForces(Vector3d va, const float delta,
                                      const float rho, const float A,
                                      const float mindrag, const float maxdrag,
-                                     const float maxlift) {
+                                     const float maxlift, const bool luff) {
   // If alpha is negative, then lift follows [0 1; -1 0] * va
   // If alpha is positive, then lift follows [0 -1; 1 0] * va
   float alphasigned = util::norm_angle(std::atan2(-va(1), -va(0)) - delta);
   if (std::isnan(alphasigned))
     alphasigned = 0;
-  const float alpha = std::abs(alphasigned);
+  float alpha = std::abs(alphasigned);
   const int sign_alpha = alpha == 0 ? 1 : alphasigned / alpha;
+  if (luff && alpha < 0.25) {
+    alpha = 0.25;
+//    return 0 * va;
+  }
   Matrix3d liftrot;
   liftrot << 0, -1, 0,
              1, 0, 0,
              0, 0, 1;
   liftrot.block(0, 0, 2, 2) *= sign_alpha;
-  const float kPeak = .4;
-  const float kSlope = maxlift / kPeak;
+  const float kPeak1 = .4;
+  const float kPeak2 = .8;
 
   const float Cl =
-      alpha > kPeak ? kSlope * kPeak * (1 - (alpha - kPeak) / (M_PI / 2 - kPeak))
-                    : kSlope * alpha;
+      alpha > kPeak1
+          ? (alpha > kPeak2
+                 ? maxlift * (1 - (alpha - kPeak2) / (M_PI / 2 - kPeak2))
+                 : maxlift)
+          : maxlift / kPeak1 * alpha;
   const float Cd = std::pow(maxdrag / mindrag, alpha * 2 / M_PI) * mindrag;
   VLOG(3) << alphasigned << " Cl: " << Cl << " Cd: " << Cd;
   const float true_area =
-      A * RBI(2, 2);  // Calculate the area that is vertical.
+      A;// * RBI(2, 2);  // Calculate the area that is vertical.
   const float sqNorm = va.squaredNorm();
   const float s =
       .5 * rho * true_area *
       va.squaredNorm();  // Calculates the common components to lift/dag.
   if (sqNorm > .005) va.normalize();
+//  TODO(james): va^2 or va? Which works better?
   const Vector3d lift = Cl * s * liftrot * va;
   const Vector3d drag = Cd * s * va;
-  return lift + drag;
+  Vector3d force = lift + drag;
+  // Account for the fact that the y-component of force acts purely
+  // sideays; in the boat frame, it will act partially in the Z
+  // direction, although we ignore that.
+  force(1, 0) *= RBI(2, 2);
+  return force;
 }
 
 // Really, all the relative winds should account for angular movement...
@@ -303,21 +323,24 @@ Vector3d TrivialDynamics::SailForces() {
   VLOG(3) << "Sail Alpha: ";
   Vector3d wa = RBI.transpose() * (wind - v);
   wa(2, 0) = 0;
-  return AeroForces(wa, deltas, 1.225 /*rhoair,kg/m^3*/, 6 /*Sail area,m^2*/);
+  const double delta = deltas;// + (deltas > 0.0 ? 0.1 : -0.1);
+  return AeroForces(wa, delta, 1.225 /*rhoair,kg/m^3*/, 4 /*Sail area,m^2*/,
+                    0.25 /*mindrag*/, 1.5 /*max drag*/, 1.5 /*max lift*/,
+                    false /*luff*/);
 }
 Vector3d TrivialDynamics::RudderForces() {
   VLOG(3) << "Rudder Alpha: ";
   // For now, assuming 0 water current.
   Vector3d va = RBI.transpose() * -v;
-  va(2, 0) = 0;
-  return AeroForces(va, deltar, 1000 /*rhowater,kg/m^3*/, .1 /*Rudder area,m^2*/);//, 0.05, 1, 2);
+  va(2, 0) = 0.0;
+  return AeroForces(va, deltar * 1.5, 1000 /*rhowater,kg/m^3*/, .07 /*Rudder area,m^2*/, 0.01, 0.05, 1.7);
 }
 Vector3d TrivialDynamics::KeelForces() {
   VLOG(3) << "Keel Alpha: ";
   // For now, assuming 0 water current.
   Vector3d va = RBI.transpose() * -v;
   va(2, 0) = 0;
-  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .3 /*Keel area,m^2*/, 0.05, 1);
+  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .4 /*Keel area,m^2*/, 0.02, 1.1, 2);
 }
 Vector3d TrivialDynamics::HullForces() {
   VLOG(3) << "Hull Alpha: ";
@@ -325,7 +348,7 @@ Vector3d TrivialDynamics::HullForces() {
   Vector3d va = RBI.transpose() * -v;
   va(2, 0) = 0;
   // For hull, assume no lift, quadratic drag.
-  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .1 /*Hull area,m^2*/, .01, 0.5,
+  return AeroForces(va, 0, 1000 /*rhowater,kg/m^3*/, .1 /*Hull area,m^2*/, .01, 0.2,
                     0);
 }
 Vector3d TrivialDynamics::SailTorques(const Vector3d& f) {
@@ -349,9 +372,9 @@ Vector3d TrivialDynamics::HullTorques() {
        0, 0, 0,
        0, 0, 150;
   c << 100, 0, 0,
-       0, 0, 0,
-       0, 0, 100;
-  return -c * omega;
+       0, 200, 0,
+       0, 0, 200;
+  return -c * omega.cwiseProduct(omega.cwiseAbs());
 }
 Vector3d TrivialDynamics::RightingTorques(double heel) {
   const float g = 9.8;

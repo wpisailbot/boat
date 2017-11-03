@@ -25,20 +25,27 @@ namespace {
   float Normal(float std) {
     float r = util::Normal(0, std);
     const int Nstd = 3;
-    return std::max(std::min(r, r + Nstd * std), r - Nstd * std);
+//    return std::max(std::min(r, r + Nstd * std), r - Nstd * std);
+    return 0.0;
   }
   float CalcNew(const float last, const float truth, const float kT) {
-    return kT * last + (1 - kT) * truth;
+    const float diff = util::norm_angle(truth - last);
+    return util::norm_angle(last + (1 - kT) * diff);
   }
 }
 
 void FakeAirmar::Iterate() {
-  constexpr float kTdt = std::exp(dt * kTContinuous);
-  constexpr float kT1Hz = std::exp(kTContinuous);
+  std::unique_lock<std::mutex> lck(state_msg_mutex_);
+  if (!state_.has_euler() || !wind_.has_x()) {
+    return;
+  }
+  constexpr float kTdt = 0 * std::exp(dt * kTContinuous);
+  constexpr float kT1Hz = 0 * std::exp(kTContinuous);
   msg::can::CANMaster out;
 
   // Reverse sign of yaw because headings are compass headings
-  const float heading = M_PI / 2. - state_.euler().yaw() + Normal(0.05);
+  const float yaw = state_.euler().yaw();
+  const float heading = M_PI / 2. - yaw;
   out.mutable_heading()->set_heading(
       CalcNew(last_.heading().heading(), heading, kTdt));
   heading_.send(&out);

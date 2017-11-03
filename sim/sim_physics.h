@@ -64,12 +64,12 @@ class TrivialDynamics : public SimulatorDynamics {
 
   double get_rdot_for_goal(double goal) {
     // To spoof a simple servo
-    return goal - deltar;
+    return 5.0 * (goal - deltar);
   }
 
   double get_sdot_for_goal(double goal) {
     // To spoof a servo.
-    return goal - deltas;
+    return 5.0 * (goal - std::abs(deltas));
   }
 
   // Note: CalcXdot does make use of most parameters that aren't explicitly
@@ -92,7 +92,8 @@ class TrivialDynamics : public SimulatorDynamics {
 
   Vector3d AeroForces(Vector3d v, const float delta, const float rho,
                       const float A, const float mindrag = .05,
-                      const float maxdrag = 1.5, const float maxlift = 1.5);
+                      const float maxdrag = 1.5, const float maxlift = 1.5,
+                      const bool luff = false);
 
   const float dt;
   // Note on Coord systems:
