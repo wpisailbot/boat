@@ -27,7 +27,10 @@ In order to compile for the BBB, use `bazel build --cpu=bbb //some/target:here`.
 
 To deploy code, do `bazel run --cpu=bbb -c opt //scripts:deploy -- 192.192.X.X`
 replacing the IP address as appropriate. The `-c opt` builds the code
-with sundry optimization options enabled.
+with sundry optimization options enabled. If you want the code to be restarted
+after being deployed (by default the code on the boat will keep running until
+manually killed or the BBB is rebooted), than add any extra argument after the
+IP address, e.g. `bazel run --cpu=bbb -c opt //scripts:deploy -- 192.168.0.21 r`.
 
 ## BBB Setup
 
