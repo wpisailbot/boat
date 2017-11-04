@@ -57,7 +57,6 @@ void ControlPhysics::IncrementBeta(const MatrixBeta &diff) {
   // For sundry reasons, Eigen only provides the max/min operators for arrays...
   b = b.array().max(betamin_).min(betamax_).matrix();
   set_beta(b);
-  LOG(INFO) << "beta: " << b.transpose();
 }
 
 double ControlPhysics::RudderForTorque(double taus, double tauk, double taugoal,
@@ -242,11 +241,6 @@ bool ControlPhysics::GlobalMaxForceForTorque(double thetaw, double vw,
     taus = SailTorque(Fs, gammas, trialds, heel);
     tauk = KeelTorque(Fk, gammak, heel);
     double trialdr = RudderForTorque(taus, tauk, taug, heel, thetac, vc);
-    LOG(INFO) << "ds: " << trialds << " dr: " << trialdr << "Fs " << Fs
-              << " gammas " << gammas << " Fk " << Fk << " gammak " << gammak
-              << " taus: " << taus << " tauk: " << tauk << " taug: " << taug
-              << " heel: " << heel << " thetaw " << thetaw << " vw " << vw
-              << " thetac: " << thetac << " vc " << vc;
     switch (constraint) {
       case kQuadratic:
         trialdr = ClipRudder(trialdr, thetac);
@@ -288,9 +282,6 @@ bool ControlPhysics::GlobalMaxForceForTorque(double thetaw, double vw,
         cost += -Qtaumax * taue;
         break;
     }
-    LOG(INFO) << "Cost: " << cost << " deltas: " << trialds << " taue: " << taue
-              << " Flon: " << Flon << " Fk " << Fk << " gammak " << gammak
-              << " taur " << taur;
 
     if (cost < mincost) {
       mincost = cost;
@@ -298,10 +289,6 @@ bool ControlPhysics::GlobalMaxForceForTorque(double thetaw, double vw,
       *deltar = trialdr;
     }
   }
-  LOG(INFO) << "deltas: " << *deltas << " deltar: " << *deltar
-            << " taus: " << taus << " tauk: " << tauk << " taue: " << taue
-            << " cost: " << mincost << " taug: " << taug << " taur: " << taur
-            << " heel: " << heel;
 
   return success;
 }
@@ -311,12 +298,21 @@ AdaptiveControl::AdaptiveControl()
       sail_msg_(AllocateMessage<msg::SailCmd>()),
       rudder_msg_(AllocateMessage<msg::RudderCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
+      consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       heading_(-2.0 * M_PI / 4.0),
       sail_cmd_("sail_cmd", true),
-      rudder_cmd_("rudder_cmd", true) {
+      rudder_cmd_("rudder_cmd", true),
+      consts_queue_("control_consts", true) {
+
+    consts_msg_->set_winch_kp(13);
+    consts_msg_->set_rudder_kp(20.0);
+    consts_msg_->set_qf(1.0);
+    {
+      std::unique_lock<std::mutex> l(consts_mutex_);
+      consts_queue_.send(consts_msg_);
+    }
 
   Kbeta.diagonal() << 0.0, 0.0, 0.0, 0.004, 0.0, 0.;
-  LOG(INFO) << "Kbeta: " << Kbeta;
 
   RegisterHandler<msg::BoatState>("boat_state", [this](const msg::BoatState &msg) {
     std::unique_lock<std::mutex> l(boat_state_mutex_);
@@ -341,7 +337,12 @@ AdaptiveControl::AdaptiveControl()
     if (msg.has_heading()) {
       heading_ = msg.heading();
     }
-    VLOG(2) << "Got heading cmd: " << heading_.load();
+  });
+  RegisterHandler<msg::ControllerConstants>(
+      "control_consts", [this](const msg::ControllerConstants &msg) {
+    std::unique_lock<std::mutex> l(consts_mutex_);
+    *consts_msg_ = msg;
+    physics_.Qf = msg.qf();
   });
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
     std::unique_lock<std::mutex> l(boat_state_mutex_);
@@ -362,7 +363,8 @@ ControlPhysics::MatrixBeta AdaptiveControl::Adaptor(double deltas,
 bool AdaptiveControl::Controller(double *deltas, double *deltar) {
   CHECK_NOTNULL(deltas);
   CHECK_NOTNULL(deltar);
-  double taue = 20.0 * util::norm_angle(heading_ - yaw_) - 0 * 300.0 * omega_;
+  double taue = consts_msg_->rudder_kp() * util::norm_angle(heading_ - yaw_) -
+                0 * 300.0 * omega_;
   ControlPhysics::Constraint constraint = ControlPhysics::kQuadratic;
 //  constraint = ControlPhysics::kPort;
 //  taue = -100.0;
@@ -378,6 +380,8 @@ bool AdaptiveControl::Controller(double *deltas, double *deltar) {
 
 void AdaptiveControl::Iterate() {
   std::unique_lock<std::mutex> l(boat_state_mutex_);
+  std::unique_lock<std::mutex> lc(consts_mutex_);
+
   double deltas, deltar;
   if (!Controller(&deltas, &deltar)) {
     deltas = 0.0;
@@ -388,14 +392,15 @@ void AdaptiveControl::Iterate() {
 
   double cursail = boat_state_->internal().sail();
   double sail_err = util::norm_angle(deltas - cursail);
-  sail_msg_->set_voltage(13.0 * sail_err / std::sqrt(std::abs(sail_err)));
+  sail_msg_->set_voltage(consts_msg_->winch_kp() * sail_err /
+                         std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(deltas);
 
   rudder_msg_->set_pos(deltar);
-  LOG(INFO) << "yaw: " << yaw_;
 
   sail_cmd_.send(sail_msg_);
   rudder_cmd_.send(rudder_msg_);
+  consts_queue_.send(consts_msg_);
 }
 
 }  // control

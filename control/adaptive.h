@@ -98,10 +98,11 @@ class ControlPhysics {
                                int nsteps, double *deltas,
                                double *deltar) const;
 
+  double Qf = 1.0;
+  double Qtaumax = 0.4;
+  double Qtaueq = 0.4;
+
  private:
-  constexpr static double Qf = 1.0;
-  constexpr static double Qtaumax = 0.4;
-  constexpr static double Qtaueq = 0.4;
 
   void SailAirfoil(double alpha, double v, double *force, double *ang) const;
   void KeelAirfoil(double alpha, double v, double *force, double *ang) const;
@@ -143,11 +144,14 @@ class AdaptiveControl : public Node {
   msg::SailCmd *sail_msg_;
   msg::RudderCmd *rudder_msg_;
   msg::BoatState *boat_state_;
+  msg::ControllerConstants *consts_msg_;
   std::atomic<float> heading_;
   std::mutex boat_state_mutex_;
+  std::mutex consts_mutex_;
   std::atomic<float> yaw_{0}, thetaw_{0}, vw_{0}, thetac_{0}, vc_{0}, omega_{0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
+  ProtoQueue<msg::ControllerConstants> consts_queue_;
 };
 
 }  // control
