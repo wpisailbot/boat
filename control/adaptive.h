@@ -133,7 +133,7 @@ class AdaptiveControl : public Node {
 
   void Iterate() override;
  private:
-  constexpr static float dt = 0.01;
+  constexpr static float dt = 0.05;
   Eigen::Matrix<double, 6, 6> Kbeta;
 
   ControlPhysics::MatrixBeta Adaptor(double deltas, double deltar) const;

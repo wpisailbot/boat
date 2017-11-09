@@ -56,7 +56,6 @@ class SimpleControlTest : public TestWrapper {
       //,simple_ctrl_(true)
       {
 
-    FLAGS_logtostderr = false;
     threads_.emplace_back(&WebSocketServer::Run, &server_);
     threads_.emplace_back(&CsvLogger::Run, &csv_logger_);
     threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);

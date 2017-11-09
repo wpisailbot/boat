@@ -305,7 +305,7 @@ AdaptiveControl::AdaptiveControl()
       consts_queue_("control_consts", true) {
 
     consts_msg_->set_winch_kp(13);
-    consts_msg_->set_rudder_kp(20.0);
+    consts_msg_->set_rudder_kp(5.0);
     consts_msg_->set_qf(1.0);
     {
       std::unique_lock<std::mutex> l(consts_mutex_);
@@ -396,7 +396,7 @@ void AdaptiveControl::Iterate() {
                          std::sqrt(std::abs(sail_err)));
   sail_msg_->set_pos(deltas);
 
-  rudder_msg_->set_pos(deltar);
+  rudder_msg_->set_pos(util::Clip(deltar, -0.5, 0.5));
 
   sail_cmd_.send(sail_msg_);
   rudder_cmd_.send(rudder_msg_);
