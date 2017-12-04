@@ -24,7 +24,7 @@ Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
   }
 }
 
-double Polygon::DistToPoint(Point pt) {
+double Polygon::DistToPoint(Point pt) const {
   // To calculate, iterate through points, and choose the two nearest to pt.
   // Use dot product to figure out if pt projects onto segment or not, and
   // use DisttoLine.
