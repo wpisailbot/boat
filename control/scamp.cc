@@ -155,8 +155,7 @@ void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
 }
 
 void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
-  int raw_val = -cmd.vel() / M_PI * 180.;
-  raw_ballast_ = raw_val;
+  raw_ballast_ = cmd.vel();
 }
 
 float SCAMP::WinchPotToAngle(float pot_val) {
