@@ -26,6 +26,15 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="line_plan",
+  srcs=["line_plan.cc"],
+  hdrs=["line_plan.h"],
+  deps=[":actuator_cmd_proto",
+        "//util:node",
+        "//math:polygon",
+        "//sim:sim_physics"],
+)
+cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
@@ -79,6 +88,13 @@ cc_test(
   name="util_test",
   srcs=["util_test.cc"],
   deps=[":util", "@gtest//:main"],
+)
+cc_test(
+  name="line_plane_test",
+  srcs=["line_plan_test.cc"],
+  deps=[":line_plan",
+        "//util:testing",
+        "@gtest//:main"],
 )
 cc_test(
   name="control_test",
