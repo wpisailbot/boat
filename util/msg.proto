@@ -47,6 +47,7 @@ message LogEntry {
   optional TackerState tacker_state = 514;
   optional ChallengeControl challenge_control = 515;
   optional VisionData vision_data = 516;
+  optional BallastCmd manual_ballast_cmd = 517;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;
