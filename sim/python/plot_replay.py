@@ -171,6 +171,9 @@ data = np.genfromtxt("endurance-first-3-laps.csv", delimiter=',')[144:, :]
 (t, x, y, vx, vy, speed, yaw, heel, pitch, omega, heading,
  leeway, sail, rudder, alphaw, pitchvar, wind_speed, true_alphaw,
  true_wind_speed, heading_cmd, rudder_mode, _, _) = read_replay.read("sep11replay.csv", True, 1000, 6000)
+#(t, x, y, vx, vy, speed, yaw, heel, pitch, omega, heading,
+# leeway, sail, rudder, alphaw, pitchvar, wind_speed, true_alphaw,
+# true_wind_speed, heading_cmd, rudder_mode, _, _) = read_replay.read("/tmp/basic_replay_data.csv", True, 2700, 6000)
 
 period = 10
 reset_amt = 0.3
@@ -207,10 +210,11 @@ guess_heading = [norm_deg(n) for n in guess_heading]
 
 plt.plot(x, y, label="Boat Path")
 #plt.plot([-76.477516, -76.475533, -76.474373, -76.477615, -76.479126], [38.98278, 38.98209, 38.98365, 38.985771, 38.983952], '*-', label="waypoints")
-if False:
-  plt.quiver(x, y, vx, vy, np.hypot(vx, vy))
-  plt.colorbar(label="Speed (m/s)")
-  plt.title("Boat Position (Wind is blowing bottom-right-to-top-left on screen)--Arrows and colors represent velocities")
+plt.figure()
+if True:
+  plt.quiver(x, y, vx, vy, np.hypot(vx, vy), scale=1e5, scale_units='xy')
+  plt.colorbar(label="Speed (decim/s)")
+  plt.title("Boat Position--Arrows and colors represent velocities")
   plt.xlabel("X position (deg longitude)")
   plt.ylabel("Y position (deg latitude)")
 plt.legend()
@@ -220,9 +224,9 @@ ax = plt.subplot(111)
 ax.plot(t, x - x[0], label='x less bias')
 ax.plot(t, y - y[0], label='y less bias')
 ax2 = ax.twinx()
-ax2.plot(t, vx, 'c*', label='vx')
-ax2.plot(t, vy, 'r*', label='vy')
-ax2.plot(t, speed, 'g*', label='speed')
+ax2.plot(t, vx, 'c--', label='vx')
+ax2.plot(t, vy, 'r--', label='vy')
+ax2.plot(t, speed, 'g--', label='speed')
 ax2.plot(t, wind_speed, label='Wind Speed (m/s)')
 ax2.plot(t, true_wind_speed, label='True Wind Speed (m/s)')
 ax.legend(loc='upper left')

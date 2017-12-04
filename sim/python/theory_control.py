@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 import numpy as np
+from numpy import matlib
+from numpy import random
 import sys
+import copy
 import scipy.signal
 import scipy.stats.stats
 from matplotlib import pyplot as plt
@@ -361,8 +364,8 @@ class Physics(object):
     Ytaurs = Fs * np.sin(gammas) * np.cos(heel)
     Ytauconst = tauk + (taus - Ytaurs * self.rs)
     Ytau = np.matrix([[0.0, YtauBomega, YtauAr, Ytaurs, 1.0, Ytauconst]])
-    print("Ytau: ", Ytau)
-    print("YFlon: ", YFlon)
+    #print("Ytau: ", Ytau)
+    #print("YFlon: ", YFlon)
 
     return np.concatenate((YFlon, Ytau), axis=0)
 
@@ -499,9 +502,12 @@ class Physics(object):
         thetaws, vws, deltass, deltars
 
   def Run(self, wind, v0, omega0, heel0, control, dt=0.01, niter=200, flopsail=True, debugf=None):
-    wx = [wind[0]] * niter
-    wy = [wind[1]] * niter
-    winds = [wx, wy]
+
+    winds = wind
+    if not isinstance(wind[0], list):
+      wx = [wind[0]] * niter
+      wy = [wind[1]] * niter
+      winds = [wx, wy]
     ts = [i * dt for i in range(niter)]
     return self.RunBase(ts, winds, [0.0, 0.0], v0, 0.0, omega0, heel0,
                         control, flopsail=flopsail, debugf=debugf)
@@ -516,7 +522,7 @@ class Physics(object):
     thetacs = [Norm(np.arctan2(v0[1], v0[0]) + yaws[0])]
 
     for i in range(niter):
-      print(i * dt)
+      #print(i * dt)
       x, y, vx, vy, yaw, omega, heel, thetac, vc = self.Update(
           wx, wy, xs[-1], ys[-1], vxs[-1], vys[-1], yaws[-1], omegas[-1],
           deltas, deltar, heels[-1], dt)
@@ -546,7 +552,13 @@ class Controller(object):
     self.Qtau = 0.01
     self.Qf = 1.0
 
-    self.Kbeta = 0.0 * np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
+    self.goalyaw = -np.pi / 2.0
+    self.maxyawrefacc = 0.2
+    self.maxyawrefvel = 0.2
+    self.yawref = 0.0
+    self.omegaref = 0.0
+
+    self.Kbeta = np.diag([0.0, 0.0, 0.01, 0.05, 0.01, 0.0])
     self.beta = np.matrix([[physics.Blon],
                            [physics.Bomega],
                            [physics.rudder.A],
@@ -567,7 +579,17 @@ class Controller(object):
                               [1.0]])
     self.Lambda = np.diag([1.0, 1.0])
     self.lastt = float("nan")
+
+    self.Kref = 0.95
+
     self.betas = []
+    self.torques = []
+    self.yawrefs = []
+
+  def Clear(self):
+    self.betas = []
+    self.torques = []
+    self.yawrefs = []
 
   def ClipSail(self, deltas, thetaw):
     maxsail = abs(Norm(np.pi - thetaw))
@@ -588,8 +610,8 @@ class Controller(object):
     vcgoal = vc
     diff = np.matrix([[0.0], [omegadiff]]) +\
            self.Lambda * np.matrix([[vcgoal - vc], [yawdiff]])
-    print("diff: ", diff)
-    print("dot: ", (Y.T * diff).T)
+    #print("diff: ", diff)
+    #print("dot: ", (Y.T * diff).T)
     betadot = -self.Kbeta * Y.T * diff
     return betadot
 
@@ -599,28 +621,58 @@ class Controller(object):
       dt = 0.0
     self.lastt = t
 #    self.Qtau = 1.0
-    goalyaw = -np.pi / 2.0
     goalomega = 0.0
-    taue = 10.0 * Norm(goalyaw - yaw) + (goalomega - omega) * 0.0\
+    taue = 20.0 * Norm(self.goalyaw - yaw) + (goalomega - omega) * 15.0\
            - self.beta[4, 0]
     #taue = 0.0
     constraint = 0.0
-    _, _, _, _, _, deltas, deltar = control.GlobalMaxForceTorque(
+    _, _, _, taues, mini, deltas, deltar = control.GlobalMaxForceTorque(
         thetaw, vw, thetac, vc, taue, constraint, 20)
 
+    if mini >= 0:
+      self.torques.append(taues[mini])
+    else:
+      self.torques.append(float("nan"))
+
+    self.yawrefs.append(self.yawref)
+
     if np.isnan(deltas) and constraint == 0.0:
+      self.betas.append(self.beta)
       return 0.0, 0.0
+
 
     betadot = self.Adapt(
         thetaw, vw, thetac, vc, yaw, omega, deltas, deltar,
-        goalyaw, goalomega)
+        self.yawref, self.omegaref)
+
+    if vc < 0.5:
+      betadot *= 0
 
     self.beta += betadot * dt
     self.beta = np.clip(self.beta, self.betamin, self.betamax)
     self.betas.append(self.beta)
-    print(self.beta.T)
+    #print(self.beta.T)
     self.physics.rudder.A = self.beta[2, 0]
     self.physics.rs = self.beta[3, 0]
+
+    cur_yaw = self.yawref
+    cur_omega = self.omegaref
+    if i % 1 == 0:
+      K = self.Kref
+      cur_yaw = K * self.yawref + (1 - K) * yaw
+      cur_omega = K * self.omegaref + (1 - K) * omega
+    max_acc = self.maxyawrefacc
+    max_vel = self.maxyawrefvel
+    exp_vel = np.clip(Norm(self.goalyaw - cur_yaw), -max_vel, max_vel)
+    exp_acc = np.clip(exp_vel - cur_omega, -max_acc, max_acc)
+    if self.maxyawrefvel < 0.0:
+      self.yawref = self.goalyaw
+    elif self.maxyawrefacc < 0.0:
+      self.yawref = cur_yaw + exp_vel * dt
+    else:
+      self.omegaref = cur_omega + exp_acc * dt
+      self.yawref = cur_yaw + cur_omega * dt + exp_acc * 0.5 * dt * dt
+    self.yawref = Norm(self.yawref)
 
     if np.isnan(deltas) and constraint != 0:
       taue = -np.sign(constraint) * float("inf")
@@ -630,7 +682,7 @@ class Controller(object):
 
   def ControlGradDescent(self, i, t, thetaw, vw, thetac, vc, omega):
     ds = np.clip(Norm(np.pi - thetaw), -np.pi / 2.0, np.pi / 2.0)
-    print("thetaw ", thetaw, " ds ", ds)
+    #print("thetaw ", thetaw, " ds ", ds)
     deltari = 0.25
     return self.MaxForceForTorque(thetaw, vw, thetac, vc, ds, deltari)
 
@@ -667,6 +719,7 @@ class Controller(object):
     costs = []
 
     mincost = float("inf")
+    mini = -1
     deltasmax = float("nan")
     deltarmax = float("nan")
 
@@ -722,11 +775,12 @@ class Controller(object):
       costs.append(cost)
 
       if cost < mincost:
+        mini = len(deltass) - 1
         mincost = cost
         deltasmax = deltas
         deltarmax = deltar
 
-    return deltass, deltars, Flons, taues, mincost, deltasmax, deltarmax
+    return deltass, deltars, Flons, taues, mini, deltasmax, deltarmax
 
   def MaxForceForTorque(self, thetaw, vw, thetac, vc, deltasi, deltari):
     """
@@ -742,10 +796,10 @@ class Controller(object):
     clips = deltasi
     deltar = deltari
     deltas = deltasi
-    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    print("thetaw ", thetaw, " vw ", vw, " thetac ", thetac, " vc ", vc, " deltasi ", deltasi, " deltari ", deltari)
+    #print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    #print("thetaw ", thetaw, " vw ", vw, " thetac ", thetac, " vc ", vc, " deltasi ", deltasi, " deltari ", deltari)
     while deltasstep * laststep >= 0.0:# or np.isnan(taunom):
-      print("Iter")
+      #print("Iter")
       Fs, gammas, dFsds, dgsds = self.physics.SailForces(thetaw, vw, deltas)
 #      print("Fs ", Fs, " gammas ", gammas, " dFsds ", dFsds, " dgsds ", dgsds)
       Fk, gammak = self.physics.KeelForces(thetac, vc)
@@ -760,7 +814,7 @@ class Controller(object):
         taunom = taunet
 #        print("Taunom: ", taunom)
       tauerr = taunet - taunom
-      print("tauerr: ", tauerr)
+      #print("tauerr: ", tauerr)
 
       dFlonds = dFsds * np.cos(gammas) - Fs * np.sin(gammas) * dgsds
 #      print("dFlonds: ", dFlonds, " taunet: ", taunet)
@@ -775,7 +829,7 @@ class Controller(object):
 
       clips = self.ClipSail(deltas, thetaw)
       clipr = self.ClipRudder(deltar, thetac)
-      print("clips ", clips, " clipr ", clipr)
+      #print("clips ", clips, " clipr ", clipr)
       if clips != deltas or clipr != deltar:
 #        print("breaking due to limit")
         break
@@ -792,6 +846,11 @@ class Controller(object):
 # with current heel and sail. From there, we then begin to try
 # to improve forwards force by following the gradient (we adjust the
 # sail and then adjust the rudder, iteratively).
+
+def SimpleControl(i, t, tw, vw, tc, vc, yaw, omega, goalyaw):
+  deltas = Norm(np.pi - Norm(tw)) / 2.0
+  deltar = np.clip(-Norm(goalyaw - yaw), -0.3, 0.3)
+  return deltas, deltar
 
 def SailForcesAndTorque(physics, thetaw, vw, thetac, vc, deltas):
   Fs, gammas, _, _ = physics.SailForces(thetaw, vw, deltas)
@@ -844,7 +903,7 @@ def PlotSail(physics, thetaw, vw, thetac, vc, fname=None):
     plt.savefig(fname)
 
 def PlotMaxForceForTorque(control, thetaw, vw, thetac, vc, taue, nsteps):
-  deltass, deltars, Flons, taues, mincost, deltasmax, deltarmax = \
+  deltass, deltars, Flons, taues, mini, deltasmax, deltarmax = \
       control.GlobalMaxForceTorque(thetaw, vw, thetac, vc, taue, 0.0, nsteps)
 
   plt.figure()
@@ -855,9 +914,92 @@ def PlotMaxForceForTorque(control, thetaw, vw, thetac, vc, taue, nsteps):
   ax.plot(deltass, deltars, 'r', label="$\delta_r$")
   ax.legend(loc='upper right')
 
+def PlotTrajectory(
+    sim, fcontrol, goalyaw, wind, title=None, fname=None, control=None):
+  control=None
+  if title:
+    print("Starting ", title)
+
+  if control:
+    control.Clear()
+
+  v0 = [0.0, 0.0]
+  omega0 = 0.0
+  heel0 = 0.0
+  dt = 0.01
+  niter = 3000
+  t = [dt * n for n in range(niter)]
+  xs, ys, vxs, vys, yaws, omegas, heels, thetacs, vcs, thetaws, vws,\
+      deltasopt, deltaropt = sim.Run(
+      wind, v0, omega0, heel0, fcontrol, dt, niter)
+
+  plt.figure()
+  if control:
+    plt.subplot(211)
+  plt.plot(t, yaws, 'b', label='yaw')
+  plt.plot(t, [goalyaw] * len(t), 'b--', label='goal yaw')
+  if control:
+    plt.plot(t[0:-1], control.yawrefs, 'b*', label='yawref')
+  plt.ylabel("Yaw (radians)")
+  l = plt.legend(loc='upper left')
+  l.set_zorder(0)
+  twin = plt.twinx()
+  twin.plot(t, vcs, 'g', label='speed')
+  twin.plot(t, omegas, 'r', label='omega')
+  twin.set_ylabel("Speed (m/s)")
+  l = twin.legend(loc='upper right')
+  l.set_zorder(0)
+  plt.xlabel("Time (sec)")
+  if title != None:
+    plt.title(title)
+
+  if control:
+    plt.subplot(212, sharex=twin)
+    plt.plot(t[:-1], [b[2, 0] for b in control.betas], 'b', label='Ar')
+    plt.plot(t[:-1], [b[3, 0] for b in control.betas], 'g', label='rs')
+    plt.plot(t[:-1], [b[4, 0] for b in control.betas], 'r', label='taubias')
+    plt.legend(loc='upper left')
+    plt.twinx()
+    plt.plot(t[0:-1], [t / 10. for t in control.torques], 'y', label='torques')
+    plt.legend(loc='upper right')
+
+  if fname != None:
+    plt.savefig(fname)
+
+def MakeWind(speedmean, speedstd, dirmean, dirstd, n):
+  """
+    Uses auto-regressive process to compute a set
+    of wind x/y velocities. Returns a 2-item list where each
+    item is a list of all the x/y velocities respectively.
+  """
+  N = 10
+  phispeed = matlib.ones((1, N)) / N * 0.99
+  phidir = matlib.ones((1, N)) / N * 0.99
+  s0 = speedmean
+  d0 = dirmean
+  speeds = [s0]
+  dirs = [d0]
+  xs = []
+  ys = []
+  espeed = lambda: random.normal(speedmean, speedstd)
+  edir = lambda: random.normal(dirmean, dirstd)
+  for ii in range(1, n+1):
+    Xspeed = matlib.zeros(phispeed.shape).T
+    Xdir = matlib.zeros(phidir.shape).T
+    for jj in range(N):
+      idx = max(ii + jj - N, 0)
+      Xspeed[jj, 0] = speeds[idx] - speedmean
+      Xdir[jj, 0] = dirs[idx] - dirmean
+    speeds.append(float(phispeed * Xspeed + espeed()))
+    dirs.append(float(phidir * Xdir + edir()))
+    xs.append(speeds[-1] * np.cos(dirs[-1]))
+    ys.append(speeds[-1] * np.sin(dirs[-1]))
+
+  return [xs, ys]
+
 if __name__ == "__main__":
   sim = Physics()
-  wind = [3.0, 0.0]
+  wind = [0.0, -3.0]
   v0 = [0.0, 0.0]
   omega0 = 0.0
   heel0 = 0.0
@@ -880,15 +1022,6 @@ if __name__ == "__main__":
     PlotSail(sim, 7 * np.pi / 8.0, 3.0, 0.0, 1.0)
     PlotSail(sim, 3.0, 3.0, 0.0, 1.0)
 
-  sim.rs -= 0.1
-  sim.hs *= 1.5
-  sim.Blon += 10
-  sim.keel.A *= 1.2
-#  sim.sail.A *= 0.8
-  sim.rr *= 0.85
-  sim.Blat *= 1.1
-  sim.Bomega *= 0.2
-  sim.J *= 1.5
   controlsim = Physics()
   control = Controller(controlsim)
 
@@ -915,6 +1048,128 @@ if __name__ == "__main__":
   #  print("ds ", dsopt, " dr ", dropt)
   #  deltasopt.append(dsopt)
   #  deltaropt.append(dropt)
+
+  gyaw = 0.1
+
+  control.goalyaw = gyaw
+  simple_ctrl = lambda i, t, tw, vw, tc, vc, yaw, om: \
+      SimpleControl(i, t, tw, vw, tc, vc, yaw, om, control.goalyaw)
+  PlotTrajectory(sim, simple_ctrl, control.goalyaw, wind,
+                 title="Old Controller", fname="old_beam.eps")
+
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Nominal Conditions",
+                 fname="full_nominal_beam.eps", control=control)
+
+  old_wind = wind
+  wind = MakeWind(3.0, 0.1, -np.pi / 2.0, 0.05, 3000)
+  controlsim = Physics()
+  control = Controller(controlsim)
+  control.goalyaw = gyaw
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Nominal Conditions, Noisy Wind",
+                 fname="full_nominal_beam_noisy_wind.eps", control=control)
+  wind = old_wind
+
+  controlsim = Physics()
+  control = Controller(controlsim)
+  control.goalyaw = gyaw
+  control.Kbeta *= 0.0
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Nominal Conditions, $K_\\beta = 0$",
+                 fname="kb0_nominal_beam.eps", control=control)
+
+  controlsim.rs += 0.5
+  controlsim.hs *= 0.7
+  controlsim.Blon -= 10
+  controlsim.keel.A *= 0.8
+#  controlsim.sail.A *= 0.8
+  controlsim.rr *= 1.2
+  controlsim.Blat *= 0.9
+  controlsim.Bomega *= 5.0
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed Simulation",
+                 fname="full_skewed_beam.eps", control=control)
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.Kref = 0.99
+  control.goalyaw = gyaw
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed, Kref=0.99",
+                 fname="kref99_skew_beam.eps", control=control)
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.Kref = 0.9
+  control.goalyaw = gyaw
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed, Kref=0.9",
+                 fname="kref9_skew_beam.eps", control=control)
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.Kref = 1.0
+  control.goalyaw = gyaw
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed, Kref=1.0",
+                 fname="kref1_skew_beam.eps", control=control)
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.Kref = 0.0
+  control.goalyaw = gyaw
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed, Kref=0",
+                 fname="kref0_skew_beam.eps", control=control)
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+  control.Kbeta *= 0.0
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Skewed Simulation, no correction",
+                 fname="kb0_skewed_beam.eps", control=control)
+
+  gyaw = np.pi / 4.0
+
+  controlsim = Physics()
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+  simple_ctrl = lambda i, t, tw, vw, tc, vc, yaw, om: \
+      SimpleControl(i, t, tw, vw, tc, vc, yaw, om, control.goalyaw)
+  PlotTrajectory(sim, simple_ctrl, control.goalyaw, wind,
+                 title="Old Controller, upwind",
+                 fname="old_upwind.eps")
+
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Nominal Conditions, upwind",
+                 fname="full_nominal_upwind.eps")
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+  control.maxyawrefvel = -1.0
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="No Ramp, upwind",
+                 fname="full_nominal_upwind_noramp.eps")
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+  control.maxyawrefvel = 0.2
+  control.maxyawrefacc = -1.0
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Inf accel ramp, upwind",
+                 fname="inf_acc_ramp_upwind.eps")
+
+  control = Controller(copy.deepcopy(controlsim))
+  control.goalyaw = gyaw
+  control.maxyawrefacc = 0.2
+  control.Kbeta *= 0.0
+  PlotTrajectory(sim, control.ControlMaxForce, control.goalyaw,
+                 wind, title="Nominal Conditions, upwind, $K_\\beta = 0$",
+                 fname="kb0_nominal_upwind.eps")
+
+  plt.show()
+  sys.exit()
 
   plt.figure()
   axxy = plt.subplot(111)

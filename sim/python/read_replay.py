@@ -57,13 +57,13 @@ def read(fname, degrees=False, starttime=0, endtime=9999):
     yaw.append(norm_rad(row[5]) * mult)
     heel.append(norm_rad(row[6]) * mult)
     pitch.append(norm_rad(row[7]) * mult)
-    omega.append(row[8] * mult) # Converted to deg/sec
+    omega.append(row[8] * 10.0 * mult) # *10 due to error in old data
     pitchvarstart = max(-100, -len(pitch))
     pitchvar.append(np.std(pitch[pitchvarstart:]))
     x.append(row[9])
     y.append(row[10])
-    vx.append(row[12])
-    vy.append(row[11])
+    vx.append(row[11])
+    vy.append(row[12])
     speed.append(np.hypot(vx[-1], vy[-1]))
     heading.append(np.arctan2(vy[-1], vx[-1]) * mult)
     leeway.append(norm_ang(heading[-1] - yaw[-1], degrees))
