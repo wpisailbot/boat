@@ -108,7 +108,7 @@ SCAMP::SCAMP()
     if (IsDisabled(WINCH)) {
       raw_winch_ = 90;
     }
-    if (IsDisabled(BALLAST)) {
+    if (IsDisabled(BALLAST) || !IsManualWiFi(BALLAST)) {
       raw_ballast_ = 90;
     }
   });
