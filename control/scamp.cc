@@ -141,7 +141,7 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   // Also, create a deadband
   volts = std::abs(volts) < 1 ? 0 : volts;
   // And only permit 6V, until we know what we are doing:
-  volts = std::min(std::max(volts, (float)-6.), (float)6.);
+  volts = std::min(std::max(volts, (float)-12.), (float)12.);
   volts *= (consts_msg_->winch_90_pot() > consts_msg_->winch_0_pot()) ? -1 : 1;
   int raw_val = volts / 12. * 90. + 90;
 
