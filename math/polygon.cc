@@ -15,11 +15,17 @@ double DistToLine(Point l0, Point l1, Point pt) {
   return perp.dot(pt);
 }
 
+bool ProjectsToLine(Point l0, Point l1, Point pt) {
+  Point line = l1 - l0;
+  double dot = line.dot(pt - l0);
+  return dot > 0.0 && dot < line.norm();
+}
+
 Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
   size_t N = pts_.size();
-  CHECK_LT(2, N) << "Need at least 3 points for a polygon";
+  CHECK_LT(1, N) << "Need at least 2 points for a polygon";
   for (size_t ii = 0; ii < N; ++ii) {
-    CHECK_GT(DistToLine(pts[ii], pts[(ii + 1) % N], pts[(ii + 2) % N]), 0.0)
+    CHECK_GE(DistToLine(pts[ii], pts[(ii + 1) % N], pts[(ii + 2) % N]), 0.0)
         << "Either not convex or not counter-clockwise";
   }
 }
@@ -41,16 +47,21 @@ double Polygon::DistToPoint(Point pt) const {
     }
   }
 
-  double d0 = -DistToLine(pts_[(minvertex-1) % N], pts_[minvertex], pt);
-  double d1 = -DistToLine(pts_[minvertex], pts_[(minvertex+1) % N], pt);
+  const Point &prept = pts_[(minvertex - 1) % N];
+  const Point &postpt = pts_[(minvertex + 1) % N];
+  const Point &minpt = pts_[minvertex];
+  double d0 = -DistToLine(prept, minpt, pt);
+  double d1 = -DistToLine(minpt, postpt, pt);
+  bool d0proj = ProjectsToLine(prept, minpt, pt);
+  bool d1proj = ProjectsToLine(minpt, postpt, pt);
 
   if (d0 < 0.0 && d1 < 0.0) {
     // Point is inside of polygon
     return 0.0;
-  } else if (d0 < 0.0) {
+  } else if (d1proj && d1 >= 0.0) {
     // Point projects onto (minvertex, minvertex+1) edge
     return d1;
-  } else if (d1 < 0.0) {
+  } else if (d0proj && d0 >= 0.0) {
     // Point projects onto (minvertex-1, minvertex) edge
     return d0;
   } else {
