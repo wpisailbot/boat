@@ -6,11 +6,12 @@ namespace sailbot {
 
 double DistToLine(Point l0, Point l1, Point pt) {
   // Method:
-  // 1) Calculate the vector perpendicular to (l0, l1)
+  // 1) Calculate the unit vector perpendicular to (l0, l1)
   // 2) Project pt onto that vector
   // 3) Ta-Da!
 
   Point perp(l0.y() - l1.y(), l1.x() - l0.x());
+  perp.normalize();
   pt = pt - l0;
   return perp.dot(pt);
 }
@@ -18,7 +19,7 @@ double DistToLine(Point l0, Point l1, Point pt) {
 bool ProjectsToLine(Point l0, Point l1, Point pt) {
   Point line = l1 - l0;
   double dot = line.dot(pt - l0);
-  return dot > 0.0 && dot < line.norm();
+  return dot > 0.0 && dot < line.squaredNorm();
 }
 
 Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
@@ -68,7 +69,6 @@ double Polygon::DistToPoint(Point pt) const {
     // Point projects to minvertex.
     return mindist;
   }
-
 }
 
 }  // namespace sailbot
