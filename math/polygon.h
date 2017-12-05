@@ -14,6 +14,11 @@ typedef Eigen::Vector2d Point;
  * the left of the line if looking at l1 from l0.
  */
 double DistToLine(Point l0, Point l1, Point pt);
+/**
+ * Determines whether you can draw a line at a right angle to (l0, l1) from some
+ * point on (l0, l1) to pt.
+ */
+bool ProjectsToLine(Point l0, Point l1, Point pt);
 
 /**
  * 2D polygon, all math done in Euclidean plane. i.e., this will not perfectly
@@ -31,6 +36,8 @@ class Polygon {
    *   1------2
    * Validates the input to ensure that we have a convex polygon
    * with points in the correct order.
+   * Will also permit two-point polygons (lines), because
+   * that can be convenient.
    */
   Polygon(std::vector<Point> pts);
 

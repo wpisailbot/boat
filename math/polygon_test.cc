@@ -4,6 +4,19 @@
 
 namespace sailbot {
 
+TEST(PolygonUtilTest, DistToLine) {
+  EXPECT_EQ(1.0, DistToLine({2.0, 0.0}, {2.0, 2.0}, {1.0, 1.0}));
+}
+
+TEST(PolygonUtilTest, ProjectsToLine) {
+  EXPECT_TRUE(ProjectsToLine({0.0, 0.0}, {1.0, 0.0}, {0.5, 0.5}));
+  EXPECT_TRUE(ProjectsToLine({0.0, 1.0}, {0.0, -2.0}, {0.5, 0.5}));
+  EXPECT_TRUE(ProjectsToLine({0.0, 1.0}, {0.0, -2.0}, {-0.5, 0.5}));
+  EXPECT_TRUE(ProjectsToLine({2.0, 2.0}, {2.0, 0.0}, {1.0, 1.0}));
+  EXPECT_FALSE(ProjectsToLine({0.0, 1.0}, {0.0, -2.0}, {0.5, 2.5}));
+  EXPECT_FALSE(ProjectsToLine({0.0, 1.0}, {0.0, -2.0}, {0.5, -2.5}));
+}
+
 TEST(PolygonTest, Constructs) {
   std::vector<Point> pts({{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}});
   Polygon poly(pts);
@@ -40,6 +53,34 @@ TEST(PolygonTest, DistToInsidePt) {
   Polygon poly(pts);
   EXPECT_EQ(0.0, poly.DistToPoint({0.5, 0.5}))
       << "Points inside of polygon should be zero distance away";
+}
+
+TEST(PolygonTest, OnEdgePoint) {
+  // Test when a point is exactly on a given edge.
+  std::vector<Point> pts({{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}});
+  Polygon poly(pts);
+  EXPECT_EQ(0.0, poly.DistToPoint({0.0, 0.5}))
+      << "Points inside of polygon should be zero distance away";
+}
+
+TEST(PolygonTest, NonSquarePolygon) {
+  // Test that edges not at right angles work properly.
+  std::vector<Point> pts({{0.0, 0.0}, {2.0, 0.0}, {1.0, 0.5}});
+  Polygon poly(pts);
+  EXPECT_EQ(1.0, poly.DistToPoint({0.0, 1.0}))
+      << "Point off of obtuse corner";
+  EXPECT_EQ(1.0, poly.DistToPoint({3.0, 0.0})) << "Point off of acute corner";
+}
+
+TEST(PolygonTest, TwoPointsFunction) {
+  std::vector<Point> pts({{0.0, 0.0}, {1.0, 0.0}});
+  Polygon poly(pts);
+  EXPECT_EQ(0.0, poly.DistToPoint({0.5, 0.0}))
+      << "Point on line should be zero distance";
+  EXPECT_EQ(0.5, poly.DistToPoint({1.5, 0.0}));
+  EXPECT_EQ(0.5, poly.DistToPoint({0.0, 0.5}));
+  EXPECT_EQ(0.5, poly.DistToPoint({0.5, 0.5}));
+  EXPECT_EQ(0.25, poly.DistToPoint({0.75, -0.25}));
 }
 
 }  // namespace sailbot
