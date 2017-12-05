@@ -134,9 +134,48 @@ class AdaptiveControl : public Node {
   void Iterate() override;
  private:
   constexpr static float dt = 0.05;
+  // Constants for updating beta; higher numbers result in more correction
   Eigen::Matrix<double, 6, 6> Kbeta;
+  // Controls relative weight of state vs. derivative of state error in
+  // updating beta; higher values increase weight of state over the
+  // derivative.
+  Eigen::Matrix<double, 2, 2> Lambda;
+  // Constants for updating reference trajectory.
+  // The current references are stored in yaw_ref_ and omega_ref_.
+  // The reference trajectory updates as follows, at the
+  // end of each iteration (to predict the next step):
+  // 1) We take a weighted average of the current *ref_ and *_,
+  //    to avoid excessive divergence between the reference and
+  //    true trajectories. This is the new reference.
+  // 2) We set a nominal expected velocity based on the difference
+  //    between the reference yaw (post-weighted avg) and
+  //    the commanded heading (heading_); this is clipped to
+  //    avoid asking for excessive turn rates
+  // 3) Set a nominal expected accel based in difference between
+  //    reference omega (post avg) and the above expected velocity.
+  //    This value is also clipped.
+  // 4) Actually integrate the reference yaw/omega based on the
+  //    reference omega and expected acceleration from step 3.
+
+  // Value affecting weighted average in step 1,
+  // where 1.0 means we ignore the true trajectory when
+  // calculating the reference, and 0.0 means we ignore the
+  // past reference and just compute a reference trajectory
+  // a single time-step into the future.
+  double Kref;
+
+  // Maximum values for the expected velocity/accel from
+  // steps 2 and 3 above. If the maximum vel is less than
+  // zero, then yaw_ref_ = heading_, omega_ref_ = 0.0.
+  // If maximum accel < 0, then omega_ref_ is set to
+  // the expected velocity from step 2.
+  double Kmax_exp_vel, Kmax_exp_acc;
 
   ControlPhysics::MatrixBeta Adaptor(double deltas, double deltar) const;
+  /**
+   * Update yaw_ref_ and omega_ref_, per the rules above.
+   */
+  void UpdateYawRef();
   bool Controller(double *deltas, double *deltar);
 
   ControlPhysics physics_;
@@ -148,7 +187,11 @@ class AdaptiveControl : public Node {
   std::atomic<float> heading_;
   std::mutex boat_state_mutex_;
   std::mutex consts_mutex_;
+  // State information
   std::atomic<float> yaw_{0}, thetaw_{0}, vw_{0}, thetac_{0}, vc_{0}, omega_{0};
+  // The current reference yaw/omega. beta will be updated based on the
+  // difference between yaw/omega and yawref/omegaref.
+  std::atomic<float> yaw_ref_{0}, omega_ref_{0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
   ProtoQueue<msg::ControllerConstants> consts_queue_;

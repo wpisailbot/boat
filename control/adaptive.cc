@@ -299,13 +299,13 @@ AdaptiveControl::AdaptiveControl()
       rudder_msg_(AllocateMessage<msg::RudderCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
-      heading_(-2.0 * M_PI / 4.0),
+      heading_(2.0 * M_PI / 4.0),
       sail_cmd_("sail_cmd", true),
       rudder_cmd_("rudder_cmd", true),
       consts_queue_("control_consts", true) {
 
     consts_msg_->set_winch_kp(13);
-    consts_msg_->set_rudder_kp(5.0);
+    consts_msg_->set_rudder_kp(25.0);
     consts_msg_->set_qf(1.0);
     {
       std::unique_lock<std::mutex> l(consts_mutex_);
@@ -313,6 +313,11 @@ AdaptiveControl::AdaptiveControl()
     }
 
   Kbeta.diagonal() << 0.0, 0.0, 0.0, 0.004, 0.0, 0.;
+  Lambda << 1.0, 0.0,
+            0.0, 1.0;
+  Kref = 0.99;
+  Kmax_exp_vel = 0.2;
+  Kmax_exp_acc = 0.2;
 
   RegisterHandler<msg::BoatState>("boat_state", [this](const msg::BoatState &msg) {
     std::unique_lock<std::mutex> l(boat_state_mutex_);
@@ -323,6 +328,7 @@ AdaptiveControl::AdaptiveControl()
     omega_ = boat_state_->omega().z();
    // double heel = boat_state_->euler().roll();
     thetac_ = -util::norm_angle(std::atan2(vy, vx) - yaw_);
+    thetac_ = 0.0;
     vc_ = std::sqrt(vx * vx + vy * vy);
   });
   RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {
@@ -349,22 +355,65 @@ AdaptiveControl::AdaptiveControl()
   });
 }
 
+/**
+ * Computes the betadot given a particular deltas/deltar, using a method
+ * described in section 8.5.4 Adaptive Control of "Robotics: Modelling, Planning
+ * and Control", in which we presume that the dynamics are linear in some
+ * parameters, such that under a given set of conditions the dynamics
+ * are described by u = Y * beta, where Y is a (potentially nonlinear) function
+ * of the current state.
+ * For our purposes, u shall notionally comprise of the forwards (longitudinal)
+ * force and the net yaw torque.
+ * In order to update our estimate of the current beta, we look at the
+ * error in the states that most closely correspond with u (in this case,
+ * current velocity and current yaw) and update beta based on a PD-like
+ * system, scaling by the current values of Y (so that the parameter
+ * that most affect the current error are the most updated).
+ * Currently, I assume there is always zero velocity error, as I do not
+ * actually *care* much about the velocity. However, ignoring it is not
+ * necessarily ideal. TODO(james): Investigate
+ */
 ControlPhysics::MatrixBeta AdaptiveControl::Adaptor(double deltas,
                                                     double deltar) const {
   ControlPhysics::MatrixY Y;
   physics_.NetForce(thetaw_, vw_, thetac_, vc_, deltas, deltar, /*omega=*/0.0,
                     nullptr, nullptr, nullptr, nullptr, &Y);
-  Eigen::Vector2d sigma = /*qtildedot + Lambda * */ Eigen::Vector2d(
-      0.0, util::norm_angle(heading_ - yaw_));
+  // See above; 0s should be accel/velocity errors.
+  Eigen::Vector2d sigma =
+      Eigen::Vector2d(0.0, omega_ref_ - omega_) +
+      Lambda * Eigen::Vector2d(0.0, util::norm_angle(yaw_ref_ - yaw_));
   ControlPhysics::MatrixBeta betadot = -Kbeta * Y.transpose() * sigma;
   return betadot;
+}
+
+void AdaptiveControl::UpdateYawRef() {
+  // Perform weighted averages
+  yaw_ref_ = util::norm_angle(Kref * util::norm_angle(yaw_ref_ - yaw_) + yaw_);
+  omega_ref_ = Kref * omega_ref_ + (1.0 - Kref) * omega_;
+
+  // Calculate expected velocity
+  double exp_vel = util::Clip(util::norm_angle(heading_ - yaw_ref_),
+                              -Kmax_exp_vel, Kmax_exp_vel);
+  // Calculate expected accel
+  double exp_acc = util::Clip(util::norm_angle(exp_vel - omega_ref_),
+                              -Kmax_exp_acc, Kmax_exp_acc);
+  // Perform integration, nothing fancy:
+  if (Kmax_exp_vel < 0.0) {
+    yaw_ref_ = heading_.load();
+  } else if (Kmax_exp_acc < 0.0) {
+    yaw_ref_ = yaw_ref_ + exp_vel * dt;
+  } else {
+    yaw_ref_ = yaw_ref_ + omega_ref_ * dt + 0.5 * exp_acc * dt * dt;
+    omega_ref_ = omega_ref_ + exp_acc * dt;
+  }
+  yaw_ref_ = util::norm_angle(yaw_ref_);
 }
 
 bool AdaptiveControl::Controller(double *deltas, double *deltar) {
   CHECK_NOTNULL(deltas);
   CHECK_NOTNULL(deltar);
   double taue = consts_msg_->rudder_kp() * util::norm_angle(heading_ - yaw_) -
-                0 * 300.0 * omega_;
+                15.0 * omega_;
   ControlPhysics::Constraint constraint = ControlPhysics::kQuadratic;
 //  constraint = ControlPhysics::kPort;
 //  taue = -100.0;
@@ -375,6 +424,7 @@ bool AdaptiveControl::Controller(double *deltas, double *deltar) {
   }
   ControlPhysics::MatrixBeta betadot = Adaptor(*deltas, *deltar);
   physics_.IncrementBeta(betadot * dt);
+  UpdateYawRef();
   return true;
 }
 
