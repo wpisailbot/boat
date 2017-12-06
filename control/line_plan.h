@@ -4,20 +4,24 @@
 #include "math/polygon.h"
 #include <Eigen/Core>
 #include <mutex>
-#include "gtest/gtest_prod.h"
+
+#define TEST_FUN(test_case_name, test_name)\
+  test_case_name##_##test_name##_Test
+#define FRIEND_TEST(test_case_name, test_name)\
+  friend class TEST_FUN(test_case_name, test_name)
 
 namespace sailbot {
 namespace control {
 
 namespace testing {
-class LinePlanUtilTest_TurnCostTest_Test;
-class LinePlanUtilTest_CrossFinishTest_Test;
-class LinePlanUtilTest_SingleLineCostTest_Test;
-class LinePlanUtilTest_StraightLineTest_Test;
-class LinePlanUtilTest_LinePairCostTest_Test;
-class LinePlanUtilTest_ObstacleCostTest_Test;
-class LinePlanUtilTest_BackPassTestOnePoint_Test;
-class LinePlanUtilTest_BackPassTestMultiPoint_Test;
+class TEST_FUN(LinePlanUtilTest, TurnCostTest);
+class TEST_FUN(LinePlanUtilTest, CrossFinishTest);
+class TEST_FUN(LinePlanUtilTest, SingleLineCostTest);
+class TEST_FUN(LinePlanUtilTest, StraightLineTest);
+class TEST_FUN(LinePlanUtilTest, LinePairCostTest);
+class TEST_FUN(LinePlanUtilTest, ObstacleCostTest);
+class TEST_FUN(LinePlanUtilTest, BackPassTestOnePoint);
+class TEST_FUN(LinePlanUtilTest, BackPassTestMultiPoint);
 void TryTurnCost(double startheading, double endheading, double winddir,
                  double expcost, double expdstart, double expdend,
                  const char *desc);
@@ -178,6 +182,9 @@ class LinePlan : public Node {
                                            double expdlen, double,
                                            const char *);
 };
+
+#undef FRIEND_TEST
+#undef TEST_FUN
 
 }  // control
 }  // sailbot
