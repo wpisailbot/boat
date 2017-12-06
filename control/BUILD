@@ -90,7 +90,7 @@ cc_test(
   deps=[":util", "@gtest//:main"],
 )
 cc_test(
-  name="line_plane_test",
+  name="line_plan_test",
   srcs=["line_plan_test.cc"],
   deps=[":line_plan",
         "//util:testing",

@@ -102,5 +102,9 @@ float Normal(float mean, float std) {
   return dist(generator);
 }
 
+double atan2(const Eigen::Vector2d &diff) {
+  return std::atan2(diff.y(), diff.x());
+}
+
 }  // namespace util
 }  // namespace sailbot

@@ -56,5 +56,14 @@ T Clip(T a, T min, T max) {
   return std::max(std::min(a, max), min);
 }
 
+// clip a such that it is not closer than min to zero.
+// e.g., if a = 0.01 and min = 0.1, then ReverseClip(a, min) = 0.1
+template <typename T>
+T ReverseClip(T a, T min) {
+  return a > 0 ? std::max(a, min) : std::min(a, -min);
+}
+
+double atan2(const Eigen::Vector2d &diff);
+
 }  // namespace util
 }  // namespace sailbot
