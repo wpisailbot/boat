@@ -7,8 +7,8 @@
 
 #define TEST_FUN(test_case_name, test_name)\
   test_case_name##_##test_name##_Test
-#define FRIEND_TEST(test_case_name, test_name)\
-  friend class TEST_FUN(test_case_name, test_name)
+#define FRIEND_TEST_FUN(test_case_name, test_name)\
+  friend class TEST_FUN(test_case_name, test_name);
 
 namespace sailbot {
 namespace control {
@@ -21,7 +21,7 @@ class TEST_FUN(LinePlanUtilTest, StraightLineTest);
 class TEST_FUN(LinePlanUtilTest, LinePairCostTest);
 class TEST_FUN(LinePlanUtilTest, ObstacleCostTest);
 class TEST_FUN(LinePlanUtilTest, BackPassTestOnePoint);
-class TEST_FUN(LinePlanUtilTest, BackPassTestMultiPoint);
+class BackPassTest;
 void TryTurnCost(double startheading, double endheading, double winddir,
                  double expcost, double expdstart, double expdend,
                  const char *desc);
@@ -56,6 +56,10 @@ class LinePlan : public Node {
   // Cost, used in TurnCost, of traversing the upwind no-go zones
   // relative to typical turns.
   constexpr static float kTackCost = 5.0;
+  // Relative weight of turn costs:
+  constexpr static float kTurnCost = 0.1;
+  // Scalar affecting cost associated with running upwind:
+  constexpr static float kUpwindCost = 150.0;
   // The relative cost of being near obstacles.
   // If kObstacleCost = 1, then the cost will be integral e^-x dl with
   // x the distance to a given obstacle, l being the line we are
@@ -166,14 +170,14 @@ class LinePlan : public Node {
   std::vector<std::pair<Point, Point>> waypoints_;
   std::atomic<int> next_waypoint_{0};
 
-  FRIEND_TEST(testing::LinePlanUtilTest, TurnCostTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, CrossFinishTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, SingleLineCostTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, StraightLineTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, LinePairCostTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, ObstacleCostTest);
-  FRIEND_TEST(testing::LinePlanUtilTest, BackPassTestOnePoint);
-  FRIEND_TEST(testing::LinePlanUtilTest, BackPassTestMultiPoint);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, TurnCostTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, CrossFinishTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, SingleLineCostTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, StraightLineTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, LinePairCostTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, ObstacleCostTest);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, BackPassTestOnePoint);
+  friend class testing::BackPassTest;
   friend void testing::TryTurnCost(double, double, double, double, double,
                                    double, const char *);
   friend void testing::TryCrossFinishCost(double, double, double, const char *);
@@ -183,7 +187,7 @@ class LinePlan : public Node {
                                            const char *);
 };
 
-#undef FRIEND_TEST
+#undef FRIEND_TEST_FUN
 #undef TEST_FUN
 
 }  // control

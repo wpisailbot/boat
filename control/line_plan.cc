@@ -7,6 +7,8 @@ namespace control {
 
 constexpr float LinePlan::dt;
 constexpr float LinePlan::kTackCost;
+constexpr float LinePlan::kTurnCost;
+constexpr float LinePlan::kUpwindCost;
 constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
 
@@ -264,11 +266,10 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
   double dstarthda = datan(firstleg, dfirstlegda);
   double dnexthda = datan(nextleg, dnextlegda);
   if (nextleg.squaredNorm() < 1e-8) {
-    // Because I'm too lazy to avoid these errors properly, assume that if
-    // nextleg is sufficiently small, we should just treat this as being a
-    // situation where we are in a local minimum.
+    // Make it so that in the special case where nextleg is 0 we will ignore it
+    // as much as possible.
     nextheading = startheading;
-    dnexthda = -dstarthda;
+    dnexthda = dstarthda;
   }
 
   auto dnorm = [](Vector2d x, const Vector2d &dxda) {
@@ -412,11 +413,19 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   double linecost, dcostdlen, dcostdheading;
   StraightLineCost(lena, headinga, winddir, &linecost, &dcostdlen,
                    &dcostdheading);
+  LOG(INFO) << "Preline diff: dcostdlen: " << dcostdlen
+            << " dlenadpt: " << dlenadturnpt
+            << " dcostdheading: " << dcostdheading
+            << " dheadingdpt: " << dhadturnpt;
   *cost += linecost;
   *dcostdturnpt += dcostdlen * dlenadturnpt + dcostdheading * dhadturnpt;
 
   StraightLineCost(lenb, headingb, winddir, &linecost, &dcostdlen,
                    &dcostdheading);
+  LOG(INFO) << "Postline diff: dcostdlen: " << dcostdlen
+            << " dlenbdpt: " << dlenbdturnpt
+            << " dcostdheading: " << dcostdheading
+            << " dheadingdpt: " << dhbdturnpt;
   *cost += linecost;
   *dcostdturnpt += dcostdlen * dlenbdturnpt + dcostdheading * dhbdturnpt;
 }
@@ -504,9 +513,9 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
 
   if ((plusnogonorm < 0 && negnogonorm < 0) || negnogonorm > endnorm) {
     // We are not traversing the no-go zone, so calculation is simple
-    *cost = endnorm * endnorm;
-    *dcostdstart = -2.0 * sign * endnorm;
-    *dcostdend = 2.0 * sign * endnorm;
+    *cost = kTurnCost * endnorm * endnorm;
+    *dcostdstart = -2.0 * kTurnCost * sign * endnorm;
+    *dcostdend = 2.0 * kTurnCost * sign * endnorm;
   } else {
     bool clipstart = negnogonorm < 0.0;
     double startnogo = clipstart ? 0.0 : negnogonorm;
@@ -517,9 +526,11 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
 
     // Remember not to double-count the nogodist.
     double costbase = endnorm + (kTackCost - 1) * nogodist;
-    *cost = costbase * costbase;
-    *dcostdstart = -2.0 * sign * (clipstart ? kTackCost : 1.0) * costbase;
-    *dcostdend = 2.0 * sign * (clipend ? kTackCost : 1.0) * costbase;
+    *cost = kTurnCost * costbase * costbase;
+    *dcostdstart =
+        -2.0 * kTurnCost * sign * (clipstart ? kTackCost : 1.0) * costbase;
+    *dcostdend =
+        2.0 * kTurnCost * sign * (clipend ? kTackCost : 1.0) * costbase;
   }
 }
 
@@ -536,17 +547,19 @@ void LinePlan::StraightLineCost(double len, double heading, double winddir,
   // upwind courses, although we don't want to deal with numerical issues.
   double headingnorm = util::norm_angle(winddir + M_PI - heading);
   double upwindness = std::abs(headingnorm);
-  upwindness = std::min(std::max(0.01, upwindness), 1.0);
-  double upwindscalar = 1.0 / upwindness;
+  upwindness = 1.00 - util::Clip(upwindness, 0.00, 1.0);
+  double upwindscalar = kUpwindCost * upwindness * upwindness + 1.0;
+  LOG(INFO) << "heading: " << heading << " winddir: " << winddir
+            << " headingnorm: " << headingnorm << " len: " << len;
 
   *CHECK_NOTNULL(cost) = upwindscalar * kLengthCost * len;
   *CHECK_NOTNULL(dcostdlen) = upwindscalar * kLengthCost;
-  if (upwindness == 1.0 || upwindness == 0.01) {
+  if (upwindness == 1.0 || upwindness == 0.0) {
     *CHECK_NOTNULL(dcostdheading) = 0.0;
   } else {
-    *CHECK_NOTNULL(dcostdheading) = util::Sign(headingnorm) *
-                                    (upwindscalar * upwindscalar) *
-                                    kLengthCost * len;
+    *CHECK_NOTNULL(dcostdheading) = util::Sign(headingnorm) * 2.0 *
+                                    kUpwindCost * upwindness * kLengthCost *
+                                    len;
   }
 }
 

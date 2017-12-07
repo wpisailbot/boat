@@ -13,6 +13,9 @@ namespace testing {
 void TryTurnCost(double startheading, double endheading, double winddir,
                  double expcost, double expdstart, double expdend,
                  const char *desc) {
+  expcost *= LinePlan::kTurnCost;
+  expdstart *= LinePlan::kTurnCost;
+  expdend *= LinePlan::kTurnCost;
   double cost, dstart, dend;
   LinePlan::TurnCost(startheading, endheading, winddir, &cost, &dstart, &dend);
   EXPECT_EQ(expcost, cost) << desc << ": Incorrect cost";
@@ -122,7 +125,7 @@ void TryStraightLineCost(double len, double heading, double winddir,
   EXPECT_EQ(expdheading, dheading) << desc << ": Incorrect costdheading";
 
   double dcost;
-  double eps = 1e-3;
+  double eps = 1e-5;
   LinePlan::StraightLineCost(len + eps, heading, winddir, &dcost, &dlen,
                              &dheading);
   EXPECT_NEAR(dlen, (dcost - cost) / eps, 0.001) << desc
@@ -136,6 +139,7 @@ void TryStraightLineCost(double len, double heading, double winddir,
 
 TEST(LinePlanUtilTest, StraightLineTest) {
   constexpr double kL = LinePlan::kLengthCost;
+  constexpr double kU = LinePlan::kUpwindCost;
 
   double expcost = kL;
   double expdlen = kL;
@@ -144,15 +148,16 @@ TEST(LinePlanUtilTest, StraightLineTest) {
                       "Downwind leg");
 
   double heading = 0.5;
-  expcost = kL / heading;
-  expdlen = kL / heading;
-  expdheading = -kL / (heading * heading);
-  TryStraightLineCost(1.0, heading, M_PI, expcost, expdlen, expdheading,
+  double len = 2.0;
+  expdlen = kL * (1.0 + kU * heading * heading);
+  expcost = expdlen * len;
+  expdheading = -kL * 2.0 * kU * heading * len;
+  TryStraightLineCost(len, heading, M_PI, expcost, expdlen, expdheading,
                       "Upwind leg");
 
   heading *= -1.0;
   expdheading *= -1.0;
-  TryStraightLineCost(1.0, heading, M_PI, expcost, expdlen, expdheading,
+  TryStraightLineCost(len, heading, M_PI, expcost, expdlen, expdheading,
                       "Upwind leg, other side");
 }
 
@@ -328,39 +333,102 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
 
 // Similar to above, but now exercising multiple-point stuff (i.e., exercising
 // LinePairCost)
-TEST(LinePlanUtilTest, BackPassTestMultiPoint) {
-  std::vector<Point> tackpts({{0.0, 0.0}, {10.0, 0.0}});
+class BackPassTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() {
+    orig_tackpts = tackpts;
+    orig_alpha = alpha;
+  }
+  virtual void TearDown() {}
+
+  void BackPass(double wind_dir, double step) {
+    LinePlan::BackPass(gate, nextpt, wind_dir, obstacles, cur_yaw, step,
+                       &tackpts, &alpha);
+  }
+
+  std::vector<Point> tackpts{{0.0, 0.0}, {10.0, 0.0}};
   std::vector<Polygon> obstacles; // Start with none.
   double alpha = 0.5;
-  std::pair<Point, Point> gate({{15.0, -1.0}, {15.0, 1.0}});
+  std::pair<Point, Point> gate{{15.0, -1.0}, {15.0, 1.0}};
   double cur_yaw = 0.0;
-  Point nextpt(30.0, 0.0); // We should just continue straight through the gate.
+  Point nextpt{30.0, 0.0}; // We should just continue straight through the gate.
 
   // For comparisons:
   std::vector<Point> orig_tackpts = tackpts;
   double orig_alpha = alpha;
+}; // class BackPassTest
+
+TEST_F(BackPassTest, DownwindAtEquilibrium) {
 
   // Start with stable conditions
-  LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha);
+  BackPass(0.0, 1.0);
   EXPECT_EQ(orig_tackpts[0], tackpts[0])
       << "BackPass should never touch the first point in tackpts";
   EXPECT_EQ(orig_tackpts[1], tackpts[1])
       << "Middle point should've been stable straight downwind";
   EXPECT_EQ(orig_alpha, alpha)
       << "alpha should've been stable under straight downind condition";
-  alpha = 0.5;
+}
 
+TEST_F(BackPassTest, ObstacleAdjustsPath) {
   // Obstacle below the path should create elbow:
   obstacles.push_back(
       Polygon({{7.0, -5.0}, {8.0, -10.0}, {12.0, -10.0}, {7.0, -5.0}}));
-  LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha);
+  BackPass(0.0, 1.0);
   EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
       << "Middle point should've moved up to avoid obstacle";
   EXPECT_LT(orig_alpha, alpha)
       << "alpha should've moved up to avoid osbtacle";
-  alpha = 0.5;
+}
+
+TEST_F(BackPassTest, UpwindPathTurnsDown) {
+  // Going upwind should result in us tacking; however, because this optimizeer
+  // is gradient descent based, a single step should just send us more downwind.
+  tackpts[1].y() += 0.1;
+  orig_tackpts = tackpts;
+  BackPass(M_PI - 0.1, 1.0);
+  EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
+      << "Middle point should've moved up to cause tack";
+  // Because of the simple gradient descent nature of the BackPass function, we
+  // will end up just pushing this more downwind.
+  EXPECT_LT(orig_alpha, alpha) << "alpha should've moved up to avoid upwind";
+}
+
+TEST_F(BackPassTest, PreseededUpwindPathWorks) {
+  // Going upwind should result in us tacking; however, because this optimizeer will get suck on a
+  nextpt << 15.0, 0.0;
+  tackpts[1].y() += 3.0;
+  orig_tackpts = tackpts;
+  BackPass(M_PI, 1.0);
+  EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
+      << "Middle point should've moved up to cause tack";
+  EXPECT_GT(orig_alpha, alpha)
+      << "alpha should've moved up to avoid upwind";
+}
+
+TEST_F(BackPassTest, UpwindMultipointTack) {
+  // Going upwind should induce tacking, but with many points.
+  nextpt << 15.0, 0.0;
+  tackpts = {{0.0, 0.0}, {5.0, 1.0}, {10.0, -1.0}};
+  orig_tackpts = tackpts;
+  BackPass(M_PI, 1.0);
+  EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
+      << "First point should've moved up a tick";
+  EXPECT_GT(orig_tackpts[2].y(), tackpts[2].y())
+      << "Second point should've moved down a tick";
+}
+
+TEST_F(BackPassTest, OutOfAlignmentInitial) {
+  // If we have a standard, downwind conditions, should correct towards center
+  tackpts[1].y() = 1.0;
+  orig_tackpts = tackpts;
+  alpha = 0.3;
+  orig_alpha = alpha;
+  BackPass(0.0, 1.0);
+  EXPECT_GT(orig_tackpts[1].y(), tackpts[1].y())
+      << "Middle point should've moved down to straighten out";
+  EXPECT_LT(orig_alpha, alpha)
+      << "alpha should've moved towards center";
 }
 
 }  // namespace testing
