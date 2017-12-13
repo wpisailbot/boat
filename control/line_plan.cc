@@ -9,6 +9,7 @@ constexpr float LinePlan::dt;
 constexpr float LinePlan::kTackCost;
 constexpr float LinePlan::kTurnCost;
 constexpr float LinePlan::kUpwindCost;
+constexpr float LinePlan::kSailableReach;
 constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
 
@@ -48,12 +49,7 @@ LinePlan::LinePlan()
 }
 
 void LinePlan::Iterate() {
-  // 1) Establish cost function for final position space
-  // 2) Iterate over different numbers of line segments, using some reasonable bounds:
-  //  a) Start with simple zig-zag
-  //  b) Iterate from back-to-front on each segment:
-  //   i) Adjust the segment so that we are essentially optimizing a single tack
-  //      at a time.
+
 }
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
@@ -125,16 +121,132 @@ void LinePlan::UpdateWaypoints() {
   }
 }
 
+void LinePlan::FindPath(const Vector2d &startpt,
+                        const std::pair<Vector2d, Vector2d> &gate,
+                        const Vector2d &nextpt, double winddir,
+                        const std::vector<Polygon> &obstacles, double cur_yaw,
+                        std::vector<Vector2d> *tackpts, double *alpha) {
+  CHECK_NOTNULL(tackpts);
+  CHECK_NOTNULL(alpha);
+  // Lowest cost thus far
+  double lowest_cost = std::numeric_limits<double>::infinity();
+  double dcost = -lowest_cost;
+  // For initial endpt, use halfway along gate:
+  Vector2d nominal_endpt = 0.5 * (gate.first + gate.second);
+
+  int Npts = 0;
+
+  while (dcost < -1e-2) {
+    std::vector<std::vector<Vector2d>> paths;
+    GenerateHypotheses(startpt, nominal_endpt, winddir, Npts, &paths);
+    double nptscost = lowest_cost;
+    bool any_viable = false;
+
+    for (std::vector<Vector2d> &path : paths) {
+      double iteralpha, itercost;
+      bool viable;
+      OptimizeTacks(gate, nextpt, winddir, obstacles, cur_yaw, &path,
+                    &iteralpha, &itercost, &viable);
+      LOG(INFO) << "alpha: " << iteralpha << " viable: " << viable
+                << " cost: " << itercost << " path: ";
+      for (const auto &pt : path) {
+        LOG(INFO) << pt.transpose();
+      }
+      any_viable = viable || any_viable;
+      // Use this path if it is both the cheapest and isn't disqualified
+      // for some reason (e.g., upwind legs).
+      if (viable && itercost < nptscost) {
+        nptscost = itercost;
+        *tackpts = path;
+        *alpha = iteralpha;
+      }
+    }
+
+    LOG(INFO) << "cost: " << lowest_cost;
+
+    if (any_viable) {
+      // Will be zero if no improvements were found
+      dcost = nptscost - lowest_cost;
+      lowest_cost = nptscost;
+    }
+
+    ++Npts;
+  }
+}
+
 void
 LinePlan::OptimizeTacks(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                         const Eigen::Vector2d &nextpt, double winddir,
                         const std::vector<Polygon> &obstacles, double cur_yaw,
-                        std::vector<Eigen::Vector2d> *tackpts, double *alpha) {
+                        std::vector<Eigen::Vector2d> *tackpts, double *alpha,
+                        double *finalcost, bool *viable) {
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
-  double step = 1.0;
-  for (int ii = 0; ii < 10; ++ii) {
-    BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha);
+  double step = 0.1;
+  for (int ii = 0; ii < 20; ++ii) {
+    BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha,
+             finalcost, viable);
+  }
+}
+
+void LinePlan::GenerateHypotheses(const Vector2d &startpt,
+                                  const Vector2d &endpt, double winddir,
+                                  int Npts,
+                                  std::vector<std::vector<Vector2d>> *paths) {
+  CHECK_NOTNULL(paths)->clear();
+  CHECK_LE(0, Npts);
+  if (Npts == 0) {
+    paths->push_back({startpt});
+    return;
+  }
+  // Minimum relative wind to have to not need to tack, radians
+  const double kMinWind = 1.0;
+  Vector2d diff = endpt - startpt;
+
+  // 0 if upwind, +pi / 2 if starboard tack (i.e., wind from starboard bow)
+  double relwind =
+      util::norm_angle(M_PI - winddir + util::atan2(diff));
+
+  paths->push_back({startpt});
+  for (int ii = 0; ii < Npts; ++ii) {
+    double alpha = (ii + 0.5) / (double)Npts;
+    paths->at(0).push_back(startpt + alpha * diff);
+  }
+  // In upwind/close reaches, we are also going to tack a bit.
+  // We construct these by presuming that each tack (except the first and last)
+  // will traverse a constant distance perpendicular to the straight lien
+  // path. The first and last legs traverse half the lateral distance.
+  if (std::abs(relwind) < 1.0) {
+    // Amount we have to turn through a tack.
+    double alpha = kMinWind * 2.0;
+    // Angle of initial leg relative to straight:
+    double theta = kMinWind - relwind;
+    // Length along crow-line of a pair of tacks, assuming diff.norm == 1:
+    double l = 2.0 / (double)Npts;
+    // Length of one of the two legs, normalize to l=1:
+    double legdist = l * std::sin(alpha - theta) / std::sin(alpha);
+    // Lateral distance traversed by any single leg.
+    double latdist = legdist * std::sin(theta);
+    double londist1 = legdist * std::cos(theta);
+    double londist2 = l - londist1;
+
+    paths->push_back({startpt});
+    paths->push_back({startpt});
+
+    for (int ii = 0; ii < Npts; ++ii) {
+      double dominantmult = 0.5 + std::floor(ii / 2.0);
+      double recessivemult = std::floor((ii + 1.0) / 2.0);
+      double lon1 = londist1 * dominantmult + londist2 * recessivemult;
+      double lon2 = londist2 * dominantmult + londist1 * recessivemult;
+
+      double latoffset1 = latdist * ((ii % 2) == 0 ? 1.0 : -1.0) / 2.0;
+      double latoffset2 = -latoffset1;
+
+      Vector2d perp(-diff.y(), diff.x());
+
+      paths->at(1).push_back(startpt + diff * lon1 + perp * latoffset1);
+      paths->at(2).push_back(startpt + diff * lon2 + perp * latoffset2);
+    }
   }
 }
 
@@ -157,10 +269,12 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                         const Eigen::Vector2d &nextpt, double winddir,
                         const std::vector<Polygon> &obstacles, double cur_yaw,
                         double step, std::vector<Eigen::Vector2d> *tackpts,
-                        double *alpha) {
+                        double *alpha, double *finalcost, bool *viable) {
   CHECK_NOTNULL(alpha);
   CHECK_NOTNULL(tackpts);
   CHECK_LE(1, tackpts->size()) << "tackpts should have at least one element";
+  if (finalcost != nullptr) *finalcost = 0.0;
+  if (viable != nullptr) *viable = true;
 
   double cost;
 
@@ -171,11 +285,18 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                : cur_yaw;
 
   double dcostdalpha;
+  bool lineviable;
   SingleLineCost(gate.first, gate.second, tackpts->at(Npts - 1), *alpha,
                  penultimate_heading, nextpt, winddir, obstacles, &cost,
-                 &dcostdalpha);
+                 &dcostdalpha, &lineviable);
+  if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
   *alpha = util::Clip(*alpha, 0.0, 1.0);
+  if (finalcost != nullptr) {
+    // Strictly speaking calculates cost of previous iteration, but this avoids
+    // an instability if dcostdalpha is very high.
+    *finalcost += cost;
+  }
 
   // The point following the one we are currently optimizing.
   Vector2d postpt = gate.first + *alpha * (gate.second - gate.first);
@@ -191,8 +312,15 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
 
     Vector2d dcostdpt;
     LinePairCost(prept, postpt, curpt, preheading, postheading, winddir,
-                 obstacles, &cost, &dcostdpt);
+                 obstacles, &cost, &dcostdpt, &lineviable);
+    if (viable != nullptr) *viable = *viable && lineviable;
     tackpts->at(ii) -= step * dcostdpt;
+    if (finalcost != nullptr) {
+      // Strictly speaking calculates cost of previous iteration, but this
+      // avoids
+      // an instability if dcostdpt is very high.
+      *finalcost += cost;
+    }
 
     postheading = util::atan2(postpt - curpt);
     postpt = curpt;
@@ -240,8 +368,8 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
                               const Eigen::Vector2d &endline,
                               const Eigen::Vector2d &startpt, double alpha,
                               double preheading, const Eigen::Vector2d &nextpt,
-                              double winddir, double *cost,
-                              double *dcostdalpha) {
+                              double winddir, double *cost, double *dcostdalpha,
+                              bool *viable) {
   // endpt is the point along the finish line that we are
   // crossing.
   Vector2d endpt = startline + alpha * (endline - startline);
@@ -284,10 +412,13 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
 
   double firstlencost, dflencostdlen, dflencostdheading;
   StraightLineCost(firstlen, startheading, winddir, &firstlencost,
-                   &dflencostdlen, &dflencostdheading);
+                   &dflencostdlen, &dflencostdheading, viable);
+  // We don't care about the strict viability of the future upwind leg,
+  // as we will be breaking it down later and so can live with it
+  // pointing straight upwind.
   double nextlencost, dnlencostdlen, dnlencostdheading;
-  StraightLineCost(nextlen, nextheading, winddir, &nextlencost,
-                   &dnlencostdlen, &dnlencostdheading);
+  StraightLineCost(nextlen, nextheading, winddir, &nextlencost, &dnlencostdlen,
+                   &dnlencostdheading, nullptr);
   LOG(INFO) << "dfirstcostdlen: " << dflencostdlen
             << " dfirstlenda: " << dfirstlenda
             << " dfirstcostdhead: " << dflencostdheading
@@ -340,13 +471,13 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
                               double preheading, const Eigen::Vector2d &nextpt,
                               double winddir,
                               const std::vector<Polygon> &obstacles,
-                              double *cost, double *dcostdalpha) {
+                              double *cost, double *dcostdalpha, bool *viable) {
   *CHECK_NOTNULL(cost) = 0.0;
   *CHECK_NOTNULL(dcostdalpha) = 0.0;
 
   double basecost = 0.0, basedalpha = 0.0;
   SingleLineCost(startline, endline, startpt, alpha, preheading, nextpt,
-                 winddir, &basecost, &basedalpha);
+                 winddir, &basecost, &basedalpha, viable);
 
   Vector2d crosspt = startline + alpha * (endline - startline);
   Vector2d dcrossptdalpha = endline - startline;
@@ -374,11 +505,13 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
                             const Eigen::Vector2d &endpt,
                             const Eigen::Vector2d &turnpt, double preheading,
                             double postheading, double winddir, double *cost,
-                            Eigen::Vector2d *dcostdturnpt) {
+                            Eigen::Vector2d *dcostdturnpt, bool *viable) {
   *CHECK_NOTNULL(cost) = 0.0;
   *CHECK_NOTNULL(dcostdturnpt) *= 0.0;
+  if (viable != nullptr) *viable = true;
   Vector2d sega = turnpt - startpt;
   Vector2d segb = endpt - turnpt;
+  LOG(INFO) << "LinePairCost";
 
   double lena = sega.norm();
   Vector2d dlenadturnpt = sega / sega.norm();
@@ -397,22 +530,31 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   // Calculate costs for all 3 turns:
   double turncost, dcostdstart, dcostdend;
   TurnCost(preheading, headinga, winddir, &turncost, &dcostdstart, &dcostdend);
+  LOG(INFO) << "Preturn: cost " << turncost << " dcostdend " << dcostdend
+            << " dhadpt " << dhadturnpt;
   *cost += turncost;
   *dcostdturnpt += dcostdend * dhadturnpt;
 
   TurnCost(headinga, headingb, winddir, &turncost, &dcostdstart, &dcostdend);
+  LOG(INFO) << "Middle Turn: cost " << turncost << " dcostdstart "
+            << dcostdstart << " dhadpt " << dhadturnpt << " dcostdend "
+            << dcostdend << " dhbdpt " << dhbdturnpt;
   *cost += turncost;
   *dcostdturnpt += dcostdstart * dhadturnpt;
   *dcostdturnpt += dcostdend * dhbdturnpt;
 
   TurnCost(headingb, postheading, winddir, &turncost, &dcostdstart, &dcostdend);
+  LOG(INFO) << "Postturn: cost " << turncost << " dcostdstart " << dcostdstart
+            << " dhbdpt " << dhbdturnpt;
   *cost += turncost;
   *dcostdturnpt += dcostdstart * dhbdturnpt;
 
   // Calculate costs for the two legs:
   double linecost, dcostdlen, dcostdheading;
+  bool lineviable;
   StraightLineCost(lena, headinga, winddir, &linecost, &dcostdlen,
-                   &dcostdheading);
+                   &dcostdheading, &lineviable);
+  if (viable != nullptr) *viable = lineviable && *viable;
   LOG(INFO) << "Preline diff: dcostdlen: " << dcostdlen
             << " dlenadpt: " << dlenadturnpt
             << " dcostdheading: " << dcostdheading
@@ -421,7 +563,8 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   *dcostdturnpt += dcostdlen * dlenadturnpt + dcostdheading * dhadturnpt;
 
   StraightLineCost(lenb, headingb, winddir, &linecost, &dcostdlen,
-                   &dcostdheading);
+                   &dcostdheading, &lineviable);
+  if (viable != nullptr) *viable = lineviable && *viable;
   LOG(INFO) << "Postline diff: dcostdlen: " << dcostdlen
             << " dlenbdpt: " << dlenbdturnpt
             << " dcostdheading: " << dcostdheading
@@ -435,14 +578,14 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
                             const Eigen::Vector2d &turnpt, double preheading,
                             double postheading, double winddir,
                             const std::vector<Polygon> &obstacles, double *cost,
-                            Eigen::Vector2d *dcostdturnpt) {
+                            Eigen::Vector2d *dcostdturnpt, bool *viable) {
   *CHECK_NOTNULL(cost) = 0.0;
   *CHECK_NOTNULL(dcostdturnpt) *= 0.0;
 
   double basecost;
   Vector2d basedturnpt;
   LinePairCost(startpt, endpt, turnpt, preheading, postheading, winddir,
-               &basecost, &basedturnpt);
+               &basecost, &basedturnpt, viable);
   *cost += basecost;
   *dcostdturnpt += basedturnpt;
 
@@ -539,16 +682,24 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
  * This computes both the linear cost associated with the length of the line
  * as well as scaling that cost by a factor according to how far upwind we
  * are pointed.
+ * viable: whether or not the current heading is even sailable.
  */
+// TODO(james): Add option to reduce upwind cost for when we are just trying to
+// approximate the cost of traversing a path without actually calculating the
+// tacks.
+// TODO(james): Also, this isn't the right spot, but don't account for obstacles
+// on future legs either.
 void LinePlan::StraightLineCost(double len, double heading, double winddir,
-    double *cost, double *dcostdlen, double *dcostdheading) {
+                                double *cost, double *dcostdlen,
+                                double *dcostdheading, bool *viable) {
 
   // We try to supply a really large cost on sending us off on highly
   // upwind courses, although we don't want to deal with numerical issues.
   double headingnorm = util::norm_angle(winddir + M_PI - heading);
   double upwindness = std::abs(headingnorm);
-  upwindness = 1.00 - util::Clip(upwindness, 0.00, 1.0);
-  double upwindscalar = kUpwindCost * upwindness * upwindness + 1.0;
+  if (viable != nullptr) *viable = upwindness > kSailableReach;
+  upwindness = util::Clip(upwindness, 0.00, 1.0);
+  double upwindscalar = 1.0 + kUpwindCost * (1.0 - upwindness * upwindness);
   LOG(INFO) << "heading: " << heading << " winddir: " << winddir
             << " headingnorm: " << headingnorm << " len: " << len;
 
@@ -574,6 +725,9 @@ void LinePlan::StraightLineCost(double len, double heading, double winddir,
  * cost at any given point.
  * The cost at any given point shall be kObstacleCost * e^{-x}
  * where x is the distance from the point to the polygon.
+ * WARNING: If you think that your line might cross the obstacle,
+ *   then beware of each half of the line having low cost and
+ *   not having a clear gradient to follow.
  */
 void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
                             const Eigen::Vector2d &end,
@@ -597,10 +751,8 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
     }
   }
 
-  LOG(INFO) << "obstaclestart: " << start.transpose() << " cost: " << *cost
-            << " normcost: " << normcost;
-
   if (dcostdstart != nullptr) {
+    LOG(INFO) << "ObstacleCost: " << *cost;
     *dcostdstart *= 0;
     double dcost;
     double eps = 1e-5;

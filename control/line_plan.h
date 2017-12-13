@@ -22,6 +22,8 @@ class TEST_FUN(LinePlanUtilTest, LinePairCostTest);
 class TEST_FUN(LinePlanUtilTest, ObstacleCostTest);
 class TEST_FUN(LinePlanUtilTest, BackPassTestOnePoint);
 class BackPassTest;
+class GenerateHypothesesTest;
+class OptimizerTest;
 void TryTurnCost(double startheading, double endheading, double winddir,
                  double expcost, double expdstart, double expdend,
                  const char *desc);
@@ -57,16 +59,18 @@ class LinePlan : public Node {
   // relative to typical turns.
   constexpr static float kTackCost = 5.0;
   // Relative weight of turn costs:
-  constexpr static float kTurnCost = 0.1;
+  constexpr static float kTurnCost = 0.3;
   // Scalar affecting cost associated with running upwind:
-  constexpr static float kUpwindCost = 150.0;
+  constexpr static float kUpwindCost = 300.0;
+  // The nearest to the wind that we physically can sail:
+  constexpr static float kSailableReach = M_PI_4;
   // The relative cost of being near obstacles.
   // If kObstacleCost = 1, then the cost will be integral e^-x dl with
   // x the distance to a given obstacle, l being the line we are
   // following.
   constexpr static float kObstacleCost = 100.0;
   // Cost per unit length of a line, cost / meter
-  constexpr static float kLengthCost = 0.01;
+  constexpr static float kLengthCost = 0.1;
   // Default length of a gate, in meters.
   constexpr static float kGateWidth = 10.0;
 
@@ -74,18 +78,18 @@ class LinePlan : public Node {
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,
                              const Vector2d &startpt, double alpha,
                              double preheading, const Vector2d &nextpt,
-                             double winddir, double *cost, double *dcostdalpha);
-  static void LinePairCost(const Vector2d &startpt,
-                           const Vector2d &endpt,
+                             double winddir, double *cost, double *dcostdalpha,
+                             bool *viable);
+  static void LinePairCost(const Vector2d &startpt, const Vector2d &endpt,
                            const Vector2d &turnpt, double preheading,
                            double postheading, double winddir, double *cost,
-                           Vector2d *dcostdturnpt);
+                           Vector2d *dcostdturnpt, bool *viable);
   static void CrossFinishCost(double alpha, double *cost, double *dcostdalpha);
   static void TurnCost(double startheading, double endheading, double winddir,
                        double *cost, double *dcostdstart, double *dscostdend);
   static void StraightLineCost(double len, double heading, double winddir,
                                double *cost, double *dcostdlen,
-                               double *dcostdheading);
+                               double *dcostdheading, bool *viable);
 
   // Computes the cost associated with the line segment defined by (start, end)
   // and computes the derivatives of the cost with respect to the start of the
@@ -100,27 +104,52 @@ class LinePlan : public Node {
                              double preheading, const Vector2d &nextpt,
                              double winddir,
                              const std::vector<Polygon> &obstacles,
-                             double *cost, double *dcostdalpha);
-  static void LinePairCost(const Vector2d &startpt,
-                           const Vector2d &endpt,
+                             double *cost, double *dcostdalpha, bool *viable);
+  static void LinePairCost(const Vector2d &startpt, const Vector2d &endpt,
                            const Vector2d &turnpt, double preheading,
                            double postheading, double winddir,
                            const std::vector<Polygon> &obstacles, double *cost,
-                           Vector2d *dcostdturnpt);
+                           Vector2d *dcostdturnpt, bool *viable);
 
   // Perform a backwards pass to update tackpts/alpha
   static void BackPass(const std::pair<Vector2d, Vector2d> &gate,
                        const Vector2d &nextpt, double winddir,
                        const std::vector<Polygon> &obstacles, double cur_yaw,
                        double step, std::vector<Vector2d> *tackpts,
-                       double *alpha);
+                       double *alpha, double *finalcost, bool *viable);
 
   // Optimizes tackpts/alpha. You should seed tackpts/alpha with
   // some sane initial values.
-  void OptimizeTacks(const std::pair<Vector2d, Vector2d> &gate,
-                     const Vector2d &nextpt, double winddir,
-                     const std::vector<Polygon> &obstacles, double cur_yaw,
-                     std::vector<Vector2d> *tackpts, double *alpha);
+  static void OptimizeTacks(const std::pair<Vector2d, Vector2d> &gate,
+                            const Vector2d &nextpt, double winddir,
+                            const std::vector<Polygon> &obstacles,
+                            double cur_yaw, std::vector<Vector2d> *tackpts,
+                            double *alpha, double *finalcost, bool *viable);
+
+  // Provides a seeding of points to use for OptimizeTacks.
+  // For beam reaches/downwinds, seeds with straight line path.
+  // For upwind or near-upwind paths will produce three hypotheses:
+  //   1) Straight line path, for sanity
+  //   2) Evenly spaced close reachs, starting with a starboard tack
+  //   3) Evenly spaced close reachs, starting with a port tack
+  // startpt: Starting point/current boat position
+  // endpt: Ending point (middle of gate)
+  // winddir: Wind direction
+  // Npts: Number of points to generate along path, excluding startpt/endpt.
+  //   Must be nonnegative; if 0, then this isn't really doing anything useful.
+  // paths: vector of paths; paths will contain Npts+1 points, where the first
+  //   element will always be startpt.
+  static void GenerateHypotheses(const Vector2d &startpt, const Vector2d &endpt,
+                                 double winddir, int Npts,
+                                 std::vector<std::vector<Vector2d>> *paths);
+
+  // Actually put GenerateHypotheses and OptimizeTacks together to
+  // produce a final path.
+  static void FindPath(const Vector2d &startpt,
+                       const std::pair<Vector2d, Vector2d> &gate,
+                       const Vector2d &nextpt, double winddir,
+                       const std::vector<Polygon> &obstacles, double cur_yaw,
+                       std::vector<Vector2d> *tackpts, double *alpha);
 
   /**
    * Update the transformations on the obstacles, assuming some change to either
@@ -178,6 +207,8 @@ class LinePlan : public Node {
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, ObstacleCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, BackPassTestOnePoint);
   friend class testing::BackPassTest;
+  friend class testing::GenerateHypothesesTest;
+  friend class testing::OptimizerTest;
   friend void testing::TryTurnCost(double, double, double, double, double,
                                    double, const char *);
   friend void testing::TryCrossFinishCost(double, double, double, const char *);
