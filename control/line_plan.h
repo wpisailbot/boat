@@ -51,10 +51,11 @@ class LinePlan : public Node {
 
   // Reset _all_ of our meters-based using newlonlatref as the origin
   // longitude/latitude and basis for scaling.
+  // data_mutex_ MUST already be locked going into this.
   void ResetRef(const Point &newlonlatref);
 
  private:
-  constexpr static float dt = 2.0;
+  constexpr static float dt = 1.0;
   // Cost, used in TurnCost, of traversing the upwind no-go zones
   // relative to typical turns.
   constexpr static float kTackCost = 5.0;
@@ -72,7 +73,7 @@ class LinePlan : public Node {
   // Cost per unit length of a line, cost / meter
   constexpr static float kLengthCost = 0.1;
   // Default length of a gate, in meters.
-  constexpr static float kGateWidth = 10.0;
+  constexpr static float kGateWidth = 20.0;
 
   // None of these functions below account for obstacles.
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,
@@ -162,12 +163,27 @@ class LinePlan : public Node {
    */
   void UpdateWaypoints();
 
+  /**
+   * Increment next_waypoint_ as appropriate.
+   * Must of data_mutex_ locked BEFORE being called.
+   */
+  void UpdateWaypointInc();
+
+  /**
+   * Figure out what the next heading should be
+   */
+  double GetGoalHeading();
+
   std::mutex data_mutex_;
 
   // Potentially useful state information
   std::atomic<double> yaw_;
   std::atomic<double> wind_dir_;
+  // Positions in meters reference system
   Point boat_pos_;
+  Point boat_pos_lonlat_;
+  Point prev_boat_pos_;
+  Point prev_boat_pos_lonlat_;
 
   // The current reference point as the origin for the meters reference frame.
   // For doing coordinate conversions, +latitude=+y, +longitude=+x, so it's
@@ -198,6 +214,9 @@ class LinePlan : public Node {
   // At any given instant, we are straing to sail to waypoint next_waypoint_.
   std::vector<std::pair<Point, Point>> waypoints_;
   std::atomic<int> next_waypoint_{0};
+
+  msg::HeadingCmd *heading_msg_;
+  ProtoQueue<msg::HeadingCmd> heading_cmd_;
 
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, TurnCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, CrossFinishTest);

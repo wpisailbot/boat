@@ -3,6 +3,7 @@
 
 #include "simple.h"
 #include "adaptive.h"
+#include "line_plan.h"
 #include "util/node.h"
 #include "ui/server.h"
 #include "sim/sim_inter.h"
@@ -61,7 +62,8 @@ class SimpleControlTest : public TestWrapper {
     threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);
 //    threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
     threads_.emplace_back(&control::AdaptiveControl::Run, &adaptive_ctrl_);
-    threads_.emplace_back(&control::LineTacker::Run, &tacker_);
+    //threads_.emplace_back(&control::LineTacker::Run, &tacker_);
+    threads_.emplace_back(&control::LinePlan::Run, &line_plan_);
     threads_.emplace_back(&control::WaypointManager::Run, &manager_);
     threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
 
@@ -84,7 +86,8 @@ class SimpleControlTest : public TestWrapper {
   sim::SimulatorNode sim_node_{-1};
   //control::SimpleControl simple_ctrl_;
   control::AdaptiveControl adaptive_ctrl_;
-  control::LineTacker tacker_;
+  //control::LineTacker tacker_;
+  control::LinePlan line_plan_;
   control::WaypointManager manager_;
   control::StateEstimator state_estimator_;
 };
@@ -114,7 +117,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   SetWaypoint(p3, 15, 10);
   SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
-//  way_q.send(&waypoints);
+  way_q.send(&waypoints);
   sim_node_.set_wind(0 * M_PI / 4, 3.5);
   Sleep(75000);
   ASSERT_TRUE(true);
@@ -134,7 +137,7 @@ TEST_F(SimpleControlTest, Square) {
   SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_.set_wind(0, 6);
+  sim_node_.set_wind(0, 3);
   Sleep(150);
   ASSERT_TRUE(true);
 }

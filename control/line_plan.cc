@@ -14,7 +14,9 @@ constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
 
 LinePlan::LinePlan()
-    : Node(dt), lonlat_ref_(0.0, 0.0), lonlat_scale_(0.0, 0.0) {
+    : Node(dt), lonlat_ref_(0.0, 0.0), lonlat_scale_(0.0, 0.0),
+      heading_msg_(AllocateMessage<msg::HeadingCmd>()),
+      heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::WaypointList>("waypoints",
                                      [this](const msg::WaypointList &msg) {
     std::unique_lock<std::mutex> lck(data_mutex_);
@@ -22,6 +24,7 @@ LinePlan::LinePlan()
     // the WaypointsList message.
     // Right now behaves as if restart=true, defined_start=true, repeat=false
     waypoints_lonlat_.clear();
+    next_waypoint_ = 1;
     for (const msg::Waypoint &pt : msg.points()) {
       waypoints_lonlat_.emplace_back(pt.x(), pt.y());
     }
@@ -32,14 +35,19 @@ LinePlan::LinePlan()
       "boat_state",
       [this](const msg::BoatState &msg) {
     std::unique_lock<std::mutex> lck(data_mutex_);
-    boat_pos_ << msg.pos().x(), msg.pos().y();
+    prev_boat_pos_ = boat_pos_;
+    prev_boat_pos_lonlat_ = boat_pos_lonlat_;
+    boat_pos_lonlat_ << msg.pos().x(), msg.pos().y();
+    boat_pos_ = LonLatToFrame(boat_pos_lonlat_);
     yaw_ = msg.euler().yaw();
     // If our position has changed from the last reference by more than 100m,
     // reset.
-    if (util::GPSDistance(msg.pos().y(), msg.pos().x(), lonlat_ref_.y(),
-                          lonlat_ref_.x()) > 100.0) {
-      ResetRef(boat_pos_);
+    if (util::GPSDistanceDeg(msg.pos().y(), msg.pos().x(), lonlat_ref_.y(),
+                             lonlat_ref_.x()) > 100.0) {
+      ResetRef(boat_pos_lonlat_);
     }
+    // Update for if we've crossed a gate.
+    UpdateWaypointInc();
   });
 
   RegisterHandler<msg::Vector3f>("true_wind", [this](const msg::Vector3f &msg) {
@@ -49,23 +57,29 @@ LinePlan::LinePlan()
 }
 
 void LinePlan::Iterate() {
-
+  if (lonlat_scale_.squaredNorm() < 1e-10) {
+    // If we haven't yet setup our reference points, don't do anything.
+    return;
+  }
+  double heading = GetGoalHeading();
+  heading_msg_->set_heading(heading);
+  heading_cmd_.send(heading_msg_);
 }
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
-  std::unique_lock<std::mutex> lck(data_mutex_);
-
   lonlat_ref_ = newlonlatref;
-  double eps = 1e-7;
+  double eps = 1e-4;
   lonlat_scale_.x() =
-      util::GPSDistance(lonlat_ref_.y(), lonlat_ref_.x(), lonlat_ref_.y(),
-                        lonlat_ref_.x() + eps) /
+      util::GPSDistanceDeg(lonlat_ref_.y(), lonlat_ref_.x(), lonlat_ref_.y(),
+                           lonlat_ref_.x() + eps) /
       eps;
   lonlat_scale_.y() =
-      util::GPSDistance(lonlat_ref_.y(), lonlat_ref_.x(), lonlat_ref_.y() + eps,
-                        lonlat_ref_.x()) /
+      util::GPSDistanceDeg(lonlat_ref_.y(), lonlat_ref_.x(),
+                           lonlat_ref_.y() + eps, lonlat_ref_.x()) /
       eps;
 
+  boat_pos_ = LonLatToFrame(boat_pos_lonlat_);
+  prev_boat_pos_ = LonLatToFrame(prev_boat_pos_lonlat_);
   UpdateObstacles();
   UpdateWaypoints();
 }
@@ -87,15 +101,20 @@ void LinePlan::UpdateWaypoints() {
   // Iterate through every waypoint and convert appropriately.
   // TODO(james): Figure out better way to receive waypoints/parameterize
   size_t Nway = waypoints_lonlat_.size();
-  waypoints_.resize(Nway - 1);
+  if (Nway == 0) return;
+  waypoints_.resize(Nway);
 
   Point nextpt = LonLatToFrame(waypoints_lonlat_[0]);
+  waypoints_[0] = std::make_pair(nextpt, nextpt); // Create sane first waypoint.
   // The trip leg leading up to the current waypoint.
   Point preleg = (nextpt - boat_pos_).normalized();
 
+  nextpt = LonLatToFrame(waypoints_lonlat_[1]);
+  preleg = (nextpt - LonLatToFrame(waypoints_lonlat_[0])).normalized();
+
   for (size_t ii = 1; ii < Nway-1; ++ii) {
     Point curpt = nextpt;
-    nextpt = LonLatToFrame(waypoints_lonlat_[ii]);
+    nextpt = LonLatToFrame(waypoints_lonlat_[ii+1]);
     Point nextleg = (nextpt - curpt).normalized();
     Point lineseg = preleg - nextleg;
     double norm = lineseg.norm();
@@ -114,11 +133,58 @@ void LinePlan::UpdateWaypoints() {
     // outside of the two (essentially, assuming we are going around
     // a convex polygon).
     waypoints_[ii] = std::make_pair(curpt, curpt + lineseg);
+    preleg = nextleg;
   }
-  if (Nway > 1) {
-    Point newpt = LonLatToFrame(waypoints_lonlat_[Nway-1]);
-    waypoints_[Nway-2] = std::make_pair(newpt, newpt);
+  // Make final waypoint a point rather than gate.
+  Point lastpt = LonLatToFrame(waypoints_lonlat_[Nway-1]);
+  waypoints_[Nway-1] = std::make_pair(lastpt, lastpt);
+}
+
+void LinePlan::UpdateWaypointInc() {
+  if (next_waypoint_ == waypoints_.size() - 1) {
+    // If we are already on the last waypoint, don't do anything.
+    return;
   }
+  // For now, just update if we have crossed sides of the gate line AND both
+  // prev pos and current pos project to the gate.
+  const Vector2d &gate_start = waypoints_[next_waypoint_].first;
+  const Vector2d &gate_end = waypoints_[next_waypoint_].second;
+
+  if (ProjectsToLine(gate_start, gate_end, prev_boat_pos_) &&
+      ProjectsToLine(gate_start, gate_end, boat_pos_)) {
+    // Check that distances are different signs:
+    double d0 = DistToLine(gate_start, gate_end, prev_boat_pos_);
+    double d1 = DistToLine(gate_start, gate_end, boat_pos_);
+    if (d0 * d1 <= 0) {
+      ++next_waypoint_;
+    }
+  }
+}
+
+double LinePlan::GetGoalHeading() {
+  // TODO(james): Do more than just return heading; also need to be able to tell
+  // when we've hit a tack point and go with it.
+  std::unique_lock<std::mutex> lck(data_mutex_);
+  if (waypoints_.size() < 1) {
+    return yaw_;
+  }
+  int future_idx = std::min((int)(waypoints_.size() - 1), next_waypoint_ + 1);
+  std::vector<Vector2d> path;
+  double alpha;
+  Vector2d nextpt =
+      0.5 * (waypoints_[future_idx].first + waypoints_[future_idx].second);
+  FindPath(boat_pos_, waypoints_[next_waypoint_], nextpt, wind_dir_, obstacles_,
+           yaw_, &path, &alpha);
+
+  CHECK_LE(1.0, path.size()) << "The path from FindPath MUST always contain at "
+                                "least one point (our current position)";
+
+  // Because the returned path doesn't include the last point, add it.
+  path.push_back(alpha * waypoints_[next_waypoint_].first +
+                 (1.0 - alpha) * waypoints_[next_waypoint_].second);
+
+  double heading = util::atan2(path[1] - path[0]);
+  return heading;
 }
 
 void LinePlan::FindPath(const Vector2d &startpt,
@@ -136,7 +202,7 @@ void LinePlan::FindPath(const Vector2d &startpt,
 
   int Npts = 0;
 
-  while (dcost < -1e-2) {
+  while (Npts < 6 && dcost < -1e-2) {
     std::vector<std::vector<Vector2d>> paths;
     GenerateHypotheses(startpt, nominal_endpt, winddir, Npts, &paths);
     double nptscost = lowest_cost;
@@ -183,7 +249,10 @@ LinePlan::OptimizeTacks(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
   double step = 0.1;
-  for (int ii = 0; ii < 20; ++ii) {
+  for (int ii = 0; ii < 25; ++ii) {
+    if (ii > 15) {
+      step = 1e-3;
+    }
     BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha,
              finalcost, viable);
   }
@@ -416,7 +485,8 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
   // We don't care about the strict viability of the future upwind leg,
   // as we will be breaking it down later and so can live with it
   // pointing straight upwind.
-  double nextlencost, dnlencostdlen, dnlencostdheading;
+  double nextlencost = 0, dnlencostdlen = 0, dnlencostdheading = 0;
+  // TODO(james): Cost for future leg should be calculted differently
   StraightLineCost(nextlen, nextheading, winddir, &nextlencost, &dnlencostdlen,
                    &dnlencostdheading, nullptr);
   LOG(INFO) << "dfirstcostdlen: " << dflencostdlen
@@ -459,6 +529,10 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
             << " dcrosscost: " << dcrossda;
   *CHECK_NOTNULL(cost) = lencost + turncost + crosscost;
   *CHECK_NOTNULL(dcostdalpha) = dlencostda + dturncostda + dcrossda;
+
+  if (std::isnan(*dcostdalpha)) {
+    *dcostdalpha = 0.0;
+  }
 }
 
 /**
