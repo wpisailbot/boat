@@ -686,6 +686,32 @@ TEST_F(OptimizerTest, UpwindForceTacks) {
   }
 }
 
+// Example with funny business:
+// Reminder: Line ~490 (second calculation of StraightLineCost in
+// SingleLineCost) should be commented out.
+TEST_F(OptimizerTest, DISABLED_Example) {
+  gate.first << 100.0, -3.0;
+  gate.second << 100.0, 3.0;
+  winddir = 3.0;
+//  winddir = M_PI_4;
+  alpha = 0.0;
+  tackpts.clear();
+  // Top and bottom small boxes:
+  obstacles.push_back(
+      Polygon({{15.0, 15.0}, {30.0, 15.0}, {30.0, 150.0}, {15.0, 150.0}}));
+  obstacles.push_back(
+      Polygon({{70.0, -15.0}, {70.0, -150.0}, {85.0, -150.0}, {85.0, -15.0}}));
+  obstacles.push_back(
+      Polygon({{45.0, 5.0}, {45.0, -5.0}, {55.0, -5.0}, {55.0, 5.0}}));
+//  obstacles.push_back(
+//      Polygon({{45.0, 0.0}, {50.0, -5.0}, {55.0, 0.0}, {50.0, 5.0}}));
+  FindPath();
+  LOG(INFO) << "alpha: " << alpha << " tackpts: ";
+  for (const auto &pt : tackpts) {
+    LOG(INFO) << pt.transpose();
+  }
+}
+
 }  // namespace testing
 }  // namespace control
 }  // namespace sailbot

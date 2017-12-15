@@ -15,7 +15,7 @@ ControlPhysics::ControlPhysics() {
   consts_ = {.sail = {.A = 2.0,
                       .rho = rhoair,
                       .C = 1.4,
-                      .K = 3,
+                      .K = 1.5,
                       .drageps = 0.0,
                       .maxalpha = M_PI_2},
              .keel = {.A = 0.3,
@@ -74,7 +74,7 @@ void ControlPhysics::SailAirfoil(double alpha, double v, double *force,
   const double absalpha = std::abs(alpha);
   const double signalpha = util::Sign(alpha);
   if (force != nullptr) {
-    double trimalpha = std::max(absalpha - 0.0, 0.0);
+    double trimalpha = std::max(absalpha - 0.05, 0.0);
     const double mag =
         consts_.sail.C * (1.0 - std::exp(-consts_.sail.K * trimalpha));
     *force = 0.5 * consts_.sail.rho * consts_.sail.A * v * v * mag;

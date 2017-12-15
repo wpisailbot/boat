@@ -248,9 +248,9 @@ LinePlan::OptimizeTacks(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                         double *finalcost, bool *viable) {
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
-  double step = 0.1;
-  for (int ii = 0; ii < 25; ++ii) {
-    if (ii > 15) {
+  double step = 0.05;
+  for (int ii = 0; ii < 50; ++ii) {
+    if (ii > 30) {
       step = 1e-3;
     }
     BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha,
@@ -487,6 +487,7 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
   // pointing straight upwind.
   double nextlencost = 0, dnlencostdlen = 0, dnlencostdheading = 0;
   // TODO(james): Cost for future leg should be calculted differently
+  // Comment this out for now to get actually useful results.
   StraightLineCost(nextlen, nextheading, winddir, &nextlencost, &dnlencostdlen,
                    &dnlencostdheading, nullptr);
   LOG(INFO) << "dfirstcostdlen: " << dflencostdlen
