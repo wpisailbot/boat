@@ -26,3 +26,4 @@ Controller/Planner:
  - Adjust polygon costs so that we have a clean gradient while a path is cutting through the obstacle
  - Fix theory_control.py so that we don't go faster upwind than on a beam reach
  - Movable ballast
+ - Better debugging/UI for planner internals
