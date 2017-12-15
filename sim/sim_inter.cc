@@ -104,7 +104,11 @@ void SimulatorNode::Iterate() {
   if (!started_) {
     std::unique_lock<std::mutex> lck(last_state_mutex_);
     impl_->set_from_state(last_state_);
-    fake_airmar_.set_gps_zero(last_state_.pos().y(), last_state_.pos().x());
+    if (last_state_.has_pos()) {
+      fake_airmar_.set_gps_zero(last_state_.pos().y(), last_state_.pos().x());
+    } else {
+      fake_airmar_.set_gps_zero(38.9816688, -76.47591338);
+    }
     started_ = true;
   }
   usleep(dt * 1e6 / 2.);
