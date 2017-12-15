@@ -130,13 +130,13 @@ void SimpleControl::Iterate() {
   ballast_msg_->set_vel(-0.5 * heel);
 
   float vel = std::sqrt(vx * vx + vy * vy);
-  float max_rudder =
+  double max_rudder =
       vel < 0 ? 0.3 : (vel < 0.5 ? 0.75 * consts_msg_->max_rudder()
                                  : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   float goal_rudder =
-      std::min(std::max(-float(0.4) * util::norm_angle(goal_heading - cur_heading /*yaw*/),
+      std::min(std::max(-0.4 * util::norm_angle(goal_heading - cur_heading /*yaw*/),
                         -max_rudder),
                max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;

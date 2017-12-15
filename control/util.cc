@@ -74,22 +74,26 @@ double norm_angle(double a) {
   return a;
 }
 
-float GPSDistance(float lat1, float lon1, float lat2, float lon2) {
+double GPSDistance(double lat1, double lon1, double lat2, double lon2) {
   // Haversine function
-  float a = std::pow(std::sin((lat2 - lat1) / 2.), 2) +
-            std::cos(lat1) * std::cos(lat2) *
-                std::pow(std::sin((lon2 - lon1) / 2.), 2);
-  float c = 2. * std::atan2(std::sqrt(a), std::sqrt(1 - a));
-  constexpr float R = 6.371e6; // Earth's Radius
-  float d = R * c;
+  double a = std::pow(std::sin((lat2 - lat1) / 2.), 2) +
+             std::cos(lat1) * std::cos(lat2) *
+                 std::pow(std::sin((lon2 - lon1) / 2.), 2);
+  double c = 2. * std::atan2(std::sqrt(a), std::sqrt(1 - a));
+  constexpr double R = 6.371e6; // Earth's Radius
+  double d = R * c;
   return d;
 }
 
+double GPSDistanceDeg(double lat1, double lon1, double lat2, double lon2) {
+  return GPSDistance(ToRad(lat1), ToRad(lon1), ToRad(lat2), ToRad(lon2));
+}
+
 // Aims to return a bearing with 0deg = West, 90deg = North
-float GPSBearing(float lat1, float lon1, float lat2, float lon2) {
-  const float y = std::sin(lon2 - lon1) * std::cos(lat2);
-  const float x = std::cos(lat1) * std::sin(lat2) -
-                  std::sin(lat1) * std::cos(lat2) * std::cos(lon2 - lon1);
+double GPSBearing(double lat1, double lon1, double lat2, double lon2) {
+  const double y = std::sin(lon2 - lon1) * std::cos(lat2);
+  const double x = std::cos(lat1) * std::sin(lat2) -
+                   std::sin(lat1) * std::cos(lat2) * std::cos(lon2 - lon1);
   return std::atan2(x, y);
 }
 
@@ -100,6 +104,10 @@ namespace {
 float Normal(float mean, float std) {
   std::normal_distribution<float> dist(mean, std);
   return dist(generator);
+}
+
+double atan2(const Eigen::Vector2d &diff) {
+  return std::atan2(diff.y(), diff.x());
 }
 
 }  // namespace util

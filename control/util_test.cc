@@ -50,7 +50,7 @@ TEST(UtilTest, HaversineWorks) {
   lat2rad = ToRad(lat2);
   lon2rad = ToRad(lon2);
   EXPECT_NEAR(1.12389, GPSDistance(lat1rad, lon1rad, lat2rad, lon2rad), 1e-5);
-  EXPECT_FLOAT_EQ(0, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad));
+  EXPECT_NEAR(0, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad), 1e-6);
   // Now, point to the southwest
   lat2 = lat1 - 1e-3;
   lon2 = lon1 - 1e-3;
@@ -59,7 +59,7 @@ TEST(UtilTest, HaversineWorks) {
   lat2rad = ToRad(lat2);
   lon2rad = ToRad(lon2);
   EXPECT_NEAR(138.2427, GPSDistance(lat1rad, lon1rad, lat2rad, lon2rad), 1e-5);
-  EXPECT_FLOAT_EQ(-2.2061794, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad));
+  EXPECT_FLOAT_EQ(-2.2061815, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad));
 }
 
 TEST(UtilTest, CheckRPYToQuatAndBack) {
