@@ -10,6 +10,7 @@ $DIR/can-dump &
 $DIR/server_main &
 sleep 0.5
 $DIR/adaptive_control_main &
+#$DIR/simple_control_main &
 $DIR/line_tacking_main -initial_waypoints $DIR/waypoints.pba &
 $DIR/rigid_wing_main &
 $DIR/state_estimator_main &

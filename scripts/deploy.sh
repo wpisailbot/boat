@@ -11,6 +11,8 @@ scp $2 $TARGET:/tmp/site.zip
 ssh $TARGET "unzip -o /tmp/output.zip -d ~/bin/sailbot"
 ssh $TARGET "unzip -o /tmp/site.zip -d ~/bin/sailbot/html"
 
+set +e
+
 # Restart all the code if another argument is passed
 if [ -n "$4" ]
   then

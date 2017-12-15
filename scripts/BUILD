@@ -29,3 +29,26 @@ sh_binary(
   data=["output.zip", "//ui:site.zip"],
   args=["$(location output.zip) $(location //ui:site.zip)"],
 )
+genrule(
+  name="zip_outs_lite",
+  srcs=["bringup-can.sh",
+        "startup.sh",
+        "killall.sh",
+        "//util:logger_main",
+        "//can:can-dump",
+        "//ui:server_main",
+        "//control:adaptive_control_main",
+        "//control:scamp_main",
+        "//control:line_tacking_main",
+        "//control:waypoint_manager_main",
+        "//sensor:state_estimator_main",
+        "//sensor:sbus-test-run"],
+  outs=["output_lite.zip"],
+  cmd="zip -j $(location output_lite.zip) $(SRCS)",
+)
+sh_binary(
+  name="deploy_lite",
+  srcs=["deploy.sh"],
+  data=["output_lite.zip", "//ui:site.zip"],
+  args=["$(location output_lite.zip) $(location //ui:site.zip)"],
+)
