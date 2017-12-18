@@ -8,6 +8,7 @@ Specific tasks:
  - Figure out why line_tacking_test tends to fail
  - Remove unused code
  - Use mutexes that can be locked twice within the same thread.
+ - Switch over to radians instead of degrees for lat/lon
 
 Controller/Planner:
  - Currently, when approximating the cost for a future leg, penalizes going upwind too much (TODO in place)
