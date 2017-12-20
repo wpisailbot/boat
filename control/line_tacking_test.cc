@@ -81,17 +81,17 @@ class LineTackerTest : public ::sailbot::testing::TestWrapper {
   std::vector<std::thread> threads_;
 };
 
-TEST_F(LineTackerTest, DISABLED_DoesNothingOnNoData) {
+TEST_F(LineTackerTest, DoesNothingOnNoData) {
   Sleep(0.1);
 }
 
-TEST_F(LineTackerTest, DISABLED_GoesStraightBeamReach) {
+TEST_F(LineTackerTest, GoesStraightBeamReach) {
   SetupWaypoints(100, 0);
   receiver_.set_expected(0);
   Sleep(0.1);
 }
 
-TEST_F(LineTackerTest, DISABLED_GoesToReasonableTack) {
+TEST_F(LineTackerTest, GoesToReasonableTack) {
   SetupWaypoints(0, 100);
   receiver_.set_expected(0.8);
   receiver_.set_tolerance(0.2);
