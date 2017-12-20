@@ -25,7 +25,6 @@ WebSocketServer::WebSocketServer(int port)
                            std::placeholders::_3, std::placeholders::_4));
 
   hub_.listen(port_);
-  //threads_.emplace_back([this]() { hub_.run(); });
   std::thread t([this]() { hub_.run(); });
   t.detach();
 }
@@ -35,7 +34,8 @@ WebSocketServer::~WebSocketServer() {
     thread.join();
   }
   hub_.getDefaultGroup<uWS::SERVER>().close();
-  usleep(1000000);
+  // Don't finish shutting down until we know that ProcessSocket has finished
+  std::unique_lock<std::mutex> p_lck(process_mutex_);
 }
 
 void WebSocketServer::Iterate() {
@@ -84,6 +84,11 @@ void WebSocketServer::ProcessQueue(const std::string name) {
 void WebSocketServer::ProcessSocket(uWS::WebSocket<uWS::SERVER> *ws,
                                     char *message, size_t length,
                                     uWS::OpCode opcode) {
+  std::unique_lock<std::mutex> p_lck(process_mutex_);
+  if (util::IsShutdown()) {
+    return;
+  }
+
   {
     std::unique_lock<std::mutex> l(last_conn_mut_);
     last_conn_ = Time();
