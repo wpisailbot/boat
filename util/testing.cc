@@ -14,7 +14,6 @@ TestWrapper::TestWrapper() {
 }
 
 TestWrapper::~TestWrapper() {
-  clock_.reset();
   clock_manager_thread_->join();
 }
 

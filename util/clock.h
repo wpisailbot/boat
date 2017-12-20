@@ -63,16 +63,10 @@ class monotonic_clock {
 class ClockInstance {
  public:
   ClockInstance();
-  ~ClockInstance() {
-    CleanUp();
-  }
+  ~ClockInstance();
   monotonic_clock::time_point Time();
   void SleepUntil(monotonic_clock::time_point time);
-  void CleanUp() {
-    if (lck_) {
-      lck_.unlock();
-    }
-  }
+  void CleanUp();
 
  private:
   static std::shared_timed_mutex m_;

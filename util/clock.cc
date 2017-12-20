@@ -63,6 +63,16 @@ void monotonic_clock::sleep_until(time_point time,
 
 ClockInstance::ClockInstance() : lck_(m_) {}
 
+ClockInstance::~ClockInstance() {
+  CleanUp();
+}
+
+void ClockInstance::CleanUp() {
+  if (lck_) {
+    lck_.unlock();
+  }
+}
+
 monotonic_clock::time_point ClockInstance::Time() {
   return monotonic_clock::now();
 }

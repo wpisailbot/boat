@@ -19,6 +19,7 @@ class TestWrapper : public ::testing::Test {
 
   void TearDown() override {
     util::RaiseShutdown();
+    clock_.reset();
   }
 
  private:
