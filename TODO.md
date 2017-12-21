@@ -5,7 +5,6 @@ Specific tasks:
  -- Only re-upload updated files
  -- Use proper options in deploy scripst rather than just positional arguments
  -- require fewer options when deploying
- - Figure out why line_tacking_test tends to fail
  - Remove unused code
  - Use mutexes that can be locked twice within the same thread.
  - Switch over to radians instead of degrees for lat/lon
