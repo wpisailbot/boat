@@ -8,7 +8,6 @@
 #include "control/simple.h"
 #include "control/line_tacking.h"
 #include "control/waypoint_manager.h"
-#include "control/rudder.h"
 #include "sensor/state_estimator.h"
 #include "sim/csv_logging.h"
 #include "util/testing.h"
