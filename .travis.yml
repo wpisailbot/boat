@@ -5,7 +5,7 @@ language: c++
 cache:
   directories:
     - $HOME/.cache/bazel
-  timeout: 1000
+  timeout: 500
 before_cache:
   - sudo rm -rf $HOME/.cache/bazel/_bazel_travis/install
 
