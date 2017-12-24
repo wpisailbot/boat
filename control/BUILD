@@ -20,17 +20,6 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
-  name="arduino_motors",
-  srcs=["arduino_motors.cc"],
-  hdrs=["arduino_motors.h"],
-  deps=[":actuator_cmd_proto", "//util:node"],
-)
-cc_binary(
-  name="arduino_main",
-  srcs=["arduino_motors_main.cc"],
-  deps=[":arduino_motors"],
-)
-cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
@@ -80,34 +69,12 @@ cc_test(
   srcs=["util_test.cc"],
   deps=[":util", "@gtest//:main"],
 )
-cc_library(
-  name="elqr_lib",
-  srcs=["elqr_routing.cc"],
-  hdrs=["elqr_routing.h"],
-  deps=[":util"],
-)
-cc_binary(
-  name="elqr_bin",
-  deps=[":elqr_lib"],
-)
-cc_library(
-  name="rudder_controller",
-  srcs=["rudder.cc"],
-  hdrs=["rudder.h", "//control/python:rudder_gains.h"],
-  deps=["@eigen//:eigen", "//util:node"],
-)
-cc_binary(
-  name="rudder_controller_main",
-  srcs=["rudder_main.cc"],
-  deps=[":rudder_controller"],
-)
 cc_test(
   name="control_test",
   srcs=["control_test.cc"],
   timeout="eternal",
   deps=[":simple_control",
         ":line_tacking",
-        ":rudder_controller",
         ":waypoint_manager",
         "//sensor:state_estimator",
         "//util:testing",
