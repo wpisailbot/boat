@@ -64,6 +64,16 @@ void monotonic_clock::sleep_until(time_point time,
 
 ClockInstance::ClockInstance() : lck_(m_) {}
 
+ClockInstance::~ClockInstance() {
+  CleanUp();
+}
+
+void ClockInstance::CleanUp() {
+  if (lck_) {
+    lck_.unlock();
+  }
+}
+
 monotonic_clock::time_point ClockInstance::Time() {
   return monotonic_clock::now();
 }
@@ -87,18 +97,25 @@ void ClockManager::Run(monotonic_clock::rep start_time) {
       first_run = false;
       monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
     }
-    // TODO(james): This probably should be set_time(+Infinity), not next_wakeup.
+    // Strictly speaking, the time set here doesn't matter (as long as the
+    // time continue to monotonically increase), because the condition
+    // variable watiers in sleep_until will check wither IsShutdown() is
+    // true when we call set_time.
     monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
   }
 }
 
 namespace {
-  std::atomic<bool> done{false};
-}
+// TODO(james): See TODO at prototype for CancelShutdown, but static state is
+// stupid.
+std::atomic<bool> done{false};
 
+// Handler to pass to signal()
 void SignalHandler(int signum) {
   RaiseShutdown();
 }
+
+} // namespace
 
 void CancelShutdown() {
   done = false;
@@ -120,6 +137,7 @@ void Init(int argc, char *argv[]) {
 
 void SetCurrentThreadRealtimePriority(int priority) {
   // Limit runtime of any single thread
+  // TODO(james): Test this to confirm it is actually doing what I think it is
   struct rlimit rlim;
   getrlimit(RLIMIT_RTTIME, &rlim);
   rlim.rlim_cur = 500000; // half a second
@@ -135,6 +153,8 @@ void SetCurrentThreadRealtimePriority(int priority) {
 bool IsShutdown() { return done; }
 void RaiseShutdown() {
   done = true;
+
+  // Only relevant for fake clock situations
   util::monotonic_clock::tick_.notify_all();
 }
 
