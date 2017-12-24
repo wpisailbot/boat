@@ -27,7 +27,9 @@ Vector3d GetRollPitchYawFromQuat(Eigen::Quaterniond q);
 
 Eigen::Quaterniond RollPitchYawToQuat(const Vector3d &angles);
 
-float norm_angle(float a);
+double norm_angle(double a);
+
+template <typename T> int Sign(T val) { return (T(0) < val) - (val < T(0)); }
 
 template <typename M>
 void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
@@ -38,16 +40,33 @@ void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
   y += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
 }
 
-// Takes lat/lon in RADIANS, returns distance
-float GPSDistance(float lat1, float lon1, float lat2, float lon2);
+// Takes lat/lon in RADIANS, returns distance, in m
+double GPSDistance(double lat1, double lon1, double lat2, double lon2);
+
+// As above, but uses degrees
+double GPSDistanceDeg(double lat1, double lon1, double lat2, double lon2);
 
 // Takes lat/lon in RADIANS, returns bearing
-float GPSBearing(float lat1, float lon1, float lat2, float lon2);
+double GPSBearing(double lat1, double lon1, double lat2, double lon2);
 
 template <typename T> T ToRad(T a) { return a * M_PI / 180.; }
 template <typename T> T ToDeg(T a) { return a * 180. / M_PI; }
 
 float Normal(float mean = 0, float std = 1);
+
+template <typename T>
+T Clip(T a, T min, T max) {
+  return std::max(std::min(a, max), min);
+}
+
+// clip a such that it is not closer than min to zero.
+// e.g., if a = 0.01 and min = 0.1, then ReverseClip(a, min) = 0.1
+template <typename T>
+T ReverseClip(T a, T min) {
+  return a > 0 ? std::max(a, min) : std::min(a, -min);
+}
+
+double atan2(const Eigen::Vector2d &diff);
 
 }  // namespace util
 }  // namespace sailbot
