@@ -2,6 +2,13 @@ dist: trusty
 sudo: required
 language: c++
 
+cache:
+  directories:
+    - $HOME/.cache/bazel
+  timeout: 500
+before_cache:
+  - sudo rm -rf $HOME/.cache/bazel/_bazel_travis/install
+
 os:
   - linux
 
@@ -12,23 +19,16 @@ before_install:
   - OS=linux
   - ARCH=x86_64
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then OS=darwin; fi
-  - GH_BASE="https://github.com/bazelbuild/bazel/releases/download/$V"
-  - GH_ARTIFACT="bazel-$V-installer-$OS-$ARCH.sh"
-  - CI_BASE="http://ci.bazel.io/job/Bazel/JAVA_VERSION=1.8,PLATFORM_NAME=$OS-$ARCH/lastSuccessfulBuild/artifact/output/ci"
-  - CI_ARTIFACT="bazel--installer.sh"
-  - URL="$GH_BASE/$GH_ARTIFACT"
-  - if [[ "$V" == "HEAD" ]]; then CI_ARTIFACT="`wget -qO- $CI_BASE | grep -o 'bazel-[-_a-zA-Z0-9\.]*-installer.sh' | uniq`"; fi
-  - if [[ "$V" == "HEAD" ]]; then URL="$CI_BASE/$CI_ARTIFACT"; fi
-  - echo $URL
-  - wget -O install.sh $URL
-  - chmod +x install.sh
-  - ./install.sh --user
-  - rm -f install.sh
-  - sudo apt-get update
+  - sudo mkdir -p $HOME/.cache/bazel
+  - sudo chown -R travis:travis $HOME/.cache/bazel
+  - sudo chmod -R 777 $HOME/.cache/bazel
+  - sudo rm -rf $HOME/.cache/bazel/_bazel_travis/install
+  - echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list
+  - curl https://bazel.build/bazel-release.pub.gpg | sudo apt-key add -
   - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y software-properties-common
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update
-  - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y g++-5 gcc-5 python-numpy python3-numpy python3-scipy python3-matplotlib
+  - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y g++-5 gcc-5 python-numpy python3-numpy python3-scipy python3-matplotlib bazel
   - g++ --version
 
 script:
