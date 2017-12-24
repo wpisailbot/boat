@@ -15,15 +15,12 @@ Node::~Node() {
 }
 
 void Node::Run() {
-  if (period_ < 0) {
-    return;
-  }
-  while (!util::IsShutdown()) {
+  while (period_ >= 0 && !util::IsShutdown()) {
     if (period_ > 0) {
       loop_.WaitForNext();
     }
     if (util::IsShutdown()) {
-      return;
+      break;
     }
     Iterate();
   }

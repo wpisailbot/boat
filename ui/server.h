@@ -22,7 +22,7 @@ class WebSocketServer : public Node {
   void ProcessSocket(uWS::WebSocket<uWS::SERVER> *ws, char *message,
                      size_t length, uWS::OpCode opcode);
   std::string GetCurrentVal(const std::string &msg);
-  void Iterate();
+  void Iterate() override;
 
   uWS::Hub hub_;
   const int port_;
@@ -31,6 +31,8 @@ class WebSocketServer : public Node {
   std::mutex send_map_mutex_;
   std::map<std::string, std::unique_ptr<Queue>> send_msgs_;
   std::vector<std::thread> threads_;
+  // Mutex so that we don't destroy the data that ProcessSocket needs too early
+  std::mutex process_mutex_;
   // The last time that we processed a socket request
   // TODO(james): Initialize apopriately
   std::mutex last_conn_mut_;
