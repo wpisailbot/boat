@@ -1,2 +1,8 @@
 build --cxxopt -std=c++1y --crosstool_top=//tools/arm_compiler:toolchain
+# Don't build things that aren't valid targets for whatever
+# cpu is specified in the restructed_to portion. See
+# scripts/BUILD for an example.
+build --auto_cpu_environment_group=//tools:cpus
+
+# Print output of tests when they error out
 test --test_output errors

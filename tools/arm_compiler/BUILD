@@ -132,7 +132,7 @@ cc_toolchain(
     name = "cc-compiler-k8",
     all_files = ":empty",
     compiler_files = ":empty",
-    cpu = "local",
+    cpu = "k8",
     dwp_files = ":empty",
     dynamic_runtime_libs = [":empty"],
     linker_files = ":empty",
