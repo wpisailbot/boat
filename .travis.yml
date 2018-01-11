@@ -39,6 +39,8 @@ script:
       --test_output=errors \
       --local_resources=400,2,1.0 \
       --worker_verbose \
+      -c opt \
+      --cpu bbb \
       //...
   - |
     bazel \
