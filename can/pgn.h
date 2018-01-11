@@ -26,29 +26,13 @@ struct CANID {
   uint8_t __eff_ident : 1; // Tells SocketCAN we are using 29 bit frames
 };
 
-uint32_t ConstructID(CANID can_id) {
-  return *(uint32_t*)&can_id;
-}
+uint32_t ConstructID(CANID can_id);
 
-CANID RetrieveID(uint32_t raw_id) {
-  return *(CANID*)&raw_id;
-}
+CANID RetrieveID(uint32_t raw_id);
 
-uint32_t GetPGN(CANID id) {
-  return ((uint32_t)id.DP << 16) + ((uint32_t)id.PF << 8) +
-         (id.PF < 240 ? 0 : id.PS);
-}
+uint32_t GetPGN(CANID id);
 
-void SetPGN(CANID *id, int32_t pgn) {
-  uint8_t low = pgn & 0xFF;
-  pgn >>= 8;
-  id->PF = pgn & 0xFF;
-  pgn >>= 8;
-  id->DP = pgn & 0x01;
-  if (id->PF >= 240) {
-    id->PS = low;
-  }
-}
+void SetPGN(CANID *id, int32_t pgn);
 
 }  // namespace sailbot
 }  // namespace can

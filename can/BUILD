@@ -9,7 +9,7 @@ cc_proto_library(
 )
 cc_library(
   name="can",
-  srcs=["can.cc"],
+  srcs=["can.cc", "pgn.cc"],
   hdrs=["can.h", "canboat-pgn.h", "pgn.h"],
   deps=[":can_proto", "//util:proto_util", "//util:node"],
 )
