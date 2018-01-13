@@ -147,7 +147,7 @@ void CanNode::Iterate() {
   CANMessage *msg = &msgs_[pgn];
   VLOG(2) << "Reading frame: can_id: " << frame.can_id << " pgn: " << pgn
           << " dlc: " << dlc << " source: " << (int)id.source;
-  VLOG(2) << "Last bytE: " << (int)frame.data[8];
+  VLOG(2) << "Last bytE: " << (int)frame.data[7];
   if (msg->is_long_) {
     uint8_t index = data[0] & 0x1F;
     uint8_t base = data[0] & 0xE0;
