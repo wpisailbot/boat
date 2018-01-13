@@ -110,7 +110,7 @@ namespace {
 std::atomic<bool> done{false};
 
 // Handler to pass to signal()
-void SignalHandler(int signum) {
+void SignalHandler(int /*signum*/) {
   RaiseShutdown();
 }
 
