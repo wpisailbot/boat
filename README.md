@@ -5,10 +5,24 @@ in the 2016-2017 school year.
 
 ## Structure
 
-The exact locations of things is a bit subject to change right now, but:
-
 - The top level is reserved for build file, READMEs, etc.
 - `ipc/` contains the code for, well, IPC.
+- `can/` contains the code for reading messages off of the CAN bus, making use
+   of some [canboat](https://github.com/canboat) code.
+- `compilers/` contains build files for handling downloaded cross-compilers.
+- `control/` has essentially all of the actual logic for controlling the boat
+- `math/` contains utility math functions
+- `rigid_wing/` includes the code for interfacing with the rigid wing; there
+   is a separate repository for building the code that actually runs on
+   the rigid wing.
+- `scripts/` various scripts that we use for running code, primarily on the BBB
+- `sim/` contains code for running the simulations (including a CSV logging
+    utility that isn't necessarily limited to simulations).
+- `third_party/` contains build files for third party libraries
+- `tools/` contains a bazelrc (defines useful defaults for building) as
+   well as configuration options for the compilers
+- `ui/` contains code related to the UI, both the websocket server running
+   onboard the boat as well as the HTML/javascript used for the frontend.
 - `util/` contains what is, right now, any other infrastructure-related code
 
 ## Building and Running the Code
@@ -56,6 +70,7 @@ There are a few tests/examples that I have throughout the code:
 - Validate system more thoroughly
 - Get started on hardware-specific libraries
 - Take a closer look at Boost's implementation of queues
+- See the Issues tab
 
 ## Notes
 - We are using proto2, not proto3, because I (James) observed some oddities
