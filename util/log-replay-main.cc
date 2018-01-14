@@ -28,9 +28,9 @@ class Pong : public Node {
 
     RegisterHandler<msg::can::CANMaster>(
         "can126992", [this](const msg::can::CANMaster &msg) {
-          if (msg.has_sys_tme())
-            LOG(INFO) << "Sec: " << msg.sys_tme().time();
-            time_ = msg.sys_tme().time() * 1e-4;
+          if (msg.has_sys_time())
+            LOG(INFO) << "Sec: " << msg.sys_time().time();
+            time_ = msg.sys_time().time() * 1e-4;
         });
 
     RegisterHandler<msg::can::CANMaster>(
