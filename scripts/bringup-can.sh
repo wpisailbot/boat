@@ -8,7 +8,7 @@ sudo modprobe can-dev
 sudo modprobe can-raw
 
 # For some reason adding the sleep made this work on
-# one BBB but not on another. Something to do with
+# one BBB but isn't necessary on another. Something to do with
 # the modules taking too long to load on boot?
 # This only had an effec twhen run @reboot in crontab
 sleep 5
