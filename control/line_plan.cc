@@ -42,8 +42,8 @@ LinePlan::LinePlan()
     yaw_ = msg.euler().yaw();
     // If our position has changed from the last reference by more than 100m,
     // reset.
-    if (util::GPSDistanceDeg(msg.pos().y(), msg.pos().x(), lonlat_ref_.y(),
-                             lonlat_ref_.x()) > 100.0) {
+    if (util::GPSDistance(msg.pos().y(), msg.pos().x(), lonlat_ref_.y(),
+                          lonlat_ref_.x()) > 100.0) {
       ResetRef(boat_pos_lonlat_);
     }
     // Update for if we've crossed a gate.
@@ -68,15 +68,10 @@ void LinePlan::Iterate() {
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
   lonlat_ref_ = newlonlatref;
-  double eps = 1e-4;
-  lonlat_scale_.x() =
-      util::GPSDistanceDeg(lonlat_ref_.y(), lonlat_ref_.x(), lonlat_ref_.y(),
-                           lonlat_ref_.x() + eps) /
-      eps;
-  lonlat_scale_.y() =
-      util::GPSDistanceDeg(lonlat_ref_.y(), lonlat_ref_.x(),
-                           lonlat_ref_.y() + eps, lonlat_ref_.x()) /
-      eps;
+  double xscale, yscale;
+  util::GPSLatLonScale(lonlat_ref_.y(), &yscale, &xscale);
+  lonlat_scale_.x() = xscale;
+  lonlat_scale_.y() = yscale;
 
   boat_pos_ = LonLatToFrame(boat_pos_lonlat_);
   prev_boat_pos_ = LonLatToFrame(prev_boat_pos_lonlat_);
