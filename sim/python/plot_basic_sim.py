@@ -40,8 +40,8 @@ for row in data:
   t.append(row[0])
   sail.append(row[1])
   rudder.append(row[2])
-  x.append(row[3])
-  y.append(row[4])
+  x.append(row[3] * 180. / np.pi)
+  y.append(row[4] * 180. / np.pi)
   vx.append(row[5])
   vy.append(row[6])
   heading.append(numpy.arctan2(vy[-1], vx[-1]));

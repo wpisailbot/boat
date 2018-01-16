@@ -26,14 +26,14 @@ function normalizeAngle(a) {
 }
 
 function toRad(x) {
-  return x * Math.PI / 180;
+  return x * Math.PI / 180.0;
 }
 
-function GPSDistance(lat1, lon1, lat2, lon2) {
-  lat1 = toRad(lat1);
-  lat2 = toRad(lat2);
-  lon1 = toRad(lon1);
-  lon2 = toRad(lon2);
+function toDeg(x) {
+  return x / Math.PI * 180.0;
+}
+
+function GPSDistanceRad(lat1, lon1, lat2, lon2) {
   a = Math.pow(Math.sin((lat2 - lat1) / 2), 2) +
       Math.cos(lat1) * Math.cos(lat2) *
         Math.pow(Math.sin((lon2 - lon1) / 2), 2);
@@ -43,14 +43,26 @@ function GPSDistance(lat1, lon1, lat2, lon2) {
   return d;
 }
 
+function GPSDistance(lat1, lon1, lat2, lon2) {
+  lat1 = toRad(lat1);
+  lat2 = toRad(lat2);
+  lon1 = toRad(lon1);
+  lon2 = toRad(lon2);
+  return GPSDistanceRad(lat1, lon1, lat2, lon2);
+}
+
+function GPSBearingRad(lat1, lon1, lat2, lon2) {
+  y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+  x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+  return Math.atan2(x, y);
+}
+
 function GPSBearing(lat1, lon1, lat2, lon2) {
   lat1 = toRad(lat1);
   lat2 = toRad(lat2);
   lon1 = toRad(lon1);
   lon2 = toRad(lon2);
-  y = Math.sin(lon2 - lon1) * Math.cos(lat2);
-  x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
-  return Math.atan2(x, y);
+  return GPSBearingRad(lat1, lon1, lat2, lon2);
 }
 
 function quaternionToEuler(quaternion) {
@@ -198,7 +210,7 @@ function waypointsListener() {
   var i = 0;
   for (i in points) {
     var id = id_base + i;
-    var desc = i + "(" + points[i].x + "," + points[i].y + ")";
+    var desc = i + "(" + toDeg(points[i].x).toFixed(10) + "," + toDeg(points[i].y).toFixed(10) + ")";
     var pos = toInertialSvgCoords(points[i]);
     if (document.getElementById(id) == null) {
       var iframe = $("." + inertialFrame);
@@ -219,6 +231,7 @@ function waypointsListener() {
     var id = id_base + i;
     $("#"+id).remove();
   }
+  // x/y in radians of lat/lon
   var boatx = fields[positionQueue].value.x;
   var boaty = fields[positionQueue].value.y;
   minx = Math.min(minx, boatx);
@@ -237,15 +250,15 @@ function waypointsListener() {
   }
 
   // Provide a buffer.
-  minx -= .0001;
-  miny -= .0001;
-  maxx += .0001;
-  maxy += .0001;
+  minx -= .000003;
+  miny -= .000003;
+  maxx += .000003;
+  maxy += .000003;
   var svgWidth = $("#myCanvas").width();
   var svgHeight = $("#myCanvas").height();
   // Give us a bit of padding for the case of really near waypoints.
-  var dx = Math.max(maxx - minx, .00001);
-  var dy = Math.max(maxy - miny, .00001);
+  var dx = Math.max(maxx - minx, .0000003);
+  var dy = Math.max(maxy - miny, .0000003);
   var scalex = svgWidth / dx;
   var scaley = svgHeight / dy;
   scale = Math.min(scalex, scaley); // Avoid running one coordinate off the edge of the screen
@@ -255,10 +268,11 @@ function waypointsListener() {
   inertialFramePos.y = svgHeight / 2;
   setTranslate(inertialFrame, inertialFramePos.x, inertialFramePos.y);
 
-  var lat_per_meter = 1e-5 / GPSDistance(miny, minx, miny + 1e-5, minx);
-  $("#gps_lat_to_m").html(lat_per_meter.toFixed(10));
-  var lon_per_meter = 1e-5 / GPSDistance(miny, minx, miny, minx + 1e-5);
-  $("#gps_lon_to_m").html(lon_per_meter.toFixed(10));
+  // Display in degrees
+  var lat_per_meter = 1e-5 / GPSDistanceRad(miny, minx, miny + 1e-5, minx);
+  $("#gps_lat_to_m").html(toDeg(lat_per_meter).toFixed(10));
+  var lon_per_meter = 1e-5 / GPSDistanceRad(miny, minx, miny, minx + 1e-5);
+  $("#gps_lon_to_m").html(toDeg(lon_per_meter).toFixed(10));
 
   var gridxscale = 10 * lon_per_meter.toFixed(8);
   var gridyscale = 10 * lat_per_meter.toFixed(8);
@@ -305,11 +319,12 @@ function submitWaypoints() {
 }
 
 function submitRelativeWaypoint() {
+  // lat/lon in radians
   var pos = fields[positionQueue].value;
   var lat = pos.y;
   var lon = pos.x;
-  var lat_per_meter = 1e-5 / GPSDistance(lat, lon, lat + 1e-5, lon);
-  var lon_per_meter = 1e-5 / GPSDistance(lat, lon, lat, lon + 1e-5);
+  var lat_per_meter = 1e-5 / GPSDistanceRad(lat, lon, lat + 1e-5, lon);
+  var lon_per_meter = 1e-5 / GPSDistanceRad(lat, lon, lat, lon + 1e-5);
   var x = parseFloat($("#goto-rel-x").val()) * lon_per_meter + lon;
   var y = parseFloat($("#goto-rel-y").val()) * lat_per_meter + lat;
 

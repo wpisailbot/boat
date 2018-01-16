@@ -41,13 +41,16 @@ void RungeKutta4(std::function<M(double, M)> f, M &y, double t0, double h) {
   y += h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
 }
 
-// Takes lat/lon in degrees, returns distance, in m
+// Takes lat/lon in RADIANS, returns distance, in m
 double GPSDistance(double lat1, double lon1, double lat2, double lon2);
 
-// Takes lat/lon in degrees, returns bearing
+// As above, but uses degrees
+double GPSDistanceDeg(double lat1, double lon1, double lat2, double lon2);
+
+// Takes lat/lon in RADIANS, returns bearing
 double GPSBearing(double lat1, double lon1, double lat2, double lon2);
 
-// Computes the number of meters per degree of lat/lon at a given degree latitude
+// Computes the number of meters per radian of lat/lon at a given point
 void GPSLatLonScale(double lat, double *latscale, double *lonscale);
 
 template <typename T> T ToRad(T a) { return a * M_PI / 180.; }

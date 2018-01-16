@@ -80,8 +80,8 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 #define BYTES(x) ((x)*(8))
 
 #define RES_LAT_LONG_PRECISION (10000000) /* 1e7 */
-#define RES_LAT_LONG (1.0e-7)
-#define RES_LAT_LONG_64 (1.0e-16)
+#define RES_LAT_LONG (1.0e-7) * M_PI / 180.0
+#define RES_LAT_LONG_64 (1.0e-16) * M_PI / 180.0
 
 typedef struct
 {
@@ -507,8 +507,8 @@ Pgn pgnList[] =
 
 ,
 { "Position, Rapid Update", 129025, true, 8, 0,
-  { { "Latitude", BYTES(4), RES_LATITUDE, true, "deg", "" }
-  , { "Longitude", BYTES(4), RES_LONGITUDE, true, "deg", "" }
+  { { "Latitude", BYTES(4), RES_LATITUDE, true, "rad", "" }
+  , { "Longitude", BYTES(4), RES_LONGITUDE, true, "rad", "" }
   , { 0 }
   }
 }
@@ -539,8 +539,8 @@ Pgn pgnList[] =
   { { "Local Datum", BYTES(4), RES_ASCII, false, 0, "defined in IHO Publication S-60, Appendices B and C."
               " First three chars are datum ID as per IHO tables."
               " Fourth char is local datum subdivision code." }
-  , { "Delta Latitude", BYTES(4), RES_LATITUDE, true, "deg", "" }
-  , { "Delta Longitude", BYTES(4), RES_LONGITUDE, true, "deg", "" }
+  , { "Delta Latitude", BYTES(4), RES_LATITUDE, true, "rad", "" }
+  , { "Delta Longitude", BYTES(4), RES_LONGITUDE, true, "rad", "" }
   , { "Delta Altitude", BYTES(4), 1e-6, true, "m", "" }
   , { "Reference Datum", BYTES(4), RES_ASCII, false, 0, "defined in IHO Publication S-60, Appendices B and C."
               " First three chars are datum ID as per IHO tables."
@@ -671,8 +671,8 @@ Pgn pgnList[] =
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Date", BYTES(2), RES_DATE, false, "days", "Days since January 1, 1970" }
   , { "Time", BYTES(4), RES_TIME, false, "s", "Seconds since midnight" }
-  , { "Latitude", BYTES(8), RES_LATITUDE, true, "deg", "" }
-  , { "Longitude", BYTES(8), RES_LONGITUDE, true, "deg", "" }
+  , { "Latitude", BYTES(8), RES_LATITUDE, true, "rad", "" }
+  , { "Longitude", BYTES(8), RES_LONGITUDE, true, "rad", "" }
   , { "Altitude", BYTES(8), 1e-6, true, "m", "Altitude referenced to WGS-84" }
   , { "GNSS type", 4, RES_LOOKUP, false, LOOKUP_GNS, "" }
   , { "Method", 4, RES_LOOKUP, false, LOOKUP_GNS_METHOD, "" }

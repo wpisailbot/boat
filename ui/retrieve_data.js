@@ -6,7 +6,7 @@ var input_submit_class = "data_submit";
 var ws = null;
 
 function createOps() {
-  ops["toDeg"] = function(a) { return a * 180 / Math.PI; };
+  ops["toDeg"] = function(a) { return a * (180.0 / Math.PI); };
 }
 
 function registerFieldHandlers() {

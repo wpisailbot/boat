@@ -81,8 +81,7 @@ double norm_angle(double a) {
   return a;
 }
 
-namespace {
-double GPSDistanceRad(double lat1, double lon1, double lat2, double lon2) {
+double GPSDistance(double lat1, double lon1, double lat2, double lon2) {
   // Haversine function
   double a = std::pow(std::sin((lat2 - lat1) / 2.), 2) +
              std::cos(lat1) * std::cos(lat2) *
@@ -93,37 +92,29 @@ double GPSDistanceRad(double lat1, double lon1, double lat2, double lon2) {
   return d;
 }
 
+double GPSDistanceDeg(double lat1, double lon1, double lat2, double lon2) {
+  return GPSDistance(ToRad(lat1), ToRad(lon1), ToRad(lat2), ToRad(lon2));
+}
+
 // Aims to return a bearing with 0deg = West, 90deg = North
-double GPSBearingRad(double lat1, double lon1, double lat2, double lon2) {
+double GPSBearing(double lat1, double lon1, double lat2, double lon2) {
   const double y = std::sin(lon2 - lon1) * std::cos(lat2);
   const double x = std::cos(lat1) * std::sin(lat2) -
                    std::sin(lat1) * std::cos(lat2) * std::cos(lon2 - lon1);
   return std::atan2(x, y);
 }
 
-} // namespace
-
-double GPSDistance(double lat1, double lon1, double lat2, double lon2) {
-  return GPSDistanceRad(ToRad(lat1), ToRad(lon1), ToRad(lat2), ToRad(lon2));
-}
-
-// Aims to return a bearing with 0deg = West, 90deg = North
-
-double GPSBearing(double lat1, double lon1, double lat2, double lon2) {
-  return GPSBearingRad(ToRad(lat1), ToRad(lon1), ToRad(lat2), ToRad(lon2));
-}
-
 void GPSLatLonScale(double lat, double *latscale,
                       double *lonscale) {
   // Calculates meters per radian of lat/lon for the WGS84 ellipsoid at a given
-  // latitude (in degrees).
+  // latitude (in radians).
   // See
   // https://knowledge.safe.com/articles/725/calculating-accurate-length-in-meters-for-lat-long.html
-  double clat = std::cos(ToRad(lat));
+  double clat = std::cos(lat);
   double clat2 = clat * clat;
   double denom = std::sqrt(1.0 + 0.0067394967565868823004 * clat2);
-  *latscale = 111693.97955992134774 / (denom * denom * denom);
-  *lonscale = 111693.97955992134774 * clat / denom;
+  *latscale = 6399593.6258 / (denom * denom * denom);
+  *lonscale = 6399593.6258 * clat / denom;
 }
 
 namespace {
