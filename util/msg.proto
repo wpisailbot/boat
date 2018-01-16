@@ -63,6 +63,11 @@ message LogEntry {
   optional InternalBoatState internal_state = 3001; // Will probably disappear
   optional BoatState sim_true_boat_state = 3002; // Provides the "true" state of the system
   optional Vector3f sim_true_wind = 3003; // Provides the "true" wind for the system
+  optional Vector3f sim_set_wind = 3004;
+
+  // For when running logsim:
+  optional BoatState orig_boat_state = 3200;
+  optional HeadingCmd orig_heading_cmd = 3201;
 
   optional SBUS sbus_value = 3500;
 
@@ -80,4 +85,5 @@ message LogEntry {
   optional can.CANMaster can65282 = 65282; // PWM Write
   optional can.CANMaster can65283 = 65283; // Debug SCAMP1
   optional can.CANMaster can65284 = 65284; // Debug SCAMP2
+
 }

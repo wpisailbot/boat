@@ -25,41 +25,60 @@ namespace {
   float Normal(float std) {
     float r = util::Normal(0, std);
     const int Nstd = 3;
-    return std::max(std::min(r, r + Nstd * std), r - Nstd * std);
+//    return std::max(std::min(r, r + Nstd * std), r - Nstd * std);
+    return 0.0;
+  }
+  float CalcNew(const float last, const float truth, const float kT) {
+    const float diff = util::norm_angle(truth - last);
+    return util::norm_angle(last + (1 - kT) * diff);
   }
 }
 
 void FakeAirmar::Iterate() {
+  std::unique_lock<std::mutex> lck(state_msg_mutex_);
+  if (!state_.has_euler() || !wind_.has_x()) {
+    return;
+  }
+  constexpr float kTdt = 0 * std::exp(dt * kTContinuous);
+  constexpr float kT1Hz = 0 * std::exp(kTContinuous);
   msg::can::CANMaster out;
 
   // Reverse sign of yaw because headings are compass headings
-  out.mutable_heading()->set_heading(M_PI / 2. - state_.euler().yaw() +
-                                     Normal(0.05));
+  const float yaw = state_.euler().yaw();
+  const float heading = M_PI / 2. - yaw;
+  out.mutable_heading()->set_heading(
+      CalcNew(last_.heading().heading(), heading, kTdt));
   heading_.send(&out);
+  *last_.mutable_heading() = out.heading();
   out.clear_heading();
 
   // Rate of turn has opposite sign for Airmar.
   out.mutable_rate_turn()->set_rate(-state_.omega().z() + Normal(0.05));
   rate_turn_.send(&out);
+  *last_.mutable_rate_turn() = out.rate_turn();
   out.clear_rate_turn();
 
   // Attitude only gets sent out at 1 Hz...
   if ((counter_ % int(1 / dt)) == 0) {
-    out.mutable_attitude()->set_roll(state_.euler().roll() + Normal(0.05));
-    out.mutable_attitude()->set_pitch(state_.euler().pitch() + Normal(0.05));
-    // TODO(james): Check whether this yaw needs to be reversed.
-    out.mutable_attitude()->set_yaw(state_.euler().yaw() + Normal(0.05));
+    const float roll = state_.euler().roll() + Normal(0.05);
+    const float pitch = state_.euler().pitch() + Normal(0.05);
+    out.mutable_attitude()->set_roll(CalcNew(last_.attitude().roll(), roll, kT1Hz));
+    out.mutable_attitude()->set_pitch(
+        CalcNew(last_.attitude().pitch(), pitch, kT1Hz));
+    // TODO(james): Figure out why the airmar doesn't populate the yaw field
     attitude_.send(&out);
+    *last_.mutable_attitude() = out.attitude();
     out.clear_attitude();
   }
 
   double x = state_.pos().x() + Normal(.5);
   double y = state_.pos().y() + Normal(.5);
-  double lat = y / 111015. + 38.9816688;
-  double lon = x / 86647. - 76.47591338;
+  double lat = y / lat_scale_ + lat_;
+  double lon = x / lon_scale_ + lon_;
   out.mutable_pos_rapid_update()->set_lon(lon);
   out.mutable_pos_rapid_update()->set_lat(lat);
   pos_rapid_update_.send(&out);
+  *last_.mutable_pos_rapid_update() = out.pos_rapid_update();
   out.clear_pos_rapid_update();
 
   float vx = state_.vel().x();
@@ -69,6 +88,7 @@ void FakeAirmar::Iterate() {
   out.mutable_cog_rapid_update()->set_cog(M_PI / 2. - std::atan2(vy, vx) +
                                           Normal(0.05));
   cog_rapid_update_.send(&out);
+  *last_.mutable_cog_rapid_update() = out.cog_rapid_update();
   out.clear_cog_rapid_update();
 
   out.mutable_wind_data()->set_wind_speed(
@@ -91,6 +111,8 @@ void FakeAirmar::Iterate() {
   out.mutable_wind_data()->set_wind_angle(alphaw);
   out.mutable_wind_data()->set_reference(msg::can::WindData_WIND_REFERENCE_APPARENT);
   wind_data_.send(&out);
+  // TODO(james): Store both apparent and true wind...
+  *last_.mutable_wind_data() = out.wind_data();
   out.clear_wind_data();
 
   ++counter_;

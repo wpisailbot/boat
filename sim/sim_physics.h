@@ -42,6 +42,7 @@ class TrivialDynamics : public SimulatorDynamics {
 
   TrivialDynamics(float _dt);
   std::pair<Vector6d, Matrix3d> Update(double sdot, double rdot, double bdot) override;
+  std::pair<Vector6d, Matrix3d> Update(double deltas, double deltar);
   Vector3d get_x() override { return x;}
   Vector3d get_v() override { return v; }
   Matrix3d get_RBI() override { return RBI; }
@@ -50,6 +51,7 @@ class TrivialDynamics : public SimulatorDynamics {
   double get_deltar() override { return deltar; }
   double get_deltab() override { return deltab; }
   void set_wind(Vector3d wind) override { this->wind = wind; }
+  void set_from_state(const msg::BoatState &state);
   Vector3d get_wind() { return wind; }
   double get_apparent_dir() {
     // Returns the direction that the wind is blowing from relative to the boat
@@ -62,12 +64,12 @@ class TrivialDynamics : public SimulatorDynamics {
 
   double get_rdot_for_goal(double goal) {
     // To spoof a simple servo
-    return goal - deltar;
+    return 5.0 * (goal - deltar);
   }
 
   double get_sdot_for_goal(double goal) {
     // To spoof a servo.
-    return goal - deltas;
+    return 5.0 * (goal - std::abs(deltas));
   }
 
   // Note: CalcXdot does make use of most parameters that aren't explicitly
@@ -90,7 +92,8 @@ class TrivialDynamics : public SimulatorDynamics {
 
   Vector3d AeroForces(Vector3d v, const float delta, const float rho,
                       const float A, const float mindrag = .05,
-                      const float maxdrag = 1.5, const float maxlift = 1.5);
+                      const float maxdrag = 1.5, const float maxlift = 1.5,
+                      const bool luff = false);
 
   const float dt;
   // Note on Coord systems:
@@ -117,7 +120,7 @@ class TrivialDynamics : public SimulatorDynamics {
   double yaw, heel;
   Matrix3d RBI;
   Vector3d omega; // w.r.t. hull frame
-  Vector3d wind;
+  Vector3d wind{0, 0, 0};
 
   sailbot::ProtoQueue<sailbot::msg::SimDebugMsg> debug_queue_;
 };

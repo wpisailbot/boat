@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   sailbot::Queue::set_testing(true);
   sailbot::util::Init(argc, argv);
   sailbot::util::ClockManager::SetFakeClock(true);
-  sailbot::sim::SimulatorNode sim;
+  sailbot::sim::SimulatorNode sim(-1);
   sailbot::control::SimpleControl ctrl(true);
   sailbot::control::LineTacker tacker;
   sim.set_wind(-M_PI / 2, 4);

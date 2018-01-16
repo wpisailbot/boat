@@ -18,7 +18,8 @@ namespace sailbot {
 
 class LogReplay {
  public:
-  LogReplay();
+  LogReplay(const std::map<std::string, std::string> &rename,
+            bool default_ignore = false);
   void Run();
   void SetHandler(const std::string &queue,
                   std::function<void(msg::LogEntry *, char *, int *)> handler) {
@@ -34,6 +35,8 @@ class LogReplay {
   // Meant for handling changes to queue structures for backwards compatibility.
   std::map<std::string, std::function<void(msg::LogEntry *, char *, int *)>>
       queue_process_;
+  std::map<std::string, std::string> rename_;
+  const bool default_ignore_;
 };
 
 }  // sailbot

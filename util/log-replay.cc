@@ -9,10 +9,17 @@ DEFINE_string(input_log, "/tmp/logfilename",
               "The log file to read from when replaying");
 DEFINE_bool(handle_deprecation, true,
             "Whether to try and automatically handle old logs");
+DEFINE_double(start_log_replay, 0.0,
+              "Time at which to start actually playing back messages");
 
 namespace sailbot {
 
-LogReplay::LogReplay() : input_(FLAGS_input_log) { Init(); }
+LogReplay::LogReplay(const std::map<std::string, std::string> &rename,
+                     bool default_ignore)
+    : input_(FLAGS_input_log), rename_(rename),
+      default_ignore_(default_ignore) {
+  Init();
+}
 
 void LogReplay::Init() {
   util::ClockManager::SetFakeClock(true);
@@ -59,17 +66,48 @@ void LogReplay::Run() {
           queue_process_[queue_name](&entry, msg_buffer, &n);
         }
         if (queues_.count(queue_name) == 0) {
-          queues_[queue_name].reset(new Queue(queue_name.c_str(), true));
+          std::string qname = default_ignore_ ? "" : queue_name;
+          if (rename_.count(queue_name)) {
+            qname = rename_[queue_name];
+          }
+          if (qname.size() > 0) {
+            queues_[queue_name].reset(new Queue(qname.c_str(), true));
+          }
         }
       }
+    }
+    if (std::chrono::nanoseconds(msg_time.time_since_epoch()).count() / 1e9 <
+        FLAGS_start_log_replay) {
+      continue;
     }
     if (msg_time > cur_time) {
       // Wait for the time to come...
       clock_.SleepUntil(msg_time);
       cur_time = clock_.Time();
     }
-    if (queue_name.size() > 0)
+    // Handle moving the fields around within the LogEntry prot
+    if (rename_.count(queue_name) > 0 && rename_[queue_name] != queue_name) {
+      const google::protobuf::FieldDescriptor *new_field =
+          entry.GetDescriptor()->FindFieldByName(rename_[queue_name]);
+      const google::protobuf::FieldDescriptor *old_field =
+          entry.GetDescriptor()->FindFieldByName(queue_name);
+      if (old_field == nullptr || new_field == nullptr) {
+        LOG(FATAL) << "Queue \"" << rename_[queue_name] << "\" or \""
+                   << queue_name
+                   << "\" does not exist in the LogEntry proto...";
+      }
+      google::protobuf::Message *field_content =
+          entry.GetReflection()->MutableMessage(&entry, new_field);
+      field_content->CopyFrom(
+          entry.GetReflection()->GetMessage(entry, old_field));
+      entry.GetReflection()->ClearField(&entry, old_field);
+      entry.SerializeToArray(msg_buffer, Logger::MAX_BUF);
+      n = entry.ByteSize();
+    }
+
+    if (queue_name.size() > 0 && queues_[queue_name]) {
       queues_[queue_name]->send(msg_buffer, n);
+    }
   }
 }
 

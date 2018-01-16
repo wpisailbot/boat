@@ -126,6 +126,16 @@ cc_binary(
   srcs=["log-replay-main.cc"],
   deps=[":log_replay", "//ui:server", "//sim:csv_logger"],
 )
+cc_binary(
+  name="logsim_main",
+  srcs=["logsim_main.cc"],
+  deps=[":log_replay",
+        "//ui:server",
+        "//sim:csv_logger",
+        "//sim:sim_inter",
+        "//sensor:state_estimator",
+        ],
+)
 
 cc_proto_library(
   name="proto_util_test_proto",

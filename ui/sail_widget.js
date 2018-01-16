@@ -3,9 +3,13 @@ var quaternionQueue = boatState + ".orientation.";
 var sailState = boatState + ".internal.sail";
 var rudderState = boatState + ".internal.rudder";
 var positionQueue = boatState + ".pos";
+var shadowBoatState = "orig_boat_state"
+var shadowQuaternionQueue = shadowBoatState + ".orientation.";
+var shadowPositionQueue = shadowBoatState + ".pos";
 var waypointsQueue = "waypoints";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};
+var shadowQuaternion = {w: 1, x: 0, y: 0, z: 0};
 // Variables for transforming between coordinate systems.
 var inertialFramePos = {x: 500, y: 500};
 var posTranslate = {x: 0, y: 0};
@@ -107,10 +111,21 @@ function quaternionListener(component) {
   setRotation("hull_rotate", -quaternionToEuler(quaternion).yaw);
 }
 
+function shadowQuaternionListener(component) {
+  shadowQuaternion[component] = fields[shadowQuaternionQueue + component].value;
+  setRotation("shadow_hull_rotate", -quaternionToEuler(shadowQuaternion).yaw);
+}
+
 function boatPositionListener() {
   var pos = fields[positionQueue].value;
   pos = toInertialSvgCoords(pos);
   setTranslate("hull_position", pos.x, pos.y);
+}
+
+function shadowBoatPositionListener() {
+  var pos = fields[shadowPositionQueue].value;
+  pos = toInertialSvgCoords(pos);
+  setTranslate("shadow_hull_position", pos.x, pos.y);
 }
 
 function sailListener() {
@@ -210,6 +225,16 @@ function waypointsListener() {
   miny = Math.min(miny, boaty);
   maxx = Math.max(maxx, boatx);
   maxy = Math.max(maxy, boaty);
+  if ($(".shadow_hull_position").length > 0) {
+    console.log("Accounting for shadow");
+    // Only check shadow if we *have* a shadow.
+    var shadowx = fields[shadowPositionQueue].value.x;
+    var shadowy = fields[shadowPositionQueue].value.y;
+    minx = Math.min(minx, shadowx);
+    miny = Math.min(miny, shadowy);
+    maxx = Math.max(maxx, shadowx);
+    maxy = Math.max(maxy, shadowy);
+  }
 
   // Provide a buffer.
   minx -= .0001;
@@ -299,9 +324,14 @@ function initializeBoatHandlers() {
   addHandler(quaternionQueue + "x", function() { quaternionListener("x"); });
   addHandler(quaternionQueue + "y", function() { quaternionListener("y"); });
   addHandler(quaternionQueue + "z", function() { quaternionListener("z"); });
+  addHandler(shadowQuaternionQueue + "w", function() { shadowQuaternionListener("w"); });
+  addHandler(shadowQuaternionQueue + "x", function() { shadowQuaternionListener("x"); });
+  addHandler(shadowQuaternionQueue + "y", function() { shadowQuaternionListener("y"); });
+  addHandler(shadowQuaternionQueue + "z", function() { shadowQuaternionListener("z"); });
   addHandler(sailState, sailListener);
   addHandler(rudderState, rudderListener);
   addHandler(positionQueue, boatPositionListener);
+  addHandler(shadowPositionQueue, shadowBoatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
 
   addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
