@@ -1,12 +1,13 @@
+See issues tab for more, or where relevant
 Specific tasks:
  - Allow pressing enter to submit fields on UI
  - Profile websocket server and get rid of inefficiencies
  - Improve deploy script to:
  -- Only re-upload updated files
- -- Use proper options in deploy scripst rather than just positional arguments
+ -- Use proper options in deploy scripts rather than just positional arguments
  -- require fewer options when deploying
  - Remove unused code
- - Use mutexes that can be locked twice within the same thread.
+ - Use mutexes that can be locked twice within the same thread (also, priority inversion).
  - Switch over to radians instead of degrees for lat/lon
 
 Controller/Planner:
