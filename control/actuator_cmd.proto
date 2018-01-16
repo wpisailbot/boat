@@ -153,7 +153,7 @@ message VisionData {
 }
 
 message BoatState {
-  // Use lat/lon in radians for position on real boat
+  // Use lat/lon in degrees for position on real boat
   // We keep the pos_float field for purposes of reading old logs.
   // In January of 2018, switched to double precision for position
   // to ensure that we will never encounter issues with latitude/longitude.

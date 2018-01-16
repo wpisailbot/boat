@@ -221,11 +221,16 @@ float LineTacker::GoalHeading() {
   float dx = end.x - cur_pos_.x;
   float nominal_heading = std::atan2(dy, dx);
   float dist = std::sqrt(dy * dy + dx * dx);
-  cur_dist_ = dist / 1e-5;
+  double latscale, lonscale;
+  util::GPSLatLonScale(cur_pos_.y, &latscale, &lonscale);
+  double avgscale = (latscale + lonscale) * 0.5;
+  // Because I'm lazy, this has historically assumed that latscale == lonscale.
+  // As such, just average them here for purposes of conversion.
+  cur_dist_ = dist * avgscale;
   float goal_wind_diff = util::norm_angle(nominal_heading - upwind);
 
   bool done = false;
-  if (dist < waypoint_moe_[(i_ + 1) % way_len_] * 1e-5) {
+  if (dist < waypoint_moe_[(i_ + 1) % way_len_] / avgscale) {
     done = true;
     if (i_ < way_len_ - 2) {
       ++i_;
@@ -275,7 +280,7 @@ float LineTacker::GoalHeading() {
       return nominal_heading;
     }
 
-    float dist_to_line = DistanceFromLine(start, end, cur_pos_) * 1e5;
+    float dist_to_line = DistanceFromLine(start, end, cur_pos_) * avgscale;
 
     if (std::abs(dist_to_line) >= bounds_[i_]) {
       // Too far from the path, so go back, but only if we will have
