@@ -1,11 +1,14 @@
 #include "log-replay.h"
 #include <fstream>
 #include "util/msg.pb.h"
+#include "util/log_deprecation.h"
 #include <vector>
 #include "gflags.h"
 
 DEFINE_string(input_log, "/tmp/logfilename",
               "The log file to read from when replaying");
+DEFINE_bool(handle_deprecation, true,
+            "Whether to try and automatically handle old logs");
 
 namespace sailbot {
 
@@ -23,6 +26,11 @@ void LogReplay::Init() {
   CHECK(util::monotonic_clock::next_wakeup() == 0)
       << "All nodes should be initialized before running them.";
   clock_thread.detach();
+
+  if (FLAGS_handle_deprecation) {
+    // Add deprecation handlers for backwards-compatiblity
+    SetHandler("boat_state", &sailbot::deprecation::HandleOldPos);
+  }
 }
 
 void LogReplay::Run() {
@@ -47,6 +55,9 @@ void LogReplay::Run() {
                 entry.time().seconds() * 1000000000 + entry.time().nanos()));
       } else {
         queue_name = field->lowercase_name();
+        if (queue_process_.count(queue_name) > 0) {
+          queue_process_[queue_name](&entry, msg_buffer, &n);
+        }
         if (queues_.count(queue_name) == 0) {
           queues_[queue_name].reset(new Queue(queue_name.c_str(), true));
         }

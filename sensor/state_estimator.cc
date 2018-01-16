@@ -99,7 +99,7 @@ StateEstimator::StateEstimator()
 void StateEstimator::Iterate() {
   std::unique_lock<std::mutex> lck(state_msg_mutex_);
   util::EigenToProto(omega_, state_msg_->mutable_omega());
-  util::EigenToProto(pos_, state_msg_->mutable_pos());
+  util::EigenToProtod(pos_, state_msg_->mutable_pos());
   util::EigenToProto(vel_, state_msg_->mutable_vel());
 
   state_msg_->mutable_euler()->set_roll(euler_angles_[0]);

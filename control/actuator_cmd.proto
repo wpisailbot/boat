@@ -97,6 +97,12 @@ message Vector3f {
   optional float z = 3;
 }
 
+message Vector3d {
+  optional double x = 1;
+  optional double y = 2;
+  optional double z = 3;
+}
+
 message Quaternion {
   optional float w = 1;
   optional float x = 2;
@@ -146,7 +152,17 @@ message VisionData {
 }
 
 message BoatState {
-  optional Vector3f pos = 1;
+  // Use lat/lon in radians for position on real boat
+  // We keep the pos_float field for purposes of reading old logs.
+  // In January of 2018, switched to double precision for position
+  // to ensure that we will never encounter issues with latitude/longitude.
+  // Previously, this wasn't an issue because there simply wasn't that
+  // much precision in our movements (also, the Airmar only provides
+  // a single precision floating point GPS point). However, as we
+  // start to care more about meter/sub-meter level precision (e.g.,
+  // for vision tasks), this will become more of an issue.
+  optional Vector3f pos_float = 1 [deprecated = true];
+  optional Vector3d pos = 6;
   optional Quaternion orientation = 2;
   optional Vector3f vel = 3;
   optional Vector3f omega = 4;

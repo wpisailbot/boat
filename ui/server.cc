@@ -3,6 +3,7 @@
 #include "util/proto_util.h"
 #include <google/protobuf/util/json_util.h>
 #include <functional>
+#include <iomanip>
 #include <cstring>
 
 namespace sailbot {
@@ -213,6 +214,7 @@ std::string WebSocketServer::GetCurrentVal(const std::string &msg) {
 
   const google::protobuf::Reflection* reflect = submsg->GetReflection();
   std::string out_str;
+  std::ostringstream out_stream;
   switch (val_field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       google::protobuf::util::MessageToJsonString(
@@ -222,7 +224,12 @@ std::string WebSocketServer::GetCurrentVal(const std::string &msg) {
       out_str = reflect->GetString(*submsg, val_field);
       break;
     default: // A Number
-      out_str = std::to_string(util::GetProtoNumberField(val_field, submsg));
+      // No clean way of saying "print out as much precision
+      // as there is", so we print out as much useful precision
+      // as there generally will be.
+      out_stream << std::setprecision(15)
+                 << util::GetProtoNumberField(val_field, submsg);
+      out_str = out_stream.str();
       break;
   }
 

@@ -36,6 +36,13 @@ void EigenToProto(const Eigen::Vector3d &ve,
   msg->set_z(ve(2, 0));
 }
 
+void EigenToProtod(const Eigen::Vector3d &ve,
+                         sailbot::msg::Vector3d *msg) {
+  msg->set_x(ve(0, 0));
+  msg->set_y(ve(1, 0));
+  msg->set_z(ve(2, 0));
+}
+
 Vector3d GetRollPitchYaw(Matrix3d R) {
   // We don't want to just use Eigen's toEulerAngle, because they
   // don't always turn things out in useful ranges (eg, a pitch of PI + roll of

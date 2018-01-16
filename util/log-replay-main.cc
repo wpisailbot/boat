@@ -6,7 +6,8 @@
 
 DEFINE_string(csv_file, "/tmp/basic_replay_data.csv", "File to save CSV data to");
 DEFINE_int64(start_time, 50000, "Time of day at which to slow down");
-DEFINE_double(speedup, 1, "Factor by which to speed up the replay once we hit start_time");
+DEFINE_double(speedup, 1,
+              "Factor by which to speed up the replay once we hit start_time");
 
 namespace sailbot {
 class Pong : public Node {
@@ -86,6 +87,7 @@ class Pong : public Node {
   std::atomic<int> time_{0};
   CsvLogger *csv_;
 };
+
 }  // sailbot
 
 int main(int argc, char *argv[]) {

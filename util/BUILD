@@ -39,7 +39,17 @@ cc_library(
     ":logger",
     "//ipc:queue",
     ":msg_proto",
+    ":log_deprecation",
     "@gflags//:gflags",
+  ],
+)
+cc_library(
+  name="log_deprecation",
+  srcs=["log_deprecation.cc"],
+  hdrs=["log_deprecation.h"],
+  deps = [
+    ":msg_proto",
+    ":logger",
   ],
 )
 cc_library(

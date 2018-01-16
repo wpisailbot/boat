@@ -18,6 +18,7 @@ Eigen::Matrix3d Skew(const Vector3d& x);
 Eigen::Matrix3d Orthogonalize(const Matrix3d&R);
 
 void EigenToProto(const Eigen::Vector3d &ve, sailbot::msg::Vector3f *msg);
+void EigenToProtod(const Eigen::Vector3d &ve, sailbot::msg::Vector3d *msg);
 
 Vector3d GetRollPitchYaw(Matrix3d R);
 
