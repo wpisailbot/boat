@@ -36,30 +36,20 @@ TEST(UtilTest, NormalizeLargeNegativeAngle) {
 }
 
 TEST(UtilTest, HaversineWorks) {
-  float lat1 = 42.276618, lon1 = -71.804579; // Salisbury Pond, Institute Park
-  float lat2 = lat1 + 1e-4, lon2 = lon1; // Point to the north
-  float lat1rad = ToRad(lat1), lon1rad = ToRad(lon1);
-  float lat2rad = ToRad(lat2), lon2rad = ToRad(lon2);
-  EXPECT_NEAR(11.01249, GPSDistance(lat1rad, lon1rad, lat2rad, lon2rad), 1e-5);
-  EXPECT_FLOAT_EQ(M_PI / 2, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad));
+  double lat1 = 42.276618, lon1 = -71.804579; // Salisbury Pond, Institute Park
+  double lat2 = lat1 + 1e-4, lon2 = lon1; // Point to the north
+  EXPECT_NEAR(11.11949, GPSDistance(lat1, lon1, lat2, lon2), 1e-5);
+  EXPECT_FLOAT_EQ(M_PI / 2, GPSBearing(lat1, lon1, lat2, lon2));
   // Now, point to the east
   lat2 = lat1;
   lon2 = lon1 + 1e-5;
-  lat1rad = ToRad(lat1);
-  lon1rad = ToRad(lon1);
-  lat2rad = ToRad(lat2);
-  lon2rad = ToRad(lon2);
-  EXPECT_NEAR(1.12389, GPSDistance(lat1rad, lon1rad, lat2rad, lon2rad), 1e-5);
-  EXPECT_NEAR(0, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad), 1e-6);
+  EXPECT_NEAR(0.822737, GPSDistance(lat1, lon1, lat2, lon2), 1e-5);
+  EXPECT_NEAR(0, GPSBearing(lat1, lon1, lat2, lon2), 1e-6);
   // Now, point to the southwest
   lat2 = lat1 - 1e-3;
   lon2 = lon1 - 1e-3;
-  lat1rad = ToRad(lat1);
-  lon1rad = ToRad(lon1);
-  lat2rad = ToRad(lat2);
-  lon2rad = ToRad(lon2);
-  EXPECT_NEAR(138.2427, GPSDistance(lat1rad, lon1rad, lat2rad, lon2rad), 1e-5);
-  EXPECT_FLOAT_EQ(-2.2061815, GPSBearing(lat1rad, lon1rad, lat2rad, lon2rad));
+  EXPECT_NEAR(138.323499, GPSDistance(lat1, lon1, lat2, lon2), 1e-5);
+  EXPECT_FLOAT_EQ(-2.207815, GPSBearing(lat1, lon1, lat2, lon2));
 }
 
 TEST(UtilTest, CheckRPYToQuatAndBack) {
@@ -76,6 +66,21 @@ TEST(UtilTest, CheckRPYToQuatAndBack) {
   EXPECT_NEAR(start.x(), end.x(), 1e-5);
   EXPECT_NEAR(start.y(), end.y(), 1e-5);
   EXPECT_NEAR(start.z(), end.z(), 1e-5);
+}
+
+TEST(UtilTest, GPSScale) {
+  // Expected values calculated using
+  // https://msi.nga.mil/MSISiteContent/StaticFiles/Calculators/degree.html
+  double lat = 42.276617;
+  double latscale, lonscale;
+  GPSLatLonScale(lat, &latscale, &lonscale);
+  EXPECT_NEAR(111079.0, latscale, 50.0);
+  EXPECT_NEAR(82491.0, lonscale, 50.0);
+
+  lat = 20.0;
+  GPSLatLonScale(lat, &latscale, &lonscale);
+  EXPECT_NEAR(110704.0, latscale, 100.0);
+  EXPECT_NEAR(104646.0, lonscale, 100.0);
 }
 
 }  // namespace testing
