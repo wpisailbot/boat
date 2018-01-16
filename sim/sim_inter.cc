@@ -128,7 +128,7 @@ void SimulatorNode::Iterate() {
 
   Eigen::Vector3d rollpitchyaw = util::GetRollPitchYaw(impl_->get_RBI());
 
-  msg::Vector3f *pos = state_msg_->mutable_pos();
+  msg::Vector3d *pos = state_msg_->mutable_pos();
   pos->set_x(x(0));
   pos->set_y(x(1));
   pos->set_z(x(2));
