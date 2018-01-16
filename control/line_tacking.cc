@@ -33,12 +33,12 @@ LineTacker::LineTacker()
         *consts_msg_ = msg;
       });
 
-  consts_msg_->set_close_haul_angle(0.);
-  consts_msg_->set_in_irons_cost(0);
-  consts_msg_->set_near_goal_cost(1);
-  consts_msg_->set_hysteresis_cost(0.);
-  consts_msg_->set_diff_yaw_cost(0);
-  consts_msg_->set_momentum_cost(0);
+  consts_msg_->set_close_haul_angle(0.9);
+  consts_msg_->set_in_irons_cost(3);
+  consts_msg_->set_near_goal_cost(3);
+  consts_msg_->set_hysteresis_cost(1.3);
+  consts_msg_->set_diff_yaw_cost(1);
+  consts_msg_->set_momentum_cost(1);
   consts_msg_->set_tacking_cost(0);
   {
     std::unique_lock<std::mutex> lck(consts_mutex_);

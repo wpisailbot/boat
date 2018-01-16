@@ -22,7 +22,7 @@ SimpleControl::SimpleControl(bool do_rudder)
       rigid_msg_(AllocateMessage<msg::RigidWingCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
-      heading_(-M_PI_2),
+      heading_(0),
       sail_cmd_("sail_cmd", true),
       rudder_cmd_("rudder_cmd", true),
       ballast_cmd_("ballast_cmd", true),
@@ -135,7 +135,7 @@ void SimpleControl::Iterate() {
                                  : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
-  double goal_rudder =
+  float goal_rudder =
       std::min(std::max(-0.4 * util::norm_angle(goal_heading - cur_heading /*yaw*/),
                         -max_rudder),
                max_rudder);
