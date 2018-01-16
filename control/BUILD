@@ -20,6 +20,21 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="adaptive_control",
+  srcs=["adaptive.cc"],
+  hdrs=["adaptive.h"],
+  deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
+)
+cc_library(
+  name="line_plan",
+  srcs=["line_plan.cc"],
+  hdrs=["line_plan.h"],
+  deps=[":actuator_cmd_proto",
+        "//util:node",
+        "//math:polygon",
+        "//sim:sim_physics"],
+)
+cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
@@ -46,6 +61,11 @@ cc_binary(
   srcs=["simple_main.cc"],
   deps=[":simple_control"],
 )
+cc_binary(
+  name="adaptive_control_main",
+  srcs=["adaptive_main.cc"],
+  deps=[":adaptive_control"],
+)
 cc_library(
   name="line_tacking",
   srcs=["line_tacking.cc"],
@@ -70,11 +90,20 @@ cc_test(
   deps=[":util", "@gtest//:main"],
 )
 cc_test(
+  name="line_plan_test",
+  srcs=["line_plan_test.cc"],
+  deps=[":line_plan",
+        "//util:testing",
+        "@gtest//:main"],
+)
+cc_test(
   name="control_test",
   srcs=["control_test.cc"],
   timeout="eternal",
   deps=[":simple_control",
+        ":adaptive_control",
         ":line_tacking",
+        ":line_plan",
         ":waypoint_manager",
         "//sensor:state_estimator",
         "//util:testing",

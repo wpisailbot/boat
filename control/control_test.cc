@@ -2,6 +2,8 @@
 #include <gflags/gflags.h>
 
 #include "simple.h"
+#include "adaptive.h"
+#include "line_plan.h"
 #include "util/node.h"
 #include "ui/server.h"
 #include "sim/sim_inter.h"
@@ -49,17 +51,19 @@ class SimpleControlTest : public TestWrapper {
          LOG_VECTOR("sim_debug.tauright", "Righting Moment"), // 39-41
          LOG_VECTOR("sim_debug.taunet", "Net Torque"),        // 42-44
          {"heading_cmd.heading", "Heading Goal"},             // 45
-        }, FLAGS_csv_file, .1),
+        }, FLAGS_csv_file, .1)
 #undef TRUE_STATE
 #undef LOG_VECTOR
-      simple_ctrl_(true) {
+      //,simple_ctrl_(true)
+      {
 
     threads_.emplace_back(&WebSocketServer::Run, &server_);
     threads_.emplace_back(&CsvLogger::Run, &csv_logger_);
     threads_.emplace_back(&sim::SimulatorNode::Run, &sim_node_);
-    threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
-//    threads_.emplace_back(&control::RudderController::Run, &rudder_);
-    threads_.emplace_back(&control::LineTacker::Run, &tacker_);
+//    threads_.emplace_back(&control::SimpleControl::Run, &simple_ctrl_);
+    threads_.emplace_back(&control::AdaptiveControl::Run, &adaptive_ctrl_);
+    //threads_.emplace_back(&control::LineTacker::Run, &tacker_);
+    threads_.emplace_back(&control::LinePlan::Run, &line_plan_);
     threads_.emplace_back(&control::WaypointManager::Run, &manager_);
     threads_.emplace_back(&control::StateEstimator::Run, &state_estimator_);
 
@@ -80,8 +84,10 @@ class SimpleControlTest : public TestWrapper {
   CsvLogger csv_logger_;
   WebSocketServer server_;
   sim::SimulatorNode sim_node_{-1};
-  control::SimpleControl simple_ctrl_;
-  control::LineTacker tacker_;
+  //control::SimpleControl simple_ctrl_;
+  control::AdaptiveControl adaptive_ctrl_;
+  //control::LineTacker tacker_;
+  control::LinePlan line_plan_;
   control::WaypointManager manager_;
   control::StateEstimator state_estimator_;
 };
@@ -111,8 +117,8 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   SetWaypoint(p3, 15, 10);
   SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
-//  way_q.send(&waypoints);
-  sim_node_.set_wind(3 * M_PI / 4, 1.5);
+  way_q.send(&waypoints);
+  sim_node_.set_wind(0 * M_PI / 4, 3.5);
   Sleep(75);
   ASSERT_TRUE(true);
 }
@@ -131,7 +137,7 @@ TEST_F(SimpleControlTest, Square) {
   SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
-  sim_node_.set_wind(0, 6);
+  sim_node_.set_wind(0, 3);
   Sleep(150);
   ASSERT_TRUE(true);
 }

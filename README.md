@@ -67,10 +67,8 @@ There are a few tests/examples that I have throughout the code:
   - Also, the gtest download/build should be cleaned up
 - Documentaion (always)
 - More unit testing
-- Validate system more thoroughly
-- Get started on hardware-specific libraries
 - Take a closer look at Boost's implementation of queues
-- See the Issues tab
+- See the Issues tab and TODO.md
 
 ## Notes
 - We are using proto2, not proto3, because I (James) observed some oddities
