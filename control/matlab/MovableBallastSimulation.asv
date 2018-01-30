@@ -27,7 +27,7 @@ dtime = 0.02;
 stopTime = 2;
 
 ka = 120 * 1.2; %torque of keel (N * m)
-ks = (120* 1.2^2) + (500 * 0.25); %moment of inertia - drag of keel (rho/2 * area)
+ks = (120* 1.2^2) - (500 * 0.25); %moment of inertia - drag of keel (rho/2 * area)
 
 ku = 0; %voltage effect on arm acceleration
 kf = 0; %frictional resistance to arm acceleration
