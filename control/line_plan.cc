@@ -9,6 +9,7 @@ constexpr float LinePlan::dt;
 constexpr float LinePlan::kTackCost;
 constexpr float LinePlan::kTurnCost;
 constexpr float LinePlan::kUpwindCost;
+constexpr float LinePlan::kUpwindApproxCost;
 constexpr float LinePlan::kSailableReach;
 constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
@@ -475,16 +476,16 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
   double dnextlenda = dnorm(nextleg, dnextlegda);
 
   double firstlencost, dflencostdlen, dflencostdheading;
-  StraightLineCost(firstlen, startheading, winddir, &firstlencost,
-                   &dflencostdlen, &dflencostdheading, viable);
+  StraightLineCost(firstlen, startheading, winddir, /*is_real=*/true,
+                   &firstlencost, &dflencostdlen, &dflencostdheading, viable);
   // We don't care about the strict viability of the future upwind leg,
   // as we will be breaking it down later and so can live with it
   // pointing straight upwind.
   double nextlencost = 0, dnlencostdlen = 0, dnlencostdheading = 0;
   // TODO(james): Cost for future leg should be calculted differently
   // Comment this out for now to get actually useful results.
-  StraightLineCost(nextlen, nextheading, winddir, &nextlencost, &dnlencostdlen,
-                   &dnlencostdheading, nullptr);
+  StraightLineCost(nextlen, nextheading, winddir, /*is_real=*/false,
+                   &nextlencost, &dnlencostdlen, &dnlencostdheading, nullptr);
   LOG(INFO) << "dfirstcostdlen: " << dflencostdlen
             << " dfirstlenda: " << dfirstlenda
             << " dfirstcostdhead: " << dflencostdheading
@@ -622,8 +623,8 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   // Calculate costs for the two legs:
   double linecost, dcostdlen, dcostdheading;
   bool lineviable;
-  StraightLineCost(lena, headinga, winddir, &linecost, &dcostdlen,
-                   &dcostdheading, &lineviable);
+  StraightLineCost(lena, headinga, winddir, /*is_real=*/true, &linecost,
+                   &dcostdlen, &dcostdheading, &lineviable);
   if (viable != nullptr) *viable = lineviable && *viable;
   LOG(INFO) << "Preline diff: dcostdlen: " << dcostdlen
             << " dlenadpt: " << dlenadturnpt
@@ -632,8 +633,8 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   *cost += linecost;
   *dcostdturnpt += dcostdlen * dlenadturnpt + dcostdheading * dhadturnpt;
 
-  StraightLineCost(lenb, headingb, winddir, &linecost, &dcostdlen,
-                   &dcostdheading, &lineviable);
+  StraightLineCost(lenb, headingb, winddir, /*is_real=*/true, &linecost,
+                   &dcostdlen, &dcostdheading, &lineviable);
   if (viable != nullptr) *viable = lineviable && *viable;
   LOG(INFO) << "Postline diff: dcostdlen: " << dcostdlen
             << " dlenbdpt: " << dlenbdturnpt
@@ -752,24 +753,24 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
  * This computes both the linear cost associated with the length of the line
  * as well as scaling that cost by a factor according to how far upwind we
  * are pointed.
+ * is_real: whether This is an actual path that we are following, or
+ *   just a rough heading. If it is a rough heading, then we don't want
+ *   to penalize sailing in irons too much, because it is assumed that
+ *   we will be handling tacking at a later date.
  * viable: whether or not the current heading is even sailable.
  */
-// TODO(james): Add option to reduce upwind cost for when we are just trying to
-// approximate the cost of traversing a path without actually calculating the
-// tacks.
-// TODO(james): Also, this isn't the right spot, but don't account for obstacles
-// on future legs either.
 void LinePlan::StraightLineCost(double len, double heading, double winddir,
-                                double *cost, double *dcostdlen,
+                                bool is_real, double *cost, double *dcostdlen,
                                 double *dcostdheading, bool *viable) {
 
   // We try to supply a really large cost on sending us off on highly
   // upwind courses, although we don't want to deal with numerical issues.
   double headingnorm = util::norm_angle(winddir + M_PI - heading);
   double upwindness = std::abs(headingnorm);
+  double kUp = is_real ? kUpwindCost : kUpwindApproxCost;
   if (viable != nullptr) *viable = upwindness > kSailableReach;
   upwindness = util::Clip(upwindness, 0.00, 1.0);
-  double upwindscalar = 1.0 + kUpwindCost * (1.0 - upwindness * upwindness);
+  double upwindscalar = 1.0 + kUp * (1.0 - upwindness * upwindness);
   LOG(INFO) << "heading: " << heading << " winddir: " << winddir
             << " headingnorm: " << headingnorm << " len: " << len;
 
@@ -778,9 +779,8 @@ void LinePlan::StraightLineCost(double len, double heading, double winddir,
   if (upwindness == 1.0 || upwindness == 0.0) {
     *CHECK_NOTNULL(dcostdheading) = 0.0;
   } else {
-    *CHECK_NOTNULL(dcostdheading) = util::Sign(headingnorm) * 2.0 *
-                                    kUpwindCost * upwindness * kLengthCost *
-                                    len;
+    *CHECK_NOTNULL(dcostdheading) =
+        util::Sign(headingnorm) * 2.0 * kUp * upwindness * kLengthCost * len;
   }
 }
 

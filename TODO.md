@@ -9,10 +9,9 @@ Specific tasks:
  - Remove unused code
  - Use mutexes that can be locked twice within the same thread (also, priority inversion).
  - Switch over to radians instead of degrees for lat/lon
+ - Create some sort of CAN utilization measure
 
 Controller/Planner:
- - Currently, when approximating the cost for a future leg, penalizes going upwind too much (TODO in place)
-    (Also, shouldn't be looking at the obstacle clost of a future leg either).
  - Adaptive controller likes to let the sail luff too much, probably thinking it is getting some
    torque advantage by doing that. Don't do that.
  - Need to actually *use* the path we generate so that if we pass a

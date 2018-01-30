@@ -30,7 +30,8 @@ void TryTurnCost(double startheading, double endheading, double winddir,
 void TryCrossFinishCost(double alpha, double expcost, double expdalpha,
                         const char *desc);
 void TryStraightLineCost(double len, double heading, double winddir,
-                         double expcost, double expdlen, double, const char *);
+                         bool is_real, double expcost, double expdlen, double,
+                         const char *);
 } // namespace testing
 
 class LinePlan : public Node {
@@ -63,6 +64,9 @@ class LinePlan : public Node {
   constexpr static float kTurnCost = 0.3;
   // Scalar affecting cost associated with running upwind:
   constexpr static float kUpwindCost = 300.0;
+  // Scalar for the cost associated with an overall upwind stretch,
+  // on the assumption that we would end up adding tacking later.
+  constexpr static float kUpwindApproxCost = 2.0;
   // The nearest to the wind that we physically can sail:
   constexpr static float kSailableReach = M_PI_4;
   // The relative cost of being near obstacles.
@@ -89,7 +93,7 @@ class LinePlan : public Node {
   static void TurnCost(double startheading, double endheading, double winddir,
                        double *cost, double *dcostdstart, double *dscostdend);
   static void StraightLineCost(double len, double heading, double winddir,
-                               double *cost, double *dcostdlen,
+                               bool is_real, double *cost, double *dcostdlen,
                                double *dcostdheading, bool *viable);
 
   // Computes the cost associated with the line segment defined by (start, end)
@@ -232,9 +236,9 @@ class LinePlan : public Node {
                                    double, const char *);
   friend void testing::TryCrossFinishCost(double, double, double, const char *);
   friend void testing::TryStraightLineCost(double len, double heading,
-                                           double winddir, double expcost,
-                                           double expdlen, double,
-                                           const char *);
+                                           double winddir, bool is_real,
+                                           double expcost, double expdlen,
+                                           double, const char *);
 };
 
 #undef FRIEND_TEST_FUN

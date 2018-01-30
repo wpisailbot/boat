@@ -116,12 +116,12 @@ TEST(LinePlanUtilTest, SingleLineCostTest) {
 }
 
 void TryStraightLineCost(double len, double heading, double winddir,
-                         double expcost, double expdlen, double expdheading,
-                         const char *desc) {
+                         bool is_real, double expcost, double expdlen,
+                         double expdheading, const char *desc) {
   double cost, dlen, dheading;
   bool viable;
-  LinePlan::StraightLineCost(len, heading, winddir, &cost, &dlen, &dheading,
-                             &viable);
+  LinePlan::StraightLineCost(len, heading, winddir, is_real, &cost, &dlen,
+                             &dheading, &viable);
   EXPECT_EQ(expcost, cost) << desc << ": Incorrect cost";
   EXPECT_EQ(expdlen, dlen) << desc << ": Incorrect costdlen";
   EXPECT_EQ(expdheading, dheading) << desc << ": Incorrect costdheading";
@@ -132,13 +132,13 @@ void TryStraightLineCost(double len, double heading, double winddir,
 
   double dcost;
   double eps = 1e-5;
-  LinePlan::StraightLineCost(len + eps, heading, winddir, &dcost, &dlen,
-                             &dheading, nullptr);
+  LinePlan::StraightLineCost(len + eps, heading, winddir, is_real, &dcost,
+                             &dlen, &dheading, nullptr);
   EXPECT_NEAR(dlen, (dcost - cost) / eps, 0.001) << desc
                                                  << ": Bad empirical dlen";
 
-  LinePlan::StraightLineCost(len, heading + eps, winddir, &dcost, &dlen,
-                             &dheading, nullptr);
+  LinePlan::StraightLineCost(len, heading + eps, winddir, is_real, &dcost,
+                             &dlen, &dheading, nullptr);
   EXPECT_NEAR(dheading, (dcost - cost) / eps, 0.001)
       << desc << ": Bad empirical dheading";
 }
@@ -146,12 +146,16 @@ void TryStraightLineCost(double len, double heading, double winddir,
 TEST(LinePlanUtilTest, StraightLineTest) {
   constexpr double kL = LinePlan::kLengthCost;
   constexpr double kU = LinePlan::kUpwindCost;
+  constexpr double kA = LinePlan::kUpwindApproxCost;
 
   double expcost = kL;
   double expdlen = kL;
   double expdheading = 0.0;
-  TryStraightLineCost(1.0, 0.0, 0.0, expcost, expdlen, expdheading,
+  TryStraightLineCost(1.0, 0.0, 0.0, true, expcost, expdlen, expdheading,
                       "Downwind leg");
+  // For downwind, future leg should be the same
+  TryStraightLineCost(1.0, 0.0, 0.0, false, expcost, expdlen, expdheading,
+                      "Downwind future leg");
 
   double heading = 0.5;
   double len = 2.0;
@@ -159,13 +163,24 @@ TEST(LinePlanUtilTest, StraightLineTest) {
   expcost = expdlen * len;
   // d(1 - (1 - h)^2) / dh = 2 * (1 - h)
   expdheading = -kL * 2.0 * kU * (1.0 - heading) * len;
-  TryStraightLineCost(len, heading, M_PI, expcost, expdlen, expdheading,
+  TryStraightLineCost(len, heading, M_PI, true, expcost, expdlen, expdheading,
                       "Upwind leg");
 
   heading *= -1.0;
   expdheading *= -1.0;
-  TryStraightLineCost(len, heading, M_PI, expcost, expdlen, expdheading,
+  TryStraightLineCost(len, heading, M_PI, true, expcost, expdlen, expdheading,
                       "Upwind leg, other side");
+
+  // For upwind, future leg should be lower cost
+  heading *= -1.0;
+  expdheading *= -1.0;
+  expdlen = kL * (1.0 + kA * (1.0 - (1.0 - heading) * (1.0 - heading)));
+  expcost = expdlen * len;
+  // d(1 - (1 - h)^2) / dh = 2 * (1 - h)
+  expdheading = -kL * 2.0 * kA * (1.0 - heading) * len;
+  TryStraightLineCost(len, heading, M_PI, false, expcost, expdlen, expdheading,
+                      "Upwind future leg");
+
 }
 
 TEST(LinePlanUtilTest, LinePairCostTest) {
