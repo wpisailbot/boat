@@ -17,8 +17,8 @@ stage1orig = 18/52;
 stage2orig = 18/52;
 
 dtheta = pi/64;
-heelRange = -32:1:32;
-centerRange = -16:1:16;
+heelRange = -10:1:10;
+centerRange = -32:1:32;
 tau = zeros(length(heelRange),length(centerRange));
 tauOrig = zeros(length(heelRange),length(centerRange));
 rightingMoment = zeros(length(heelRange),length(centerRange));
@@ -38,11 +38,11 @@ for heel=heelRange
        torque = calcMBTorque(heel*dtheta, centerDev*dtheta, stage1, stage2, load);
        pctTauMax = abs(torque)/MBMotorStallTorque;
        rpmAtLoad = (1-pctTauMax)*MBMotorFreeSpeed*stage1*stage2; % rpm
-       tau(heel+33,centerDev+17) = abs(torque);
-       rpm(heel+33,centerDev+17) = rpmAtLoad;
+       tau(heel+11,centerDev+33) = abs(torque);
+       rpm(heel+11,centerDev+33) = rpmAtLoad;
 
        I = pctTauMax*(MBMotorStallCurrent-MBMotorFreeCurrent)+MBMotorFreeCurrent;
-       current(heel+33,centerDev+17) = I;
+       current(heel+11,centerDev+33) = I;
        if I > maxI
            maxI = I;
        end
@@ -53,7 +53,7 @@ for heel=heelRange
            end
        end
 
-       rightingMoment(heel+33,centerDev+17) = calcMBRightingMoment(heel*dtheta, centerDev*dtheta, load);
+       rightingMoment(heel+11,centerDev+33) = calcMBRightingMoment(heel*dtheta, centerDev*dtheta, load);
    end
 end
 
@@ -64,23 +64,23 @@ for heel=heelRange
        torque = calcMBTorque(heel*dtheta, centerDev*dtheta, stage1orig, stage2orig, load);
        pctTauMax = abs(torque)/MBMotorStallTorque;
        rpmAtLoad = (1-pctTauMax)*MBMotorFreeSpeed*stage1orig*stage2orig; % rpm
-       tauOrig(heel+33,centerDev+17) = abs(torque);
-       rpmOrig(heel+33,centerDev+17) = rpmAtLoad;
+       tauOrig(heel+11,centerDev+33) = abs(torque);
+       rpmOrig(heel+11,centerDev+33) = rpmAtLoad;
    end
 end
 
-heelIdx = round((-pi/6)/dtheta+33);
-centerDevStartIdx = round(-pi/4/dtheta+17);
-centerDevEndIdx = round(pi/4/dtheta+17);
+heelIdx = round((-pi/6)/dtheta+11);
+centerDevStartIdx = round(-pi/4/dtheta+33);
+centerDevEndIdx = round(pi/4/dtheta+33);
 
 centerDevRange = centerDevStartIdx:centerDevEndIdx;
 
-for centerDevIdx=centerDevRange
-   dtime = dtheta/(rpm(heelIdx, centerDevIdx)*2*pi/60);
-   dtimeOrig = dtheta/(rpmOrig(heelIdx, centerDevIdx)*2*pi/60);
-   time = time + dtime;
-   timeOrig = timeOrig + dtimeOrig;
-end
+%for centerDevIdx=centerDevRange
+%   dtime = dtheta/(rpm(heelIdx, centerDevIdx)*2*pi/60);
+%   dtimeOrig = dtheta/(rpmOrig(heelIdx, centerDevIdx)*2*pi/60);
+%   time = time + dtime;
+%   timeOrig = timeOrig + dtimeOrig;
+%end
 
 figure
 newsurf = surf(centerRange*dtheta, heelRange*dtheta, tau, 'FaceColor', [255,100,0]/255);
@@ -114,8 +114,8 @@ zlabel('Righting Moment')
 
 disp(maxI)
 disp(maxInomrange)
-disp(time)
-disp(timeOrig)
+%disp(time)
+%disp(timeOrig)
 
 % tau_m = calcMBTorque(-pi/2, 0, stage1, stage2, load);
 %

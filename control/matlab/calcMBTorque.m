@@ -19,12 +19,12 @@ function [ tau_m ] = calcMBTorque( heel, theta, stage1, stage2,  load)
                 0 0 1];
   grav_mb = R_shaft_mb * grav_shaft;
   % The gravity along the Y-axis will produce the torque
-  armLen = 25.25;
+  armLen = 25.25 * .0254;
   tau = grav_mb(2) * armLen;
 
   effectiveLoad = load*tau;
 
-  tau_m = effectiveLoad*stage1*stage2/0.9/0.9;
+  tau_m = effectiveLoad*stage1*stage2;
 
 end
 
