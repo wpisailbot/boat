@@ -83,7 +83,6 @@ void LineTacker::ProcessWaypoints(const msg::WaypointList &msg) {
   recalc_zero_ = !msg.defined_start();
   repeat_ = msg.repeat();
   int offset = recalc_zero_ ? 1 : 0;
-  repeat_ = msg.repeat();
 
   int cnt = std::min(msg.points_size() - starti, N_WAYPOINTS - offset);
   for (int i = 0; i < cnt; ++i) {

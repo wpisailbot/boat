@@ -353,6 +353,58 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   EXPECT_GT(orig_alpha, alpha)
       << "Expected alpha to decrease to avoid obstacle";
   alpha = 0.5;
+} // BackPassTestOnePoint
+
+namespace {
+void ExpectCentered(std::pair<Point, Point> gate, Point gatept,
+                    const char *debug) {
+  EXPECT_EQ(gatept, (gate.first + gate.second) / 2.0) << debug;
+}
+void ExpectNorm(std::pair<Point, Point> gate, double norm, const char *debug) {
+  EXPECT_EQ(norm, (gate.second - gate.first).norm()) << debug;
+}
+}  // namespace
+TEST(LinePlanUtilTest, MakeGateFromPointsTest) {
+  // Check that we get sane output when all three inputs
+  // identical.
+  Point prev(0, 0), gatept(0, 0), next(0, 0);
+  std::pair<Point, Point> gate =
+      LinePlan::MakeGateFromWaypoints(gatept, prev, next);
+  ExpectNorm(gate, LinePlan::kGateWidth, "All same gate should be normalized");
+  ExpectCentered(gate, gatept, "All three same gate should be centered");
+  // Ensure apporpiate outputs when either endpoint is on
+  // the gatept
+  prev << -1.0, 0.0;
+  gate = LinePlan::MakeGateFromWaypoints(gatept, prev, next);
+  ExpectNorm(gate, LinePlan::kGateWidth, "Next same gate should be normalized");
+  ExpectCentered(gate, gatept, "Next same should be centered");
+  EXPECT_EQ(0.0, (gate.second - gate.first).dot(gatept - prev))
+      << "Gate should be perendicular to previous segment";
+  // Do the same, but with offset gatept
+  gatept = prev;
+  gate = LinePlan::MakeGateFromWaypoints(gatept, prev, next);
+  ExpectNorm(gate, LinePlan::kGateWidth, "Prev same gate should be normalized");
+  ExpectCentered(gate, gatept, "Prev same should be centered");
+  EXPECT_EQ(0.0, (gate.second - gate.first).dot(next - gatept))
+      << "Gate should be perendicular to following segment";
+  // Check in-line points
+  gatept << 0.0, 0.0;
+  next << 2.0, 0.0;
+  gate = LinePlan::MakeGateFromWaypoints(gatept, prev, next);
+  ExpectNorm(gate, LinePlan::kGateWidth, "In line gate should be normalized");
+  ExpectCentered(gate, gatept, "In line Should be centered");
+  EXPECT_EQ(0.0, (gate.second - gate.first).dot(next - gatept))
+      << "Gate should be perendicular to path";
+  // Check normal condition:
+  prev << 0.0, -3.0;
+  next << -3.0, 0.0;
+  gate = LinePlan::MakeGateFromWaypoints(gatept, prev, next);
+  ExpectNorm(gate, LinePlan::kGateWidth, "Normal gate should be normalized");
+  EXPECT_EQ(gatept, gate.first) << "Gate should start at gatept";
+  double xyoffset = LinePlan::kGateWidth / std::sqrt(2.0);
+  gatept << gatept.x() + xyoffset, gatept.y() + xyoffset;
+  EXPECT_EQ(gatept, gate.second)
+      << "Gate should end in first quadrant";
 }
 
 // Similar to above, but now exercising multiple-point stuff (i.e., exercising

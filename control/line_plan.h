@@ -21,6 +21,7 @@ class TEST_FUN(LinePlanUtilTest, StraightLineTest);
 class TEST_FUN(LinePlanUtilTest, LinePairCostTest);
 class TEST_FUN(LinePlanUtilTest, ObstacleCostTest);
 class TEST_FUN(LinePlanUtilTest, BackPassTestOnePoint);
+class TEST_FUN(LinePlanUtilTest, MakeGateFromPointsTest);
 class BackPassTest;
 class GenerateHypothesesTest;
 class OptimizerTest;
@@ -156,6 +157,15 @@ class LinePlan : public Node {
                        const std::vector<Polygon> &obstacles, double cur_yaw,
                        std::vector<Vector2d> *tackpts, double *alpha);
 
+  // Compute the gate attached to a waypoint given the waypoints before and
+  // after it. If either the first or last waypoint overlaps with the gate
+  // waypoint, create gate with middle waypoint in middle of the gate. If all
+  // three waypoints are the same (or extremely near), then align gate with
+  // X-axis.
+  static std::pair<Point, Point> MakeGateFromWaypoints(const Point &gatept,
+                                                       const Point &prevpt,
+                                                       const Point &nextpt);
+
   /**
    * Update the transformations on the obstacles, assuming some change to either
    * obstacles_lonlat_ or to the transformations.
@@ -229,6 +239,7 @@ class LinePlan : public Node {
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, LinePairCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, ObstacleCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, BackPassTestOnePoint);
+  FRIEND_TEST_FUN(testing::LinePlanUtilTest, MakeGateFromPointsTest);
   friend class testing::BackPassTest;
   friend class testing::GenerateHypothesesTest;
   friend class testing::OptimizerTest;

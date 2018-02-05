@@ -21,13 +21,33 @@ LinePlan::LinePlan()
   RegisterHandler<msg::WaypointList>("waypoints",
                                      [this](const msg::WaypointList &msg) {
     std::unique_lock<std::mutex> lck(data_mutex_);
-    // TODO(james): Reproduce logic from line_tacking to handle sundry flags in
-    // the WaypointsList message.
-    // Right now behaves as if restart=true, defined_start=true, repeat=false
+    // TODO(james): Support repeat flag.
+    // TODO(james): Test properly
+    if (msg.repeat()) {
+      LOG(ERROR) << "Repeating waypoints not supported in line planner";
+    }
+
     waypoints_lonlat_.clear();
-    next_waypoint_ = 1;
+
+    if (msg.restart() || next_waypoint_ == 0) {
+      next_waypoint_ = 1;
+    }
+    next_waypoint_ = std::min(next_waypoint_.load(), msg.points_size() - 1);
+
+    if (!msg.defined_start()) {
+      waypoints_lonlat_.push_back(boat_pos_lonlat_);
+      // There's some ambiguity about what to do with the defined_start flag
+      // if the user does not request a restart, but for now only worry about
+      // if they do request a restart.
+    }
+
     for (const msg::Waypoint &pt : msg.points()) {
       waypoints_lonlat_.emplace_back(pt.x(), pt.y());
+    }
+
+    if (lonlat_scale_.x() == 0) {
+      // We do not have a lat/lon reference yet, so use first waypoint
+      ResetRef(waypoints_lonlat_[0]);
     }
     UpdateWaypoints();
   });
@@ -95,45 +115,80 @@ void LinePlan::UpdateObstacles() {
 
 void LinePlan::UpdateWaypoints() {
   // Iterate through every waypoint and convert appropriately.
-  // TODO(james): Figure out better way to receive waypoints/parameterize
   size_t Nway = waypoints_lonlat_.size();
   if (Nway == 0) return;
   waypoints_.resize(Nway);
 
-  Point nextpt = LonLatToFrame(waypoints_lonlat_[0]);
-  waypoints_[0] = std::make_pair(nextpt, nextpt); // Create sane first waypoint.
-  // The trip leg leading up to the current waypoint.
-  Point preleg = (nextpt - boat_pos_).normalized();
-
-  nextpt = LonLatToFrame(waypoints_lonlat_[1]);
-  preleg = (nextpt - LonLatToFrame(waypoints_lonlat_[0])).normalized();
+  Point curpt = LonLatToFrame(waypoints_lonlat_[0]);
+  waypoints_[0] = std::make_pair(curpt, curpt); // Create sane first waypoint.
+  Point nextpt = LonLatToFrame(waypoints_lonlat_[1]);
 
   for (size_t ii = 1; ii < Nway-1; ++ii) {
-    Point curpt = nextpt;
+    Point prevpt = curpt;
+    curpt = nextpt;
     nextpt = LonLatToFrame(waypoints_lonlat_[ii+1]);
-    Point nextleg = (nextpt - curpt).normalized();
-    Point lineseg = preleg - nextleg;
-    double norm = lineseg.norm();
-    if (norm < 1e-3) {
-      // If normalizing lineseg would be unstable, just go with
-      // perpendicular to nextleg.
-      lineseg << -nextleg.y(), nextleg.x();
-      lineseg.normalize();
-    } else {
-      lineseg /= norm;
-    }
-    lineseg *= kGateWidth;
-    // For the line we are attempting to cross, we shall
-    // attempt to cross a constant length line that is halfway
-    // between the legs before/after the waypoint and is on the
-    // outside of the two (essentially, assuming we are going around
-    // a convex polygon).
-    waypoints_[ii] = std::make_pair(curpt, curpt + lineseg);
-    preleg = nextleg;
+    waypoints_[ii] = MakeGateFromWaypoints(curpt, prevpt, nextpt);
   }
   // Make final waypoint a point rather than gate.
   Point lastpt = LonLatToFrame(waypoints_lonlat_[Nway-1]);
   waypoints_[Nway-1] = std::make_pair(lastpt, lastpt);
+}
+
+// Produces a gate at the waypoint gatept given previous and next waypoints.
+// Assumes we are going around a convex polygon, so will place gate on outside
+// of the (prevpt, gatept, nextpt) segments.
+// static
+std::pair<Point, Point> LinePlan::MakeGateFromWaypoints(const Point &gatept,
+                                                        const Point &prevpt,
+                                                        const Point &nextpt) {
+  Point preleg = gatept - prevpt;
+  Point postleg = nextpt - gatept;
+  double prev2gatedist = preleg.norm();
+  double next2gatedist = postleg.norm();
+  // Minimum distance before we decide that things are close enough to be
+  // treated as the same. Primarily here to avoid numerical instability.
+  double mindist = 1e-6;
+  Point gateseg;
+  bool centered = false;
+  if (prev2gatedist < mindist && next2gatedist < mindist) {
+    // The points are all on top of each other, just give a horizontal gate
+    Point offset(kGateWidth / 2.0, 0.0);
+    return {gatept - offset, gatept + offset};
+  } else if (prev2gatedist < mindist) {
+    // For these two, center the gate and use a gate perendicular to
+    // the one valid segment.
+    centered = true;
+    postleg /= next2gatedist;
+    gateseg << -postleg.y(), postleg.x();
+  } else if (next2gatedist < mindist) {
+    centered = true;
+    preleg /= prev2gatedist;
+    gateseg << -preleg.y(), preleg.x();
+  } else {
+    centered = false; // Strictly unnecessary
+    preleg /= prev2gatedist;
+    postleg /= next2gatedist;
+    gateseg = preleg - postleg;
+    double gatenorm = gateseg.norm();
+    if (gatenorm < mindist) {
+      // In this case, preleg == postleg, and so we are going
+      // straight; treat same as centered scenarios.
+      centered = true;
+      gateseg << -preleg.y(), preleg.x();
+      // preleg is already normalized
+    } else {
+      gateseg /= gatenorm;
+    }
+  }
+  gateseg *= kGateWidth;
+
+  Point gatestart = gatept;
+  Point gateend = gatept + gateseg;
+  if (centered) {
+    gatestart -= gateseg / 2.0;
+    gateend -= gateseg / 2.0;
+  }
+  return {gatestart, gateend};
 }
 
 void LinePlan::UpdateWaypointInc() {

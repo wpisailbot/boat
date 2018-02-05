@@ -41,6 +41,7 @@ message WaypointList {
   // to points[0] first; if true, will attempt to go to points[1], treating points[0]
   // as the start point (has implications for tacking).
   optional bool defined_start = 3 [default = true];
+  // Whether to loop through the waypoints continuously
   optional bool repeat = 4 [default = false];
 }
 
