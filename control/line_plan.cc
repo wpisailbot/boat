@@ -482,8 +482,6 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
   // as we will be breaking it down later and so can live with it
   // pointing straight upwind.
   double nextlencost = 0, dnlencostdlen = 0, dnlencostdheading = 0;
-  // TODO(james): Cost for future leg should be calculted differently
-  // Comment this out for now to get actually useful results.
   StraightLineCost(nextlen, nextheading, winddir, /*is_real=*/false,
                    &nextlencost, &dnlencostdlen, &dnlencostdheading, nullptr);
   LOG(INFO) << "dfirstcostdlen: " << dflencostdlen
@@ -753,7 +751,7 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
  * This computes both the linear cost associated with the length of the line
  * as well as scaling that cost by a factor according to how far upwind we
  * are pointed.
- * is_real: whether This is an actual path that we are following, or
+ * is_real: Whether this is an actual path that we are following, or
  *   just a rough heading. If it is a rough heading, then we don't want
  *   to penalize sailing in irons too much, because it is assumed that
  *   we will be handling tacking at a later date.
