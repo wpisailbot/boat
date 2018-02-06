@@ -1,11 +1,13 @@
 close all
+clc;
+clear all;
 
-phi = 10;  %heel angle degrees
-phi_d = 0; 
-phi_dd = 0;
-gamma = 0;  %arm angle degrees
-gamma_d = 0;
-gamma_dd = 0;
+phi_0= 10;  %initial heel angle degrees
+phi_d_0 = 0; 
+
+gamma_0 = 0;  %initial arm angle degrees
+gamma_d_0 = 0;
+
 
 
 MBMotorStallTorquekgcm = 100; % kg-cm
@@ -15,7 +17,7 @@ MBMotorFreeCurrent = 5; % Amps
 MBMotorFreeSpeed = 86; % rpm
 MBmaxAngle = 45;
 
-load = 15; % lbf
+load = 22; % lbf
 
 
 stage1 = 16/64;
@@ -27,70 +29,104 @@ dtime = 0.02;
 stopTime = 2;
 
 ka = 120 * 1.2; %torque of keel (N * m)
-ks = (120* 1.2^2) + (500 * 0.25); %moment of inertia - drag of keel (rho/2 * area)
+ks = (500 * 0.25); % drag of keel (rho/2 * area)
+j_phi = 120* 1.25^2; %inertia of keel
 
-ku = 0; %voltage effect on arm acceleration
-kf = 0; %frictional resistance to arm acceleration
+ku = 120; %voltage effect on arm acceleration
+kf = 120; %frictional resistance to arm acceleration
+j_gamma = load * 4.45 * 1.0^2; %inertia of balast
 
 voltageInput = 0;
 
-phi_array = [];
-count = 1;
 
+numPoints = 33;
+moment = zeros(numPoints,numPoints);
 
-for t = 0:dtime:stopTime  %simulate for 30 seconds at 0.1 timestep
+p = -pi/6:pi/96:pi/6;
+g = -pi/4:pi/64:pi/4;
+pfit = zeros((numPoints^2),1);
+gfit = zeros((numPoints^2),1);
+mfit = zeros((numPoints^2),1);
+tfit = zeros((numPoints^2),1);
 
-       
-       
-       phi_dd = - ka * deg2rad(phi) - ks * phi_d + calcMBRightingMoment(deg2rad(phi), deg2rad(gamma), load);
-       gamma_dd = ku * voltageInput - kf * gamma_d - calcMBTorque(deg2rad(phi), deg2rad(gamma), stage1, stage2, load);
- 
-       phi = phi + dtime * phi_d;  %step forward 
-       phi_d = phi_d + dtime * phi_dd;
-       gamma = gamma + dtime * gamma_d; 
-       gamma_d = gamma_d + dtime*gamma_dd;
-       phi_array(count) = phi;
-       count = count + 1;
-       if gamma > MBmaxAngle
-           gamma = MBmaxAngle;
-       end
-       if gamma < -MBmaxAngle
-           gamma = -MBmaxAngle;
-       end
-       
-       
-       %animate
-       Pm = 5*[sin(deg2rad(phi)),cos(deg2rad(phi))];
-       Pb = -3*[sin(deg2rad(gamma)),cos(deg2rad(gamma))];
-       
-       axis(gca,'equal');
-       axis([-3,3,-5,7]);
-       
-       mast = line([0,Pm(1)],[0,Pm(2)]);
-       ballast = line([0,Pb(1)],[0,Pb(2)]);
-       
-       
-       %dispay for time
-       pause(dtime)
-       
-       
-       delete(mast);
-       delete(ballast);
-       
+for i = 1:1:numPoints
+    for j = 1:1:numPoints
+        index = (i-1)*numPoints + j;
+        pfit(index,1) = p(i);
+        gfit(index,1) = g(j);
+        mfit(index,1) = calcMBRightingMoment(p(i),g(j),load);
+        tfit(index,1) = calcMBTorque(p(i),g(j),stage1,stage2,load);
+    end
 end
+momentApprox = fit([pfit,gfit],mfit,'poly11');
+torqueApprox = fit([pfit,gfit],tfit,'poly11');
+
+coeffs = coeffvalues(momentApprox);
+moment_phi = coeffs(2);
+moment_gamma = coeffs(3);
+
+coeffs = coeffvalues(torqueApprox);
+torque_phi = coeffs(2);
+torque_gamma = coeffs(3);
+
+% hold on
+% figure
+% plot(momentApprox,[pfit,gfit],mfit)
+% ylabel('Angle from center (rad)')
+% xlabel('Heel angle (rad)')
+% zlabel('Righting Moment')
+% 
+% figure
+% plot(torqueApprox,[pfit,gfit],tfit)
+% ylabel('Angle from center (rad)')
+% xlabel('Heel angle (rad)')
+% zlabel('Motor Torque')
 
 
-close all
-plot(0:dtime:stopTime,phi_array);
+syms gamma phi gamma_d phi_d ;
+phi_dd =( - (ka + moment_phi) * phi - ks * phi_d + moment_gamma * gamma)/j_phi;
+gamma_dd = (-kf * gamma_d + torque_phi * phi + torque_gamma * gamma)/j_gamma;
 
 
+[A,B] = equationsToMatrix([phi_d,phi_dd,gamma_d,gamma_dd],[phi,phi_d,gamma,gamma_d]);
+B = [0;0;0;ku];
+A = double(A);
+eigenValues = vpa(eig(A),3);
+cont = ctrb(A,B);
 
-% tau_m = calcMBTorque(-pi/2, 0, stage1, stage2, load);
-%
-% pctTauMax = abs(tau_m)/MBMotorStallTorque
-%
-% maxI = pctTauMax*(MBMotorStallCurrent-MBMotorFreeCurrent)+MBMotorFreeCurrent % Amps
-% rpmAtLoad = (1-pctTauMax)*MBMotorFreeSpeed % rpm
-% traverseSpeed = rpmAtLoad*stage1*stage2 % rpm
+Q = [10 0 0 0;
+     0 1 0 0; 
+     0 0 0 0; 
+     0 0 0 1];
+ 
+R = 0.1;
+k = lqr(A,B,Q,R)
+
+tspan = 0:0.1:5;
+y0 = [0.1,0,0,0];
+yf = [0.1;0;0;0];
+[t,y] = ode45(@(t,y) A*y - k*(y - yf) , tspan, y0);
+
+% hold on
+figure
+subplot(2,2,1)
+plot(t,y(:,1));
+xlabel('time');
+ylabel('heel (rad)');
+
+subplot(2,2,2)
+plot(t,y(:,2));
+xlabel('time');
+ylabel('heel vel (rad/s)');
+
+subplot(2,2,3)
+plot(t,y(:,3));
+xlabel('time');
+ylabel('arm (rad)');
+
+subplot(2,2,4)
+plot(t,y(:,4));
+xlabel('time');
+ylabel('arm vel (rad/s)');
 
 
