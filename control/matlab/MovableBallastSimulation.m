@@ -5,15 +5,16 @@ stage2 = 16/64;
 G = stage1 * stage2;
 Vmax = 12;
 
+mbmass = 10;
 J = 12 * 1.2^2; % kg * m^2
-Jmb = 6 * .7^2; % kg * m^2
+Jmb = mbmass * .7^2; % kg * m^2
 MBMotorStallTorque = 9.8 / G; % N-m
 MBMotorStallCurrent = 28; % Amps
 MBMotorFreeCurrent = 5; % Amps
 MBMotorFreeSpeed = 86 * 2 * pi / 60 * G; % rad / sec
 MBmaxAngle = 45;
 
-rightingweight = 60; % N
+rightingweight = mbmass * 9.8; % N
 
 ka = 120 * 1.2 / J; %torque of keel when heeled at 90 deg (1 / s^2)
 %ka = 60 * 1.2;
@@ -35,25 +36,41 @@ ku = Kt / (R * Jmb); %voltage effect on arm acceleration
 kf = Kt / (Kv * R * Jmb); %frictional resistance to arm acceleration
 
 xgoal = desx(phigoal)
-[A, B, c] = linsys(xgoal)
+xnaught = xgoal;
+xnaught(1) = -0.5;
+[A, B, ~, Aslow, Bslow, ~] = linsys(xnaught)
+Aslow
+Bslow
 ctr = rank(ctrb(A, B))
-eigA = eig(A)
+[vecA, eigA] = eig(A)
+[vecAslow, eigAslow] = eig(Aslow)
 K = lqr(A, B, diag([100.1 10.0 1.0 1.0]), [1e0])
+Kfast = 5.1;
+Kslow = lqr(Aslow, Bslow, diag([0.0 10.0 1.0]), [1e1])
+Kslow(1) = 0;
 eigABK = eig(A - B * K)
+eigABKslow = eig(Aslow - Bslow * Kslow)
 f = @(t, x) full_dyn(x, utrans(x, K * (xgoal - x)), t);
+fsplit = @(t, x) full_dyn(x, utrans(x, Kfast * (Kslow * (xgoal([1 3 4]) - x([1 3 4])) - x(2))), t);
 %f = @(t, x) simple_dyn(x, K * (xgoal - x));
 %f = @(t, x) A * x + B * K * (xgoal - x);
-[ts, xs] = ode45(f, [0 30], x0);
+%[ts, xs] = ode45(f, [0 30], x0);
+[ts, xs] = ode45(fsplit, [0 200], x0);
+
+uprimes = K * (repmat(xgoal, 1, length(ts)) - xs');
+gammadotdes = Kslow * (repmat(xgoal([1 3 4]), 1, length(ts)) - xs(:, [1 3 4])');
+uprimes = Kfast * (gammadotdes - xs(:, 2)');
+
 subplot(221);
-plot(ts, xs(:, [1 2]));
-legend('\gamma', 'gammadot');
+plot(ts, [xs(:, [1 2]) gammadotdes']);
+legend('\gamma', 'gammadot', 'gammadotdes');
 subplot(222);
 plot(ts, xs(:, [3 4]));
 legend('\phi', 'phidot');
 subplot(223);
-uprimes = K * (repmat(xgoal, 1, length(ts)) - xs');
 plot(ts, uprimes');
-title('gammaddot');
+legend('gammaddot');
+title('Control Inputs');
 subplot(224);
 for i = 1:length(ts)
   u(i) = max(min(utrans(xs(i, :), uprimes(i)), Vmax), -Vmax);
@@ -86,14 +103,16 @@ function xdot = full_dyn(x, u, t)
   phi = x(3);
   phidot = x(4);
   D = 50;
-%  if t > 15
-%    D = 100;
-%  end
+  if t > 100
+    D = 0;
+  end
   D = D * cos(phi);
   phiddot = -ka * sin(phi) - ks * phidot + (MBRight(phi, gamma) + D) / J;
   gammaddot = ku * u - kf * gammadot + MBTorque(phi, gamma) / Jmb;
-  if abs(gamma) > pi / 2
-    gammadot = 0;
+  if gamma > pi / 2
+    gammadot = min(gammadot, 0);
+  elseif gamma < -pi / 2
+    gammadot = max(gammadot, 0);
   end
   xdot = [gammadot; gammaddot; phidot; phiddot];
 end
@@ -105,7 +124,8 @@ function xdot = simple_dyn(x, uprime)
   gammadot = x(2);
   phi = x(3);
   phidot = x(4);
-  phiddot = -ka * sin(phi) - ks * phidot + (MBRight(phi, gamma) + 50) / J;
+  D = 00;
+  phiddot = -ka * sin(phi) - ks * phidot + (MBRight(phi, gamma) + D) / J;
   gammaddot = uprime;
   xdot = [gammadot; gammaddot; phidot; phiddot];
 end
@@ -120,7 +140,7 @@ function u = utrans(x, gammaddot_des)
 end
 
 % Compute linearized system as function of uprime
-function [A, B, c] = linsys(x0);
+function [A, B, c, Aslow, Bslow, cslow] = linsys(x0);
   global ka ks ku kf J;
   % Start with clearly linear terms, then figure out MBRight
   % Note that we account for gammaddot in uprime, so zero out kf.
@@ -134,6 +154,13 @@ function [A, B, c] = linsys(x0);
 
   Aright = jacobian(@(y) MBRight(y(1), y(2)), x0([3 1]));
   A(4, [3 1]) = A(4, [3 1]) + Aright;
+
+  % The "slow" components of the system, where we
+  % now treat gammadot as an input.
+  slow = [1 3 4];
+  Aslow = A(slow, slow);
+  Bslow = [1; 0; 0];
+  cslow = c(slow);
 end
 
 % Compute needed x for a desired phi
