@@ -1,5 +1,5 @@
 function mb_sim(x0, phigoal)
-global Vmax ka ks ku kf J Jmb rightingweight;
+global Vmax ka ks kssq ku kf J Jmb rightingweight;
 stage1 = 16/64;
 stage2 = 16/64;
 G = stage1 * stage2;
@@ -18,8 +18,14 @@ rightingweight = mbmass * 9.8; % N
 
 ka = 120 * 1.2 / J; %torque of keel when heeled at 90 deg (1 / s^2)
 %ka = 60 * 1.2;
-ks = 500 * 0.25 / J; % drag of keel (rho/2 * area / J -- should end up as N * m * sec / (rad * kg * m^2)= 1 / sec)
-ks = 10 * ks
+% drag of keel
+% Multiplying by radius thrice: twice for rotation->real velocity; once for force->torque
+% 0.5 * rho * area * C(=1) * u_0(=nominal velocity=nom rot vel * nom radius) * nom radius * nom radius / J
+% = kg / m^3 * m^2 * m / s * m^2 / (kg * m^2) = 1 / sec
+nom_rad = 0.5;
+nom_vel = 1.0;
+kssq = 0.5 * 1000 * 0.25 * 1 * nom_rad^3 / J;
+ks = ks * nom_vel;
 
 % V = IR + omega / Kv
 % alpha = KtI / J
@@ -45,17 +51,18 @@ ctr = rank(ctrb(A, B))
 [vecA, eigA] = eig(A)
 [vecAslow, eigAslow] = eig(Aslow)
 K = lqr(A, B, diag([100.1 10.0 1.0 1.0]), [1e0])
-Kfast = 5.1;
-Kslow = lqr(Aslow, Bslow, diag([0.0 10.0 1.0]), [1e1])
+Kfast = 15.1;
+Kslow = lqr(Aslow, Bslow, diag([0.0 1e1 1e1]), [1e2])
 Kslow(1) = 0;
+%Kslow = [0 -0.1 -0.00]
 eigABK = eig(A - B * K)
-eigABKslow = eig(Aslow - Bslow * Kslow)
+[vecABKslow, eigABKslow] = eig(Aslow - Bslow * Kslow)
 f = @(t, x) full_dyn(x, utrans(x, K * (xgoal - x)), t);
 fsplit = @(t, x) full_dyn(x, utrans(x, Kfast * (Kslow * (xgoal([1 3 4]) - x([1 3 4])) - x(2))), t);
 %f = @(t, x) simple_dyn(x, K * (xgoal - x));
 %f = @(t, x) A * x + B * K * (xgoal - x);
 %[ts, xs] = ode45(f, [0 30], x0);
-[ts, xs] = ode45(fsplit, [0 200], x0);
+[ts, xs] = ode45(fsplit, [0 10], x0);
 
 uprimes = K * (repmat(xgoal, 1, length(ts)) - xs');
 gammadotdes = Kslow * (repmat(xgoal([1 3 4]), 1, length(ts)) - xs(:, [1 3 4])');
@@ -63,6 +70,7 @@ uprimes = Kfast * (gammadotdes - xs(:, 2)');
 
 subplot(221);
 plot(ts, [xs(:, [1 2]) gammadotdes']);
+ylim([-1, 1])
 legend('\gamma', 'gammadot', 'gammadotdes');
 subplot(222);
 plot(ts, xs(:, [3 4]));
@@ -96,7 +104,7 @@ end
 % State vector is of form [gamma, gammadot, phi, phidot]
 % Full dynamics, with u as motor voltage
 function xdot = full_dyn(x, u, t)
-  global ka ks ku kf J Jmb Vmax;
+  global ka ks kssq ku kf J Jmb Vmax;
   u = max(min(u, Vmax), -Vmax);
   gamma = x(1);
   gammadot = x(2);
@@ -107,7 +115,7 @@ function xdot = full_dyn(x, u, t)
     D = 0;
   end
   D = D * cos(phi);
-  phiddot = -ka * sin(phi) - ks * phidot + (MBRight(phi, gamma) + D) / J;
+  phiddot = -ka * sin(phi) - kssq * phidot * abs(phidot) + (MBRight(phi, gamma) + D) / J;
   gammaddot = ku * u - kf * gammadot + MBTorque(phi, gamma) / Jmb;
   if gamma > pi / 2
     gammadot = min(gammadot, 0);

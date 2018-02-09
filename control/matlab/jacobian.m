@@ -7,6 +7,6 @@ for ii = 1:size(J, 2)
   x2 = x0;
   x1(ii) = x1(ii) - eps;
   x2(ii) = x2(ii) + eps;
-  J(:, ii) = (f(x2) - f(x1)) / eps;
+  J(:, ii) = (f(x2) - f(x1)) / 2 / eps;
 end
 end
