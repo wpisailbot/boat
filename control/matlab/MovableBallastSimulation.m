@@ -24,7 +24,7 @@ ka = 120 * 1.2 / J; %torque of keel when heeled at 90 deg (1 / s^2)
 % Multiplying by radius thrice: twice for rotation->real velocity; once for force->torque
 % 0.5 * rho * area * C(=1) * u_0(=nominal velocity=nom rot vel * nom radius) * nom radius * nom radius / J
 % = kg / m^3 * m^2 * m / s * m^2 / (kg * m^2) = 1 / sec
-nom_rad = 0.4;
+nom_rad = 0.8;
 nom_vel = 1.0;
 kssq = 0.5 * 1000 * 0.2 * 1 * nom_rad^3 / J;
 ks = kssq * nom_vel;
@@ -61,6 +61,7 @@ ctr = rank(ctrb(A, B))
 K = lqr(A, B, diag([100.1 10.0 1.0 1.0]), [1e0])
 Kfast = 15.1;
 Kslow = lqr(Aslow, Bslow, diag([100 100 10]), [0.1])
+%Kslow = place(Aslow, Bslow, [-10, -2, -3])
 %Kslow(1) = 0;
 %Kslow = [0 -0.1 -0.00]
 eigABK = eig(A - B * K)
@@ -71,18 +72,20 @@ f = @(t, x) full_dyn(x, utrans(x, K * (xgoal - x)), t);
 %f = @(t, x) A * x + B * K * (xgoal - x);
 %[ts, xs] = ode45(f, [0 30], x0);
 %[ts, xs] = ode45(fsplit, [0 10], x0);
-[ts, xs] = ode45(@call_flin_ctrl, [0 35.5], x0);
+[ts, xs] = ode45(@call_flin_ctrl, [0 3], x0);
 
 uprimes = K * (repmat(xgoal, 1, length(ts)) - xs');
 gammadotdes = Kslow * (repmat(xgoal([1 3 4]), 1, length(ts)) - xs(:, [1 3 4])');
 uprimes = Kfast * (gammadotdes - xs(:, 2)');
 
 jerks = [];
+phiddots = [];
 for i = 1:numel(ts)
-  [~, jerk, gdot, gddot, ~] = fully_flin_control(ts(i), xs(i, :));
+  [xdot, jerk, gdot, gddot, ~] = fully_flin_control(ts(i), xs(i, :));
   jerks(i) = jerk;
   gammadotdes(i) = gdot;
   uprimes(i) = gddot;
+  phiddots(i) = xdot(4);
 end
 
 subplot(221);
@@ -90,8 +93,8 @@ plot(ts, [xs(:, [1 2]) gammadotdes']);
 ylim([-1.5, 1.5])
 legend('\gamma', 'gammadot', 'gammadotdes');
 subplot(222);
-plot(ts, xs(:, [3 4]));
-legend('\phi', 'phidot');
+plot(ts, [xs(:, [3 4]), phiddots']);
+legend('\phi', 'phidot', 'phiaccel');
 subplot(223);
 plot(ts, [uprimes' jerks']);
 legend('gammaddot', 'jerks');
@@ -138,6 +141,8 @@ function [xdot, phijerk, gammadot_des, gammaddot, u] = fully_flin_control(t, x)
   end
   phijerk = Kslow * ([phigoal; 0; 0] - [phi; phidot; phiddot]);
   gammadot_des = gammainv(gamma, [phi; phidot; phiddot; phijerk]);
+  % If we just want to try feed-forwardsing it.
+  %gammadot_des = 1 * (sign(phigoal) - gamma);
   gammaddot = Kfast * (gammadot_des - gammadot);
   u = utrans(x, gammaddot);
   xdot = full_dyn(x, u, t, 0);
