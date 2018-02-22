@@ -54,6 +54,7 @@ class SCAMP : public Node {
   std::atomic<int> volts_winch_{90};
   std::atomic<int> raw_rudder_{90};
   std::atomic<int> raw_ballast_{90};
+  std::atomic<float> ballast_pos_{0.0};
   std::atomic<int> rudder_mode_{msg::ControlMode_MODE_DISABLE};
   std::atomic<int> winch_mode_{msg::ControlMode_MODE_DISABLE};
   std::atomic<int> ballast_mode_{msg::ControlMode_MODE_DISABLE};

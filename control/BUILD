@@ -20,6 +20,18 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="movable",
+  srcs=["movable.cc"],
+  hdrs=["movable.h"],
+  deps=[":actuator_cmd_proto",
+        "//util:node"],
+)
+cc_binary(
+  name="movable_main",
+  srcs=["movable_main.cc"],
+  deps=[":movable"]
+)
+cc_library(
   name="adaptive_control",
   srcs=["adaptive.cc"],
   hdrs=["adaptive.h"],

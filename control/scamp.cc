@@ -71,6 +71,13 @@ SCAMP::SCAMP()
     }
   });
 
+  RegisterHandler<msg::BallastCmd>("ballast_cmd",
+                                   [this](const msg::BallastCmd &cmd) {
+    if (IsAuto(BALLAST)) {
+      ballast_pos_ = cmd.pos();
+    }
+  });
+
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
     if (sbus.channel_size() >= 2) {
       if (IsManualRC(RUDDER)) {
@@ -122,7 +129,8 @@ void SCAMP::Iterate() {
   }
   msg->set_winch(raw_winch_);
   msg->set_rudder(raw_rudder_);
-  msg->set_ballast(raw_ballast_);
+  msg->set_ballast(IsAuto(BALLAST) ? -1 : raw_ballast_);
+  msg->set_ballast_pos(ballast_pos_);
   pwm_queue_.send(pwm_msg_);
   consts_queue_.send(consts_msg_);
 }
