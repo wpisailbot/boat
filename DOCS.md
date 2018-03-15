@@ -31,6 +31,26 @@ the CAN interface. I then discuss the testing infrastructure. Finally, I go into
 a discussion of the actual logic controlling the boat and discuss the various
 controllers and the such.
 
+# Nomenclature
+
+IPC: InterProcess Communication, refers to any method of communication between
+separate processes running on a computer, in our case via shared memory.
+
+BBB: BeagleBone Black, the main computer used onboard the boat
+
+Bazel: The build system, created by Google, which we use for building the code
+
+For listing locations, file paths are specified from the root of the boat
+repository (github.com/wpisailbot/boat); When referring to build rules or
+individual nodes, I use Bazel's notation. In this case, a preceding `//` refers
+to the root of the git repository, with directory names specified before
+slashes. A third-party library (specified in the WORKSPACE file) is referred to
+by `@library_name//`. A individual target/rule is specified by a colon following
+the directory path and then the name.
+
+For instance, to refer to the `node` library, which is specified in the BUILD
+file `util/BUILD`, I would refer to `//util:node`.
+
 # Building the Code
 
 The code is built using Bazel as the build system. Bazel is an open-source build
@@ -142,14 +162,176 @@ cc_library(
   name = "boost",
   # For the actual work we are doing, note that Boost is purely
   # a header library and so we just need to specify where all
-  # the header files are and include them overly generously.
+#the header files are and include them overly generously.
   includes = ["./"],
   hdrs = glob(["boost/**"]),
 )
 ```
 The comments provide some background on what each line is doing.
 
-### Google Libraries
+Note that this works exactly the same as if the BUILD file were instead provided
+in the top level directory of the original zip archive/git repo that we
+download.
 
-The libraries that work out of the box
+Once all of this is done, a normal build rule can depend on Boost by adding
+`@boost//:boost` to its dependencies, see e.g. `ipc/BUILD`:
 
+```python
+cc_library(
+  name="queue",
+  srcs=["queue.cc"],
+  hdrs=["queue.hpp", "message_queue.hpp"],
+  deps=["//util:msg_proto", "//util:clock", "@glog//:glog", "@boost//:boost", ":test_queue"],
+  linkopts=["-lrt", "-pthread"]
+)
+```
+
+### Pre-packaged Libraries
+
+The libraries that work out of the box (i.e., the original authors of the
+library fully support Bazel) are:
+ - [Google Protobuf](https://github.com/google/protobuf.git)
+ - [gflags](https://github.com/wpisailbot/gflags.git) (albeit with a minor
+   modification to make it play nice with `glog`)
+
+#### Protobuf
+
+The protobuf libraries work without modification. I did once encounter an error
+where the protobuf libraries stopped working when Bazel was upgraded. However,
+updating to a newer version of protobuf fixed the problem.
+
+Google also provides a `cc_proto_library` Bazel rule that handles all the
+building for a protobuf library. This does currently require placing a
+`load("@protobuf//:protobuf.bzl", "cc_proto_library")` at the top of every
+relevant BUILD file and then calling `cc_proto_library` as appropriate (see
+`ipc/BUILD` for an example).
+
+NOTE: Bazel has, since I originally set this up, added a builtin protobuf setup.
+However, it is not a drop-in replacement, and I have yet to go through and start
+using it.
+
+If you need an introduction to what protobuf actually is, I suggest reviewing
+their
+[documentation](https://developers.google.com/protocol-buffers/docs/overview).
+Essentially it provides a way to specify a message format and provides all the
+utilities for serialization and the such. This is used by the interprocess
+communication protocols and is discussed more later.
+
+TODO: Make sure I actually do discuss it more later...
+
+#### gflags
+
+The gflags library works without modification. However, the glog library relies
+on glog and expects to find it in a particular namespace (when calling it from
+C++). As such, I have made a [single
+modification](https://github.com/wpisailbot/gflags/commit/68abb16f1917f1a59a3986062beafb8eb0d0c16c)
+to the gflags library so that we can use it more easily. There is nothing else
+of particular note in the build. To depend on it, use `@gflags//:gflags`.
+
+See the gflags [documentation](https://gflags.github.io/gflags/) for
+usage---there is nothing particularly special about how we use gflags, and
+examples of its usage can be seen, e.g., in `rigid_wing/rigid_wing_ping.cc`.
+When you call `sailbot::util::Init`, the initialization required for gflags will
+be called.
+
+### Libraries Requiring BUiLD files
+
+These libraries either require separate BUILD files, or are not officially
+supported and I am using some separate person's BUILD file, generally with minor
+modifications:
+
+ - [glog](https://github.com/google/glog) (Since I originally set this up, their
+   official repository now uses Bazel and I have not migrated to use their
+   implementation yet)
+ - [gtest](https://github.com/google/googletest) (same deal as glog)
+ - [boost](http://www.boost.org/) (see examples above)
+ - [Eigen](http://eigen.tuxfamily.org/) (Matrix library)
+ - [ws](https://github.com/uWebSockets/uWebSockets.git) (WebSocket library)
+ - [zlib](https://github.com/madler/zlib.git) (Random dependency for ws)
+ - [uv](https://github.com/libuv/libuv.git) (Another ws dependency)
+ - [OpenSSL](https://github.com/wpisailbot/bazel-openssl.git) (Another ws dependency)
+
+#### glog
+
+As mentioned, when I first set everything up, Bazel was less used and more in beta
+than it is now. `glog` now has a pre-existing Bazel setup. It would be valuable
+for someone to go in and update to this (and do the same for `gtest`). However,
+for the time being, I have used some older workarounds for getting everything
+where I want it.
+
+See `third_party/glog.BUILD` for the BUILD file I use and where I got it from.
+It depends on `gflags` and `glog` can be depended on by `@glog//:glog`.
+
+`glog` provides us with the ability to easily to textual logging. There is some
+[documentation](http://rpg.ifi.uzh.ch/docs/glog.html) available at a third
+party, but I'm not sure about official documentation. This logging will involve
+disc writes and so are non-realtime. Unless you are:
+ - Only logging in debugging mode (see glog documentation)
+ - Only logging warnings/errors
+ - In a non-realtime portion of the code
+For examples of logging warnings/errors, you can glance at
+`rigid_wing/rigid_wing.cc`, which has various warnings/errors when attempting to
+use sockets.
+
+There are also lots of logging statements in the simulation code, e.g.
+`sim/sim_physics.cc`, which uses verbosity levels to avoid spamming too much
+logging unless the user requests it on the command line with `-v 3` (or some
+other number).
+
+#### gtest
+
+The Google testing framework, `gtest` or `googletest`, provides a framework for
+doing unit tests.
+
+The build file is in `third_party/gtest.BUILD` and is relatively simple, as it
+just needs to build and include everything. As mentioned, in the future, we
+should transition to using Google's BUILD file.
+
+Tests should use `@gtest//:main`, e.g. the `queue_test` rule in `ipc/BUILD`.
+`ipc/queue_test.cc` contains the corresponding example for basic test writing.
+
+If you are doing simulations or running nodes, there are some utilities that I
+have written, e.g. `util/testing.[h,cc]`.
+
+See the [gtest
+documentation](https://github.com/google/googletest/blob/master/googletest/docs/Primer.md)
+for usage.
+
+#### Boost
+
+[Boost](http://www.boost.org) is a set of general-purpose C++ header libraries.
+The way they are built is discussed in a section above, using
+`third_party/boost.BUILD`, which essentially just adds all the headers to the
+include path.
+
+Currently, Boost is only used by the IPC (see `//ipc:queue`), although if other
+Boost libraries are helpful, they may certainly be used.
+
+#### Eigen
+
+Eigen is a matrix header library that is built in essentially the same manner as Boost.
+
+Eigen is a matrix utility library that provides convenient ways to construct,
+multiply, etc. matrices. IT also contains various mathematical and linear
+algebra functions for manipulating matrices, although nothing too out of the
+ordinary. It is currently just used in some experimental controls things and in
+simulation.
+
+#### zlib, uv, and ws
+
+Nothing of particular note; each has a BUILD file in `third_party`. The
+websocket library is currently only used by `//ui:server`. The UI server is
+discussed in more detail later in this document.
+
+#### OpenSSL
+
+We do not actually _use_ any OpenSSL features, however in order to build `ws`,
+we need OpenSSL. Currently, it takes a long time to build and would ideally be
+removed as a dependency (or, if we stop using WebSockets, then it can go away).
+
+The OpenSSL build is in [our own
+repository](https://github.com/wpisailbot/bazel-openssl), and the BUILD file
+primarily calls `make` to build everything. It does involve a bit of work to get
+it to use the BBB cross-compiler (all this is done in the BUILD file on that
+repository). By calling `make`, we are breaking some of the guarantees that
+Bazel provides about build reproducibility.
