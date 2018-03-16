@@ -335,3 +335,51 @@ primarily calls `make` to build everything. It does involve a bit of work to get
 it to use the BBB cross-compiler (all this is done in the BUILD file on that
 repository). By calling `make`, we are breaking some of the guarantees that
 Bazel provides about build reproducibility.
+
+### Toolchain libraries
+
+In order to actually build code for the BBB, we need a cross-compiler. I also
+have a cross-compiler setup for the Raspberry Pi, but much of the high-level setup is
+essentially identical. However, it should be noted that there are generally
+going to be lots of little configuration knobs you will need to tweak for
+different target architectures. I am not an expert on these things.
+
+## Deploying the Code
+
+# BBB Setup
+
+Steps:
+
+1. Download the Debian Stretch 9.3 for IoT on the BeagleBone from the
+Beagleboard [Latest Images](https://beagleboard.org/latest-images) page. The GUI
+version should also work, but we have no need for a GUI.
+2. Image a microSD card. On linux, you would do something like
+  `xzcat bone-debian-9.3-iot-armhf-2018-01-28-4gb.img.xz | sudo dd of=/dev/mmcblk0`,
+  where `/dev/mmcblk0` is whatever device corresponds with the SD card.
+3. Plug the BBB into your computer, ssh in with `ssh debian@192.168.7.2`,
+password `temppwd` by default.
+4. While ssh'd in, do `mkdir -p ~/bin/sailbot` to create the directory where
+   sailbot stuff will happen.
+5. Deploy code to the beaglebone by `bazel run -c opt --cpu bbb //scripts:deploy -- 192.168.7.2`
+5. To setup the web UI, you need to configure the Apache server:
+   1. Change `/etc/apache2/apache2.conf`, and add:
+
+      ```
+      <Directory /home/debian/bin/sailbot/html>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+      </Directory>
+      ```
+
+       Preferably after a similar entry for `/var/www`
+   2. Then, change `/etc/apache2/sites-enabled/000-default.conf` by changing `/var/www` to `/home/debian/bin/sailbot/html`.
+7. Make the code run on startup by adding an entry `@reboot /home/debian/bin/sailbot/startup.sh`
+   to the root crontab (accessible via `sudo crontab -e`).
+7. Start the code by running a `sudo ~/bin/sailbot/startup.sh`
+8. The code should now be running. Check that all the processes look like
+   they're running (via the web interface or `top`. You can also check, e.g.,
+   `/tmp/can-dump.ERROR` for if there are any interesting errors going on.
+9. If you'd like, flash everything to the eMMC by modifying the last line in the
+`/boot/uEnv.txt` (there should be a comment there), rebooting with the SD card
+in, wait for all the lights to go off, remove the SD card, and boot again.
