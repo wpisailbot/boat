@@ -374,6 +374,8 @@ password `temppwd` by default.
 
        Preferably after a similar entry for `/var/www`
    2. Then, change `/etc/apache2/sites-enabled/000-default.conf` by changing `/var/www` to `/home/debian/bin/sailbot/html`.
+6. ***NOTE: Depending on the version of code you are using, you may need to
+change `bringup-can.sh` to refer to `BB-CAN1` instead of `BB-DCAN1`***
 7. Make the code run on startup by adding an entry `@reboot /home/debian/bin/sailbot/startup.sh`
    to the root crontab (accessible via `sudo crontab -e`).
 7. Start the code by running a `sudo ~/bin/sailbot/startup.sh`
