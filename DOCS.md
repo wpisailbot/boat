@@ -388,15 +388,15 @@ in, wait for all the lights to go off, remove the SD card, and boot again.
 
 # Alternate config for configuring CAN on boot
 The following steps replace the `bringup-can.sh` file:
-1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)
-   capemgr.enable_partno=BB-DCAN1
-2. Make a new file `/etc/modules-load.d/can.conf` with contents:
-   can
+1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)\
+   `cape_enable=bone_capemgr.enable_partno=BB-DCAN1` <-Debian 8.6
+2. Make a new file `/etc/modules-load.d/can.conf` with contents:\
+   `can
    can-dev
-   can-raw
-3. Append the following to `/etc/network/interfaces`:
-   allow-hotplug can0
+   can-raw`
+3. Append the following to `/etc/network/interfaces`: \
+   `allow-hotplug can0
      iface can0 can static
-       bitrate 250000
+       bitrate 250000`
 
    
