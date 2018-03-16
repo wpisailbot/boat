@@ -385,3 +385,18 @@ change `bringup-can.sh` to refer to `BB-CAN1` instead of `BB-DCAN1`***
 9. If you'd like, flash everything to the eMMC by modifying the last line in the
 `/boot/uEnv.txt` (there should be a comment there), rebooting with the SD card
 in, wait for all the lights to go off, remove the SD card, and boot again.
+
+# Alternate config for configuring CAN on boot
+The following steps replace the `bringup-can.sh` file:
+1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)
+   capemgr.enable_partno=BB-DCAN1
+2. Make a new file `/etc/modules-load.d/can.conf` with contents:
+   can
+   can-dev
+   can-raw
+3. Append the following to `/etc/network/interfaces`:
+   allow-hotplug can0
+     iface can0 can static
+       bitrate 250000
+
+   
