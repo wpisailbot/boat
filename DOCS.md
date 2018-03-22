@@ -344,7 +344,54 @@ essentially identical. However, it should be noted that there are generally
 going to be lots of little configuration knobs you will need to tweak for
 different target architectures. I am not an expert on these things.
 
+I suspect that Bazel has changed the preferred method for specifying toolchains,
+but I will briefly discuss the current setup.
+
+Most of the code for handling the toolchains is in `tools/` and `compilers/`.
+The relevant toolchains themselves are downloaded in the `WORKSPACE` file (see
+`org_linaro_components_toolchain_gcc_5_3_1_gnueabihf` and
+`rpi_gcc_5_4_1_gnueabihf`).
+
+The `compilers/*.BUILD` files merely group the files in the downloaded archives
+so that they have useful names for usage by the rest of Bazel.
+
+`tools/BUILD` shouldn't be necessary for basic cross-compilation. What it does
+do is provide rules to make it so that you can specify individual targets (e.g.,
+the deploy) as only being buildable for certain environments, so that you don't
+accidentally deploy local code to the BBB.
+
+`tools/bazel.rc` is also mostly cosmetic and provides some default arguments for
+when you call Bazel that make things generally easier.
+
+In `tools/arm_compiler/`, we have the main work for actually configuring at
+setting up the cross-compiler. The `BUILD` file does some more work to group
+files together as well as specifying exactly which toolchains are present, which
+configuration files they use, etc. The `CROSSTOOL` file itself is the most
+opaque of the configuration files and provides all the configuration options for
+the cross-compiler itself. This consists of a lot of obscure compiler options,
+specifying system library locations, etc. These files are generally constructed
+by copying existing `CROSSTOOL` files and modifying them till they work.
+Ideally, someone would know what each and every option did and be able to notice
+that we should really be doing something differently. But that would be a lot of
+work.
+
+The `tools/arm_compiler/linaro_linux_gcc/` directory contain some shell scripts
+for calling the actual cross-compiler binaries, with one directory for the BBB
+compilers and one for the RPi.
+
 ## Deploying the Code
+
+In order to deploy the code, we *currently* use `scp` to copy over a zip file of
+all the binaries and then extract them. We could consider, e.g., using `rsync`
+or some other protocol to more efficiently copy only the necessary bytes.
+
+This work is done in `scripts/deploy.sh`. This actual `scp` is not overly
+interesting.
+
+In order to force the user to only deploy code built (a) for the BBB processor
+and (b) with optimization flags, we use the `data` and `restricted_to` portions
+of the `//scripts:deploy` build target. See the `scripts/BUILD` file for
+details.
 
 # BBB Setup
 
@@ -386,7 +433,7 @@ change `bringup-can.sh` to refer to `BB-CAN1` instead of `BB-DCAN1`***
 `/boot/uEnv.txt` (there should be a comment there), rebooting with the SD card
 in, wait for all the lights to go off, remove the SD card, and boot again.
 
-# Alternate config for configuring CAN on boot
+### Alternate config for configuring CAN on boot
 The following steps replace the `bringup-can.sh` file:
 1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)\
    `cape_enable=bone_capemgr.enable_partno=BB-DCAN1` <-Debian 8.6
@@ -399,4 +446,69 @@ The following steps replace the `bringup-can.sh` file:
      iface can0 can static
        bitrate 250000`
 
-   
+# Software Infrastructure
+
+This section shall cover the generally applicable software infrastructure,
+namely:
+- The IPC (Interprocess Communication)
+- Node structure/setup
+- General utilities for the above (e.g., clocks)
+- Logging/Log-replay
+- WebSocket UI
+- Testing infrastructure
+
+## IPC
+
+The IPC in this system is based on the [Boost
+message_queue](http://www.boost.org/doc/libs/1_66_0/doc/html/interprocess/synchronization_mechanisms.html#interprocess.synchronization_mechanisms.message_queue)
+and Google Protobufs.
+The Boost message_queue uses shared memory to facilitate communications. You can
+see this while the processes are running by glancing at `/dev/shm/`, which is a
+file system mapped to the physical RAM. Boost has written interprocess
+semaphores and setup the message queue so that race conditions and the such
+*shouldn't* be an issue.
+
+I have modified the Boost `message_queue.hpp` (see `ipc/message_queue.hpp`) such
+that, rather than being a queue in which each message published will only be
+processed by a single subscriber, each subscriber will process each published
+message exactly once.
+
+It is important to note that, if the process is terminated while working with a
+message queue, the queue may be left in an inconsistent state. This was the
+original motivation to ensure that a `SIGINT` (Ctrl-C) would be handled cleanly
+and shutdown the process deliberately rather than immediately terminating.
+
+In order to handle cleanup of the message queues, I use a Boost IPC semaphore
+(unmodified from Boost's version) to keep track of the number of publishers on a
+queue. When the number drops to zero when the last writer finishes, I delete the
+queue.
+
+### Protobuf IPC Setup
+
+In order to actually structure the data in the raw message queue (as Boost is
+just sending raw bytes back and forth), I use Google Protobufs. Protobufs allow
+for a message structure specification (providing the general primitive types you
+would expect such as `double`, `int`, etc. as well as nesting of messages). Out
+of laziness, I will direct readers to the Protobuf website for documentation on
+[Protobuf and
+C++](https://developers.google.com/protocol-buffers/docs/cpptutorial).
+
+For serializing the data, we simply use the protobuf functions for that.
+
+Finally, there is still a bit of extra work that we do to facilitate easier
+logging and to coordinate what message types are expected on what queues.
+There are two issues at play here. First, when we send a message on a given
+queue, any subscribers must be able to know how to parse the received message.
+Second, when logging, we must in some way indicate what message queue a given
+log message was sent on, as well as any other metadata we may want to include
+(namely a timestamp).
+
+### IPC Discussion
+
+# Boat-Specific Infrastructure
+
+NMEA2000, Rigid-wing, Joystick usage, RC-controller, SCAMP
+
+# Controls Software
+
+Simulation, controllers
