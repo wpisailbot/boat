@@ -493,7 +493,8 @@ of laziness, I will direct readers to the Protobuf website for documentation on
 [Protobuf and
 C++](https://developers.google.com/protocol-buffers/docs/cpptutorial).
 
-For serializing the data, we simply use the protobuf functions for that.
+For serializing the data, we simply use the protobuf [utility functions](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.message_lite#MessageLite.SerializeToArray.details)
+for that.
 
 Finally, there is still a bit of extra work that we do to facilitate easier
 logging and to coordinate what message types are expected on what queues.
@@ -503,7 +504,216 @@ Second, when logging, we must in some way indicate what message queue a given
 log message was sent on, as well as any other metadata we may want to include
 (namely a timestamp).
 
+The way that we accommodate these is to have only a single message type that is
+used for the actual serialization. This message type contains a time stamp and
+then a bunch of optional fields, one for each message queue. When we send a
+message, we only fill out one of those fields (plus the timestamp). When
+receiving on a queue, we assume that the necessary fields should be filled out
+and error if not. When reading a log, we find out which field is filled out and
+send out on that queue. If not exactly one field (plus timestamp) is filled out,
+then there is an error.
+
+To make this a bit more concrete, we look at a portion of the `util/msg.proto`,
+which contains the `LogEntry` protobuf which is this main logging structure.
+
+```protobuf
+message LogEntry {
+  optional google.protobuf.Timestamp time = 1;
+
+  // The name of all members should be the EXACT same as their corresponding
+  // queue name.
+
+  // Actually useful msgs
+  optional BoatState boat_state = 500;
+  optional SailCmd sail_cmd = 501;
+  optional RudderCmd rudder_cmd = 502;
+  optional Vector3f wind = 503;
+  optional HeadingCmd heading_cmd = 504;
+  optional WaypointList waypoints = 505;
+  optional BallastCmd ballast_cmd = 506;
+...
+```
+
+The name of each entry is the name of the queue, matching exactly.
+
+### Using the IPC
+
+The current main interface for the IPC is the `ProtoQueue` class, which takes as
+a template parameters the protobuf type of the message. The constructor takes
+the queue name and whether we are a publisher or subscriber. The send and
+receive functions can then be used to *send* and *receive* messages. There are
+still a couple utilities defined by the Node class that make it so that you
+don't have to directly call the receive functions most of the time.
+
+The `Queue` class is a lower-level utility class which just sends raw data back
+and forth. This is basically just used by the `ProtoQueue` class and by
+somethings, e.g. the logger, which don't care about the underlying structure of
+the message.
+
+In order to use the `ProtoQueue` class to send a `QueueTestMsg` on the
+`test_queue` queue , you can first note the `QueueTestMsg` declaration in
+`ipc/queue_test_msg.proto`:
+
+```protobuf
+syntax = "proto2";
+package sailbot.msg.test;
+
+option cc_enable_arenas = true;
+
+// The syntax = "proto2" line is because the proto3 version of protobuf had some
+// issues when I first set it up, so I force version 2
+// This is related to how arenas are handled (and the option cc_enable_arenas =
+// true must exist in all of the protobuf files). I discuss arenas later below.
+// package x.y.z means that the protobuf will show up in namespace x::y::z when
+// compiled to C++
+
+message QueueTestMsg {
+  optional float foo = 1;
+}
+```
+
+Which is built in `ipc/BUILD`:
+```python
+load("@protobuf//:protobuf.bzl", "cc_proto_library")
+cc_proto_library(
+  name="queue_test_msg",
+  srcs=["queue_test_msg.proto"],
+  protoc="@protobuf//:protoc",
+  default_runtime = "@protobuf//:protobuf",
+)
+```
+
+And an entry named "test_queue" is made in `util/msg.proto`:
+```protobuf
+syntax = "proto2";
+...
+import "ipc/queue_test_msg.proto";
+// Remember to add "//ipc:queue_test_msg" to the dependencies in util/BUILD
+...
+package sailbot.msg;
+option cc_enable_arenas = true;
+
+...
+message LogEntry {
+...
+  optional test.QueueTestMsg test_queue = 2002;
+...
+}  // message LogEntry
+```
+
+We can now use the queue:
+
+```cpp
+// Protobuf files compile to a .pb.h file
+// Note that the protobuf target should be added to the deps in the BUILD target
+// for this C++ file.
+#include "ipc/queue_test_msg.pb.h"
+using namespace sailbot;
+
+// Receiver
+ProtoQueue<msg::test::QueueTestMsg> data("test_queue", /*writer=*/false);
+msg::test::QueueTestMsg rcv;
+data.receive(&rcv);
+LOG(INFO) << "data.foo: " << data.foo();
+```
+And the sender:
+```cpp
+#include "ipc/queue_test_msg.pb.h"
+using namespace sailbot;
+// Sender
+ProtoQueue<msg::test::QueueTestMsg> data("test_queue", /*writer=*/true);
+msg::test::QueueTestMsg send;
+send.set_foo(123.456);
+data.send(&send);
+```
+
+### Node class IPC utilities
+
+This section overlaps slightly with the Node section, but is relevant to mention
+here.
+
+The `Node` class includes a couple of useful utilities for working with the
+queues.
+
+The first is a way to register a function as a handler to be called whenever we
+receive anything. This consists of calling `RegisterHandler`, generally in a
+constructor (it may not work properly after initialization is complete).
+`RegisterHandler` requires a template argument for the queue type, as well as
+the queue name, but otherwise is relatively straightforward. You have to pass a
+function that can take const reference to a protobuf message, which will be most
+recent message passed, and which has no return value. I generally do this with a
+lambda expression, e.g.:
+
+```cpp
+namespace sailbot {
+class QueueExample : public Node {
+ public:
+  QueueExample() : Node(/*loop period=*/-1) {
+    RegisterHandler<msg::test::QueueTestMsg>("test_queue",
+        [](const msg::test::QueueTestMsg &msg) {
+          if (msg.has_foo()) {
+            LOG(INFO) << "Got a foo value of " << msg.foo();
+          } else {
+            // If you don't fill in a field (i.e., never set foo),
+            // then protobuf may fill in some default value or not
+            // fill in anything meaningful. It is generally good to
+            // check whether a field was filled in and produce a warning
+            // if it wasn't (unless you don't expect to get the field).
+            LOG(WARNING) << "No foo provided :( default value of " << msg.foo();
+          }
+        });
+  }
+};  // class QueueExample
+}  // namespace sailbot
+```
+
+The handler will be called each time that a new message is received and should
+exit promptly (if you take longer to process a message than the time between
+messages, then you will likely end up behind on messages---there is no other
+consequence, beyond CPU/memory usage).
+
+The second important feature is an `AllocateMessage` function which allocates
+memory for the protobufs in a special, preallocated area. This means that the
+protobufs do not have to dynamically allocate memory using `malloc`, which can
+have unpredictable performance. This uses a protobuf feature called Arenas,
+which are just blocks of preallocated memory which the Protobuf libraries can
+then use. This has a few components:
+- Using `proto2` instead of `proto3` is important for some reason. If I recall
+  correctly, if you use `proto3`, then protobuf handles poorly the deletion and
+  recreation of nested messages.
+- Do not constantly be allocating new messages; when messages are deleted, that
+  doesn't necessarily free up space in the Arena, because to do that, the Arena
+  would need to be running its own fancy memory allocation algorithm, which
+  would lead to non-deterministic performance. As such, you should only allocate
+  message in the constructor/initialization of your code and then reuse things
+  on each iteration rather than reallocating them.
+- The `option cc_enable_arenas = true` must be present in all the `.proto` files
+  (it may be possible to alter the configuration of the protobuf compiler to
+  enable this by default, but I have not done it).
+
+`AllocateMessage` just takes a template argument for the type of the message you
+are constructing and returns a valid pointer.
+
 ### IPC Discussion
+
+The elephant in the room with respect to all of this IPC is, of course, why not
+simply use an existing solution such as ROS's messaging structure? Part of the
+answer is because I wanted to try out setting it up myself when I first did it.
+Part of it is momentum---switching to ROS would be time consuming and require a
+fair bit of restructuring of a lot of the code, as well as require using CMake
+and other inconvenient build systems. For ROS specifically, you can also see
+some of the criticisms of ROS on the [ROS 2
+Wiki](http://design.ros2.org/articles/why_ros2.html) (ROS 2 is still unstable
+and would be dubious for use in a real system).
+
+It should be noted that using protobufs is an easily defensible decision, as
+protobufs are widely used, well supported, and have a good feature set.
+
+The second possibility for a messaging system would have been to use something
+like [ZeroMQ](http://zeromq.org/). I have no good reason not to have done this
+(and still used something like protobufs for serialization); it would've been an
+existing platform, well supported, and had more features (e.g., allow us to
+communicate between machines easily).
 
 # Boat-Specific Infrastructure
 
