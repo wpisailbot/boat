@@ -483,6 +483,33 @@ In order to handle cleanup of the message queues, I use a Boost IPC semaphore
 queue. When the number drops to zero when the last writer finishes, I delete the
 queue.
 
+### Files
+
+`util/msg.proto`: Contains `LogEntry` protobuf, which is a list of all the
+  different queues and their message types
+
+`util/node.*`: Contains `RegisterHandler` and `AllocateMessage` utility
+  functions (discussed below)
+
+`ipc/`: The main folder for IPC stuff
+
+`ipc/BUILD`: Build file for IPC stuff
+
+`ipc/message_queue.hpp`: Modified Boost library for IPC over shared memory
+
+`ipc/queue.hpp`: Main header file for queues, including the `Queue` utility
+  class and the `ProtoQueue` template class which wraps `Queue`.
+
+`ipc/queue.cc`: Source for the `Queue` class, uses `ipc/message_queue.hpp`
+
+`ipc/test_queue.*`: Implementation spoofing `ipc/message_queue.hpp` for tests
+  run within a single process that may not want to accidentally interfere with
+  other processes.
+
+`ipc/queue_test_msg.proto`: Simple protobuf definition for testing
+
+`ipc/queue_test.cc`: Basic unit tests for classes in `ipc/queue.*`.
+
 ### Protobuf IPC Setup
 
 In order to actually structure the data in the raw message queue (as Boost is
@@ -694,6 +721,26 @@ then use. This has a few components:
 `AllocateMessage` just takes a template argument for the type of the message you
 are constructing and returns a valid pointer.
 
+### Testing queues
+
+In some cases, you may not want to expose your queues outside of your process.
+This is mostly useful in the case of the writing tests, where you may, instead
+of running multiple processes, run each node as a separate thread. By having the
+queues private to a single process, you can avoid worrying about running
+multiple tests at once, or with some previous process having left the queues in
+an inconsistent state.
+
+The code in `ipc/test_queue.*` implements this. The `TestQueue` class provides
+an interface identical to that of the boost message_queue, and the `Queue` class
+chooses which to use based on a `testing_` flag.
+
+These are implemented by just keeping track of queues in a large, statically
+defined, `std::map`,
+with each element in the map having a key of the queue name and contents
+corresponding to the actual data.
+
+See the actual code of `TestQueue` for comments on how it works.
+
 ### IPC Discussion
 
 The elephant in the room with respect to all of this IPC is, of course, why not
@@ -714,6 +761,16 @@ like [ZeroMQ](http://zeromq.org/). I have no good reason not to have done this
 (and still used something like protobufs for serialization); it would've been an
 existing platform, well supported, and had more features (e.g., allow us to
 communicate between machines easily).
+
+## Node structure
+
+## Clock Utilities
+
+## Logging
+
+## WebSocket UI
+
+## Testing Infrastructure
 
 # Boat-Specific Infrastructure
 
