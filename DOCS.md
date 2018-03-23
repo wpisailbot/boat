@@ -1,5 +1,8 @@
 This documentation’s purpose is mainly to record the status of the software for the person that handles the software next year -James
 
+Builds to pdf decently with:
+`pandoc -s -S --toc -o DOCS.pdf -t latex  -f markdown DOCS.md`
+
 # Introduction
 
 The software for the boat, for reference, is stored at
@@ -411,13 +414,11 @@ password `temppwd` by default.
 5. To setup the web UI, you need to configure the Apache server:
    1. Change `/etc/apache2/apache2.conf`, and add:
 
-      ```
-      <Directory /home/debian/bin/sailbot/html>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-      </Directory>
-      ```
+          <Directory /home/debian/bin/sailbot/html>
+            Options Indexes FollowSymLinks
+            AllowOverride None
+            Require all granted
+          </Directory>
 
        Preferably after a similar entry for `/var/www`
    2. Then, change `/etc/apache2/sites-enabled/000-default.conf` by changing `/var/www` to `/home/debian/bin/sailbot/html`.
@@ -762,11 +763,174 @@ like [ZeroMQ](http://zeromq.org/). I have no good reason not to have done this
 existing platform, well supported, and had more features (e.g., allow us to
 communicate between machines easily).
 
-## Node structure
-
 ## Clock Utilities
 
+At its most basic level, a set of clock utilities might consist of some wrappers
+for `usleep` and `gettimeofday` or the such. We involve a bit more complication
+because:
+- We want to use monotonic clocks
+- We want real-time behaviors
+- Processes must be able to shut down cleanly on `SIGINT`
+- Simulations should be able to run at faster (or slower) than wall-clock time
+
+### Files
+
+`util/clock.h`: Clock utility header files (used primarily by `Node`)
+
+`util/clock.cc`: Clock utility source
+
+`util/clock_test.cc`: A single basic unit test for looping.
+
+Note that the `util/clock.*` files are reasonably well commented, so I try to
+keep to calling out the key features in this documentation.
+
+Please do read the code comments before directly using any of these classes.
+
+### Classes/functions
+
+Here I just go through and provide some high-level context on all of the classes/functions present.
+
+`monotonic_clock` provides a C++
+[Clock](http://en.cppreference.com/w/cpp/concept/Clock) which has guaranteed
+monotonicity---namely, that time will never go backwards, which can happen with
+certain clocks that may change, e.g. a wall clock that may receive corrections
+if it gets ahead of the world time. Relies on `clock_gettime` and
+`clock_nanosleep` under the hood for actual timing when run normally. Has
+support for spoofing the clock using a fake time, as occurs when we have to do
+testing.
+
+`ClockInstance` provides an interface for the `monotonic_clock` that clears out
+some of the boilerplate and provides some of the structure required for the fake
+clock.
+
+`ClockManager` purely exists for managing the fake clock.
+
+`Loop` is the class used by `Node` to create timed loops.
+
+`Init()` sets up gflags, glogging, and the signal handler of Ctrl-C's
+
+`Isshutdown()`, `CancelShutdown()`, and `RaiseShutdown()` provide utilities for
+  managing the shutdown state of the system.
+
+`SetcurrentThreadREaltimePriority()` sets the priority of the current thread.
+This is primarily used for things which should be run at higher priorities
+(e.g., the CAN interface and the control/sensing stacks). Currently, does two
+things:
+- Sets the maximum contiguous runtime of a single process to half a second to
+  prevent it from blocking anything else (particularly important for a process
+  with elevated privileges, to prevent it from hanging and freezing the BBB).
+- Set the current thread scheduler to `SCHED_FIFO` and the appropriate priority.
+  `SCHED_FIFO` is one of the two real-time schedulers (see man page for
+  `sched_setscheduler`).
+
+**Note on real-timeness**: Currently we don't do anything to lock the memory of
+our processes. Even if we avoid dynamic memory allocation, this could lead to
+page faults, which are bad.
+
+### Fake Clock
+
+I will not discuss the implementation in detail here, as it is documented in the
+comments in `util/clock.h`. Basically, we maintain a condition variable to
+notify threads when the time has incremented upwards, and then wait for all
+the threads to go back to sleep before incrementing time again, this time to
+the earliest time at which any of the sleeping threads need to wake up. This has some
+tricky edge cases and also must accommodate being able to cleanly shutdown if
+`RaiseShutdown()` is called.
+
+In order to use the fake clock, you set the fake clock using
+`ClockManager::SetFakeClock` and it will then run on fake time.
+
+## Node structure
+
+The `Node` class has already been mentioned several times, but to cover it
+again: The `Node` class provides the basic class which essentially all
+individual processes should inherit and use to run the main body of your
+program. The `Node` class provides:
+- An interface to all the clock/timing infrastructure, to allow easily running
+  in a timed loop
+- Utilities to ensure that the program will shutdown cleanly when asked to
+- The aforementioned `RegisterHandler` function for subscribing to queues, as
+  well as the `AllocateMessage` function for using preallocated storage for
+  queues.
+
+### Usage
+
+Essentially all individual processes consist of some primary class which
+inherits from `Node`, even the logger and UI server, which tend to do a lot of
+relatively customized things, use `Node`.
+
+A good, simple example of a `Node` is in the `Ping` class in `util/ping.cc`:
+
+```cpp
+#include "util/node.h" // For the class Node
+#include "util/msg.pb.h" // For the PongMsg and PingMsg protobufs
+#include "ipc/queue.hpp" // For the ProtoQueue sender
+#include "glog/logging.h" // To do logging/printing
+
+// All sailbot classes are in namespace sailbot
+namespace sailbot {
+
+class Ping : public Node {
+ public:
+  Ping()
+      : Node(0.001), queue_("ping", true), msg_(AllocateMessage<msg::PingMsg>()) {
+    RegisterHandler<msg::PongMsg>(
+        "pong", [](const msg::PongMsg &msg) { LOG(INFO) << msg.b(); });
+  }
+
+ private:
+  void Iterate() override {
+    msg_->set_a(msg_->a() + 0.001);
+    queue_.send(msg_);
+  }
+
+  ProtoQueue<msg::PingMsg> queue_;
+  msg::PingMsg *msg_;
+};
+
+}  // namespace sailbot
+
+int main(int argc, char *argv[]) {
+  // All programs should call Init()
+  sailbot::util::Init(argc, argv);
+  // Create and run our Ping node, using the Run function inherited  from Node
+  sailbot::Ping ping;
+  ping.Run();
+}
+```
+
+There are really only two things that *must* be done by the classes that you
+write which inherit from `Node`:
+
+- Call the `Node::Node` constructor with a period of the loop. If negative,
+  then assumes infinite period and `Iterate()` will never be called. If zero,
+  then never sleeps.
+- Setup an `Iterate()` function (may be empty) to be called every timestep (as
+  set by the period in the constructor).
+
+### `RegisterHandler` Implementation
+
+There are two portions to setting up the handlers for the queue:
+1. Copy the queue name into a buffer that will persist after `RegisterHandler`
+   exits
+2. Launch a new thread with `RunHandlerCaller` which actually sets up the
+   `ProtoQueue` to receive a message and just constantly waits on `receive`s,
+   calls the callback, and shuts down if something has changed.
+
+### Arena usage
+
+I discuss how the Arenas work some in the IPC section. The `Node` class creates
+a protobuf Arena with some semi-arbitrary settings (namely, giving it 10000
+bytes of memory to work with), and then sets the `max_block_size` to zero to
+prevent future blocks from being allocated (because if they are allocated, that
+will cause a call to `malloc`, which is not real-time).
+
 ## Logging
+
+We do logging so that we can completely replay and understand the state of the
+system following a given run. We do not always perfectly capture every aspect of
+the system, but ideally we log enough that we can rerun the code using the
+logged messages and debug it that way.
 
 ## WebSocket UI
 

@@ -1,9 +1,9 @@
-#include "util/node.h"
-#include "util/msg.pb.h"
-#include "ipc/queue.hpp"
-#include "glog/logging.h"
-#include <map>
+#include "util/node.h" // For the class Node
+#include "util/msg.pb.h" // For the PongMsg and PingMsg protobufs
+#include "ipc/queue.hpp" // For the ProtoQueue sender
+#include "glog/logging.h" // To do logging/printing
 
+// All sailbot classes are in namespace sailbot
 namespace sailbot {
 
 class Ping : public Node {
@@ -14,21 +14,22 @@ class Ping : public Node {
         "pong", [](const msg::PongMsg &msg) { LOG(INFO) << msg.b(); });
   }
 
- protected:
-  virtual void Iterate() {
+ private:
+  void Iterate() override {
     msg_->set_a(msg_->a() + 0.001);
     queue_.send(msg_);
   }
 
- private:
   ProtoQueue<msg::PingMsg> queue_;
   msg::PingMsg *msg_;
 };
 
-}  // sailbot
+}  // namespace sailbot
 
 int main(int argc, char *argv[]) {
+  // All programs should call Init()
   sailbot::util::Init(argc, argv);
+  // Create and run our Ping node, using the Run function inherited  from Node
   sailbot::Ping ping;
   ping.Run();
 }
