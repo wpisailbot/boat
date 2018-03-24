@@ -1,7 +1,7 @@
 This documentation’s purpose is mainly to record the status of the software for the person that handles the software next year -James
 
 Builds to pdf decently with:
-`pandoc -s -S --toc -o DOCS.pdf -t latex  -f markdown DOCS.md`
+`pandoc -s -N -S --toc -o DOCS.pdf -t latex  -f markdown_github-hard_line_breaks DOCS.md`
 
 # Introduction
 
@@ -932,7 +932,168 @@ system following a given run. We do not always perfectly capture every aspect of
 the system, but ideally we log enough that we can rerun the code using the
 logged messages and debug it that way.
 
-## WebSocket UI
+As is noted in the IPC section, each log message is of the `LogEntry` proto
+type, and includes a timestamp as metadata as well as a single additional field
+corresponding with the actual message itself.
+
+In order to perform the logging, we, in essence, write the raw serialized
+`LogEntry` to a file, and then to read the logs, read it back and use the
+protobuf reflection API to figure out which field is filled in and send the raw
+message out on that buffer.
+
+### Files
+
+`util/logging.*`: Source and header for main logging and log reading operations
+
+`util/logger_main.cc`: Simply contains `main()` for producing logger binary
+
+`util/log-replay.*`: Log replay source and header information
+
+`util/log-replay-main.cc`: Example of running log-replay, printing out and
+displaying the data we most commonly care about on the boat.
+
+`util/log_deprecation.*`: Code for handling the conversions between old and new
+protobuf formats---currently, just exists for when we switched for single to
+double precision floating point on GPS lat/lon.
+
+`util/log_reader_main.cc`: Nothing useful
+
+### Log File Format
+
+The format for the log files is relatively basic:
+1. 8 bytes at the start of the file, little-endian, the integer number of
+   nanoseconds since the start of the Epoch.
+2. For each message, 2 (little-endian) bytes which are the length of the
+   following message, in bytes, and then the actual result of serializing
+   the protobuf. There are no special terminating characters or the such.
+   The length bytes do not count themselves, just the length of the message
+   itself.
+
+Note that there is no sort of error checking or ability to recover from errors
+should the log file be corrupted or any individual write operation go wrong,
+although the parts of a log file leading up to the corruption will be fine.
+
+### Log File Writer Implementation
+
+The log file writing is implemented in the `Logger` class in `util/logger.*`.
+The general operation is as follows:
+
+1. Maintain a file writer (in this case a `std::ofstream`) for the whole close,
+   with a mutex to acccess it.
+2. On initialization:
+   1. Open the file, record the initial timestamp
+   2. Set up custom handlers for each and every queue defined in the `LogEntry`
+      protobuf.
+3. In the handler, create a reader `Queue` (this is the lower-level
+   that just sends back and forth raw bytes, without doing processing
+   with protobufs). Wait on the `Queue::receive`s and each time we
+   receive a new message, take out the lock on the file descriptor and write the
+   length of the received message and then the message itself.
+4. On every `Iterate` call (current once a second), flush the file descriptor to
+   ensure that things are getting written to disk (if we not do so, we might
+   more easily lose data on a hard reboot).
+
+This is the first place that we have which makes use of a command line flags
+with `gflags`. The `-logfilename` flag is defined at the top of the file with
+`DEFINE_string(logfilename, "/tmp/logfilename", "The name of the file to log to")`
+and used when creating the `std::ofstream` by accessing the `FLAGS_logfilename`
+variable. Part of the `scripts/startup.sh` script which initializes the code
+chooses an appropriate filename for the log descriptor using the current Unix
+time (seconds since epoch) and passes it to the log file main.
+
+### Log File Reader and Replay
+
+An example of basic reading of the log file can be found in the `ReadFile`
+function in `util/logger.cc`. However, this is not typically used for anything
+practical. The far more common usage point is in the `LogReplay` class found in
+`util/log-replay.*`.
+
+The log replay must accomplish the following:
+- Actually read the raw data from the file
+- Parse it to figure out which queue to send it out on
+- Send the raw data on the queue at the appropriate (simulated) time
+- Account for differences between old/new log files
+- Allow ignoring/renaming individual queues so that we can do things like
+  logsim, where we might publish sensor data unaltered to see how the controller
+  responds to real data, but we want to be able to separate the old/new control
+  commands, so we might rename, e.g., the `sail_cmd` queue to `orig_sail_cmd`
+  (which would have to be defined in the `LogEntry` proto itself).
+
+Reading from the file is simply accomplished with an `std::ifstream`.
+
+To determine which queue to send on, we must parse the message and do a bit of
+work with reflection.
+I have thus far only mentioned it in passing, and I believe that the only place
+any reflection has been used was briefly in the `ProtoQueue` to provide some
+convenience by extracting the user-relevant message from the `LogEntry` protobuf
+and packaging appropriately when sending. More detail on reflection can be found
+below.
+
+To send out the message at the appropriate time, we take the timestamp as read
+from parsing the particular logged message. Since we are using a fake clock in
+replaying (we actually set the fake clock in `LogReplay::Init`), we don't have
+to worry about the fact that the logged times are different from the current
+true time. We then do a sleep until that timestamp comes to send out the
+message. During initialization, we startup the `ClockManager` with the start
+time listed in the first 8 bytes of the log file.
+
+Differences between old/new logfiles are handled by introducing a method to
+allow providing handlers which will preprocess any Queue before being sent out.
+Currently this is used on the `boat_state` message to look at the position
+fields and, if the proper position field isn't filed out but one of the old ones
+is, it copies the data over. Other handlers may be added when or if other
+protobuf definitions change, but this is an example of why we don't like
+changing protobufs---it makes it hard to process old log files, even if all we
+want to do is plot the data (because the fields that we want to plot may have
+new names).
+
+For renaming, we allow the user to pass in a map of queues to rename, with the
+old names as keys and the new names as the data. If we have been asked to rename
+a queue, we then retrieve the `FieldDescriptor`s for both the old name and new
+name portions within the `LogEntry` proto and then use the reflection for the
+`LogEntry` to copy the data between fields.
+
+#### Diversion on Reflection
+
+Reflection is the ability to understand (and possibly alter) the nature of a
+data structure at runtime. In our case, we use the [Protobuf
+Reflection](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.message#Reflection)
+to identify which message field is filled in and send things out on that queue.
+
+In our case, we retrieve a list of all the fields in the protobuf, ensure that
+it is only of length two (i.e., has a time portion and a data portion), and then
+go through both fields and retrieve the necessary data (in our case, the time
+data and the name of the non-time field).
+
+```cpp
+LogEntry entry;
+...
+std::vector<const google::protobuf::FieldDescriptor*> fields;
+entry.GetReflection()->ListFields(entry, &fields);
+CHECK_LE(fields.size(), 2) << "We only support log entries with a timestamp + ONE message";
+for (const auto field : fields) {
+  if (field->lowercase_name() == "time") {
+    ...
+  } else {
+    queue_name = field->lowercase_name();
+  }
+}
+```
+
+Broadly speaking (and more documentation can be found on the Protobuf website or
+by looking at examples in our code), the reflection relies on a few concepts:
+- The `FieldDescriptor`, which is the thing that we use for accessing and
+  getting information about a field.
+- The `Reflection` class from `Message::GetReflection`, which allows us to
+  access the actual data of a protobuf (e.g., getting a list of the fields, or
+  getting the data in a field using `GetReflection()->GetMessage(Message,
+  FieldDescriptor)`).
+- The `Descriptor` class, which allows us to get data about the type of message
+  (rather than the individual instance of the message), e.g. it allows us to
+  access individual fields by name by retrieving the `FieldDescriptor` with a
+  call to `Message::GetDescriptor()->FindFieldByName(name)`.
+
+## WebSocket Server
 
 ## Testing Infrastructure
 
