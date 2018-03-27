@@ -422,8 +422,14 @@ password `temppwd` by default.
 
        Preferably after a similar entry for `/var/www`
    2. Then, change `/etc/apache2/sites-enabled/000-default.conf` by changing `/var/www` to `/home/debian/bin/sailbot/html`.
-6. ***NOTE: Depending on the version of code you are using, you may need to
-change `bringup-can.sh` to refer to `BB-CAN1` instead of `BB-DCAN1`***
+6. To overlay the device tree for CAN1 at boot, edit the /boot/uEnv.txt file line from: \
+   `uboot_overlay_addr4=/lib/firmware/<file4>.dtbo` \
+   to: \
+   `uboot_overlay_addr4=/lib/firmware/BB-CAN1-00A0.dtbo` \
+   On the next boot, `/sys/kernel/debug/pinctrl/44e10800.pinmux/pinmux-pins` should show (need to log into
+   root in order to be able to find this file): \
+     `pin 96 (PIN96): 481d0000.can (GPIO UNCLAIMED) function pinmux_dcan1_pins group pinmux_dcan1_pins` \
+     `pin 97 (PIN97): 481d0000.can (GPIO UNCLAIMED) function pinmux_dcan1_pins group pinmux_dcan1_pins`
 7. Make the code run on startup by adding an entry `@reboot /home/debian/bin/sailbot/startup.sh`
    to the root crontab (accessible via `sudo crontab -e`).
 7. Start the code by running a `sudo ~/bin/sailbot/startup.sh`
@@ -434,7 +440,7 @@ change `bringup-can.sh` to refer to `BB-CAN1` instead of `BB-DCAN1`***
 `/boot/uEnv.txt` (there should be a comment there), rebooting with the SD card
 in, wait for all the lights to go off, remove the SD card, and boot again.
 
-### Alternate config for configuring CAN on boot
+### Alternate config for configuring CAN on boot (Only tested for 8.6)
 The following steps replace the `bringup-can.sh` file:
 1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)\
    `cape_enable=bone_capemgr.enable_partno=BB-DCAN1` <-Debian 8.6
