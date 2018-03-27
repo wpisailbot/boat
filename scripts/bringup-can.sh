@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo BB-DCAN1 > /sys/devices/platform/bone_capemgr/slots
+#echo BB-DCAN1 > /sys/devices/platform/bone_capemgr/slots
 
 sudo modprobe can
 sudo modprobe can-dev
