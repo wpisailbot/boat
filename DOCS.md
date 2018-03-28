@@ -449,9 +449,11 @@ The following steps replace the `bringup-can.sh` file:
    can-dev
    can-raw`
 3. Append the following to `/etc/network/interfaces`: \
-   `allow-hotplug can0
+   ```
+     allow-hotplug can0
      iface can0 can static
-       bitrate 250000`
+         bitrate 250000
+   ```
 
 # Software Infrastructure
 
