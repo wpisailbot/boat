@@ -489,6 +489,8 @@ TEST_F(BackPassTest, UpwindMultipointTack) {
   nextpt << 15.0, 0.0;
   tackpts = {{0.0, 0.0}, {5.0, 1.0}, {10.0, -1.0}};
   orig_tackpts = tackpts;
+  // Need to run two passes because it takes a moment for things to settle.
+  BackPass(M_PI, 1.0);
   BackPass(M_PI, 1.0);
   EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
       << "First point should've moved up a tick";

@@ -13,6 +13,7 @@ constexpr float LinePlan::kUpwindApproxCost;
 constexpr float LinePlan::kSailableReach;
 constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
+constexpr float LinePlan::kPreTurnScale;
 constexpr int LinePlan::kMaxNpts;
 
 LinePlan::LinePlan()
@@ -430,7 +431,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
     // Heading of the boat coming into prept.
     double preheading =
         (ii == 1) ? cur_yaw : util::atan2(prept - tackpts->at(ii - 2));
-    double scale_pre = (ii == 1) ? 5.0 : 1.0;
+    double scale_pre = (ii == 1) ? kPreTurnScale : 1.0;
 
     Vector2d dcostdpt;
     LinePairCost(prept, postpt, curpt, preheading, postheading, winddir,

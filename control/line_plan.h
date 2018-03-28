@@ -79,6 +79,9 @@ class LinePlan : public Node {
   constexpr static float kLengthCost = 0.1;
   // Default length of a gate, in meters.
   constexpr static float kGateWidth = 20.0;
+  // Amount to weight the very first turn relative
+  // to the later turns (provides some hysteresis):
+  constexpr static float kPreTurnScale = 5.0;
   // Maximum number of turn points
   constexpr static int kMaxNpts = 5;
 
