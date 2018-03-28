@@ -1,5 +1,7 @@
 #!/bin/bash
-killall -s SIGINT -r \(can-dump\|logger_main\|server_main\|simple_control_main\|adaptive_control_main\|state_estimator_main\|scamp_main\|sbus-test-run\|line_tacking_main\|rigid_wing_main\|waypoint_manager_main\)
+# Note that this assumes that everything has been started from the startup.sh script,
+# and so the name of the process should contain its full path which should include bin/sailbot
+ps aux | grep "bin\/sailbot" | awk '{ print $2 }' | xargs --no-run-if-empty kill -SIGINT
 sleep 5
-killall -s SIGKILL -r \(can-dump\|logger_main\|server_main\|simple_control_main\|adaptive_control_main\|state_estimator_main\|scamp_main\|sbus-test-run\|line_tacking_main\|rigid_wing_main\|waypoint_manager_main\)
+ps aux | grep "bin\/sailbot" | awk '{ print $2 }' | xargs --no-run-if-empty kill -SIGKILL
 rm /dev/shm/*
