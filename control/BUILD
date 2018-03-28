@@ -66,6 +66,11 @@ cc_binary(
   srcs=["adaptive_main.cc"],
   deps=[":adaptive_control"],
 )
+cc_binary(
+  name="line_plan_main",
+  srcs=["line_plan_main.cc"],
+  deps=[":line_plan"],
+)
 cc_library(
   name="line_tacking",
   srcs=["line_tacking.cc"],

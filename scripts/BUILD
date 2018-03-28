@@ -9,6 +9,7 @@ genrule(
         "//ui:server_main",
         "//control:simple_control_main",
         "//control:adaptive_control_main",
+        "//control:line_plan_main",
         "//control:scamp_main",
         "//control:line_tacking_main",
         "//control:waypoint_manager_main",
