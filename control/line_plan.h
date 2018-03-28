@@ -79,6 +79,8 @@ class LinePlan : public Node {
   constexpr static float kLengthCost = 0.1;
   // Default length of a gate, in meters.
   constexpr static float kGateWidth = 20.0;
+  // Maximum number of turn points
+  constexpr static int kMaxNpts = 5;
 
   // None of these functions below account for obstacles.
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,
