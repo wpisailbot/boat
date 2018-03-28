@@ -429,10 +429,11 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
     // Heading of the boat coming into prept.
     double preheading =
         (ii == 1) ? cur_yaw : util::atan2(prept - tackpts->at(ii - 2));
+    double scale_pre = (ii == 1) ? 5.0 : 1.0;
 
     Vector2d dcostdpt;
     LinePairCost(prept, postpt, curpt, preheading, postheading, winddir,
-                 obstacles, &cost, &dcostdpt, &lineviable);
+                 scale_pre, obstacles, &cost, &dcostdpt, &lineviable);
     if (viable != nullptr) *viable = *viable && lineviable;
     tackpts->at(ii) -= step * dcostdpt;
     if (finalcost != nullptr) {
@@ -628,7 +629,8 @@ void LinePlan::SingleLineCost(const Eigen::Vector2d &startline,
 void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
                             const Eigen::Vector2d &endpt,
                             const Eigen::Vector2d &turnpt, double preheading,
-                            double postheading, double winddir, double *cost,
+                            double postheading, double winddir,
+                            double scale_pre_cost, double *cost,
                             Eigen::Vector2d *dcostdturnpt, bool *viable) {
   *CHECK_NOTNULL(cost) = 0.0;
   *CHECK_NOTNULL(dcostdturnpt) *= 0.0;
@@ -656,8 +658,8 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   TurnCost(preheading, headinga, winddir, &turncost, &dcostdstart, &dcostdend);
   LOG(INFO) << "Preturn: cost " << turncost << " dcostdend " << dcostdend
             << " dhadpt " << dhadturnpt;
-  *cost += turncost;
-  *dcostdturnpt += dcostdend * dhadturnpt;
+  *cost += turncost * scale_pre_cost;
+  *dcostdturnpt += dcostdend * dhadturnpt * scale_pre_cost;
 
   TurnCost(headinga, headingb, winddir, &turncost, &dcostdstart, &dcostdend);
   LOG(INFO) << "Middle Turn: cost " << turncost << " dcostdstart "
@@ -701,6 +703,7 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
                             const Eigen::Vector2d &endpt,
                             const Eigen::Vector2d &turnpt, double preheading,
                             double postheading, double winddir,
+                            double scale_pre_cost,
                             const std::vector<Polygon> &obstacles, double *cost,
                             Eigen::Vector2d *dcostdturnpt, bool *viable) {
   *CHECK_NOTNULL(cost) = 0.0;
@@ -709,7 +712,7 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   double basecost;
   Vector2d basedturnpt;
   LinePairCost(startpt, endpt, turnpt, preheading, postheading, winddir,
-               &basecost, &basedturnpt, viable);
+               scale_pre_cost, &basecost, &basedturnpt, viable);
   *cost += basecost;
   *dcostdturnpt += basedturnpt;
 

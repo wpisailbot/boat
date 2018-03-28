@@ -100,7 +100,7 @@ class ControlPhysics {
 
   double Qf = 1.0;
   double Qtaumax = 0.4;
-  double Qtaueq = 0.4;
+  double Qtaueq = 0.04;
 
  private:
 

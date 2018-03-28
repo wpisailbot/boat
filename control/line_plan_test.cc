@@ -195,27 +195,27 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   double cost, dcost;
 
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &cost, &dcostdturn, nullptr);
+                         winddir, 1.0, &cost, &dcostdturn, nullptr);
 
   // First, just check that empirically measured derivatives match the actual
   // derivatives.
   double eps = 1e-4, tol = 1e-3;
   LinePlan::LinePairCost(startpt, endpt, turnpt + Eigen::Vector2d(eps, 0.0),
-                         preheading, postheading, winddir, &dcost, &dcostdturn,
-                         nullptr);
+                         preheading, postheading, winddir, 1.0, &dcost,
+                         &dcostdturn, nullptr);
   EXPECT_NEAR(dcostdturn.x(), (dcost - cost) / eps, tol)
       << "X partial doesn't match numeric/analytic";
 
   LinePlan::LinePairCost(startpt, endpt, turnpt + Eigen::Vector2d(0.0, eps),
-                         preheading, postheading, winddir, &dcost, &dcostdturn,
-                         nullptr);
+                         preheading, postheading, winddir, 1.0, &dcost,
+                         &dcostdturn, nullptr);
   EXPECT_NEAR(dcostdturn.y(), (dcost - cost) / eps, tol)
       << "Y partial doesn't match numeric/analytic";
 
   // Moving endpt farther out should increase costs
   endpt *= 2.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   endpt /= 2.0;
   EXPECT_LT(cost, dcost) << "Increasing segment lengths should increase cost";
 
@@ -223,7 +223,7 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   endpt << 0.0, 2.0;
   postheading = 3.0 * M_PI_4;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   endpt << 2.0, 2.0;
   postheading = M_PI_4;
   EXPECT_LT(cost, dcost) << "Creating elbow should increase cost";
@@ -231,21 +231,21 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   // Adjusting postheading should incur a cost:
   postheading *= -1.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   postheading *= -1.0;
   EXPECT_LT(cost, dcost) << "Adding turn at end should increase cost";
 
   // Adjusting preheading should incur a cost:
   preheading *= -1.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   preheading *= 1.0;
   EXPECT_LT(cost, dcost) << "Adding turn at beginning should increase cost";
 
   // Forcing us to go through the wind should increase cost:
   winddir = M_PI;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   winddir = 0.0;
   EXPECT_LT(cost, dcost) << "Going upwind should increase cost";
 }

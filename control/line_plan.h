@@ -88,7 +88,8 @@ class LinePlan : public Node {
                              bool *viable);
   static void LinePairCost(const Vector2d &startpt, const Vector2d &endpt,
                            const Vector2d &turnpt, double preheading,
-                           double postheading, double winddir, double *cost,
+                           double postheading, double winddir,
+                           double scale_pre_cost, double *cost,
                            Vector2d *dcostdturnpt, bool *viable);
   static void CrossFinishCost(double alpha, double *cost, double *dcostdalpha);
   static void TurnCost(double startheading, double endheading, double winddir,
@@ -114,6 +115,7 @@ class LinePlan : public Node {
   static void LinePairCost(const Vector2d &startpt, const Vector2d &endpt,
                            const Vector2d &turnpt, double preheading,
                            double postheading, double winddir,
+                           double scale_pre_cost,
                            const std::vector<Polygon> &obstacles, double *cost,
                            Vector2d *dcostdturnpt, bool *viable);
 
