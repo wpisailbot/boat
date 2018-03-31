@@ -439,6 +439,14 @@ password `temppwd` by default.
 9. If you'd like, flash everything to the eMMC by modifying the last line in the
 `/boot/uEnv.txt` (there should be a comment there), rebooting with the SD card
 in, wait for all the lights to go off, remove the SD card, and boot again.
+10. The BBB should have the IP address of `192.168.0.21` on the boat network. Assuming we are using
+    Ethernet, add the following to the `/etc/network/interfaces` file:
+    ```
+    allow-hotplug eth0
+    iface eth0 inet static
+        address 192.168.0.21
+        netmask 255.255.255.0
+    ```
 
 ### Alternate config for configuring CAN on boot (Only tested for 8.6)
 The following steps replace the `bringup-can.sh` file:
