@@ -127,7 +127,15 @@ void LineTacker::Iterate() {
   }
   double gh = GoalHeading();
   heading_msg_->set_heading(gh);
-  heading_cmd_.send(heading_msg_);
+  switch (tack_mode_) {
+    case msg::ControlMode_TACKER_LINE:
+    case msg::ControlMode_TACKER_REWARD:
+    case msg::ControlMode_TACKER_NONE:
+      heading_cmd_.send(heading_msg_);
+      break;
+    default:
+      break;
+  }
 
   std::unique_lock<std::mutex> lck(consts_mutex_);
   consts_queue_.send(consts_msg_);

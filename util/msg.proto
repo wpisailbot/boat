@@ -85,5 +85,7 @@ message LogEntry {
   optional can.CANMaster can65282 = 65282; // PWM Write
   optional can.CANMaster can65283 = 65283; // Debug SCAMP1
   optional can.CANMaster can65284 = 65284; // Debug SCAMP2
+  optional can.CANMaster can65296 = 65296; // Sailbot State
+  optional can.CANMaster can65297 = 65297; // Sailbot State
 
 }
