@@ -167,7 +167,7 @@ message SailbotConn {
   enum ConnectionState {
     GOOD = 0;
     BAD = 1;
-    UNKNOWN = 15;
+    UNKNOWN = 255;
   }
   optional ConnectionState rigid_conn = 1;
   optional ConnectionState radio_conn = 2;
