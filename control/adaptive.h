@@ -1,4 +1,8 @@
 #pragma once
+// See http://eigen.tuxfamily.org/dox-devel/group__TopicUnalignedArrayAssert.html
+// This only seems to be an issue on the BBB, not normal laptops.
+#define EIGEN_DONT_VECTORIZE
+#define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 #include "util/node.h"
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
