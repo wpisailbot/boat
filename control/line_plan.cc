@@ -52,6 +52,14 @@ LinePlan::LinePlan()
     UpdateWaypoints();
   });
 
+  RegisterHandler<msg::ControlMode>("control_mode",
+                                    [this](const msg::ControlMode &msg) {
+    if (msg.has_tacker()) {
+      tack_mode_ = msg.tacker();
+    }
+  });
+
+
   RegisterHandler<msg::BoatState>(
       "boat_state",
       [this](const msg::BoatState &msg) {
@@ -78,6 +86,9 @@ LinePlan::LinePlan()
 }
 
 void LinePlan::Iterate() {
+  if (tack_mode_ != msg::ControlMode_TACKER_LINE_PLAN) {
+    return;
+  }
   if (lonlat_scale_.squaredNorm() < 1e-10) {
     // If we haven't yet setup our reference points, don't do anything.
     return;

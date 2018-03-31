@@ -3,7 +3,7 @@ load("@protobuf//:protobuf.bzl", "cc_proto_library")
 cc_proto_library(
   name="can_proto",
   srcs=["can.proto"],
-  deps=["@protobuf//:cc_wkt_protos"],
+  deps=["@protobuf//:cc_wkt_protos", "//control:actuator_cmd_proto"],
   protoc="@protobuf//:protoc",
   default_runtime = "@protobuf//:protobuf",
 )
