@@ -22,6 +22,10 @@ LinePlan::LinePlan()
       heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::WaypointList>("waypoints",
                                      [this](const msg::WaypointList &msg) {
+    if (msg.points_size() == 0) {
+      LOG(WARNING) << "Can't send me no waypoints";
+      return;
+    }
     std::unique_lock<std::mutex> lck(data_mutex_);
     // TODO(james): Support repeat flag.
     // TODO(james): Test properly
@@ -129,7 +133,7 @@ void LinePlan::UpdateObstacles() {
 void LinePlan::UpdateWaypoints() {
   // Iterate through every waypoint and convert appropriately.
   size_t Nway = waypoints_lonlat_.size();
-  if (Nway == 0) return;
+  if (Nway <= 1) return;
   waypoints_.resize(Nway);
 
   Point curpt = LonLatToFrame(waypoints_lonlat_[0]);
