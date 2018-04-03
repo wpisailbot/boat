@@ -68,6 +68,11 @@ customized, version called Blaze). The primary reasons to use Bazel are:
    - Currently, to get the code built on a new Ubuntu 16.04 instance, it takes minimal
  - Builds make reasonably effective use of caching and multithreading—as good or better than any other build system you’ll use.
  - It is relatively easy, once the original setup is done, to maintain and to perform simple tasks like adding new files that need to be built and the such.
+ - The above qualities make it easier to build and deploy code to the BBB
+   because, if we do not build everything ourselves from source, then we have to
+   handle locating built libraries for the correct ARM architecture and
+   whenever we set up a new BBB we'd have to reinstall the appropriate
+   libraries.
  - I happen to like it
 
 There are disadvantages, the biggest of which is a lack of support---there are
