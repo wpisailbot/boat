@@ -54,6 +54,9 @@ class LinePlan : public Node {
   Point LonLatToFrame(const Point &lonlat) {
     return lonlat_scale_.cwiseProduct(lonlat - lonlat_ref_);
   }
+  Point FrameToLonLat(const Point &frame) {
+    return frame.cwiseQuotient(lonlat_scale_) + lonlat_ref_;
+  }
 
   // Reset _all_ of our meters-based using newlonlatref as the origin
   // longitude/latitude and basis for scaling.
@@ -229,6 +232,8 @@ class LinePlan : public Node {
   // Goal waypoints
   // TODO(james): Make mode adjust to actually handle all reasonable inputs.
   std::vector<Point> waypoints_lonlat_;
+  msg::WaypointList* pathpoints_lonlat_msg_;
+  ProtoQueue<msg::WaypointList> pathpoints_queue_;
   // Store ``waypoints'' as pairs of points representing the line we must cross.
   // The order of the pair in theory could matter, although currently it should
   // not.

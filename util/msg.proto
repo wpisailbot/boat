@@ -48,6 +48,7 @@ message LogEntry {
   optional ChallengeControl challenge_control = 515;
   optional VisionData vision_data = 516;
   optional BallastCmd manual_ballast_cmd = 517;
+  optional WaypointList planner_points = 518;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;
@@ -86,6 +87,6 @@ message LogEntry {
   optional can.CANMaster can65283 = 65283; // Debug SCAMP1
   optional can.CANMaster can65284 = 65284; // Debug SCAMP2
   optional can.CANMaster can65296 = 65296; // Sailbot State
-  optional can.CANMaster can65297 = 65297; // Sailbot State
+  optional can.CANMaster can65297 = 65297; // Connection Status
 
 }

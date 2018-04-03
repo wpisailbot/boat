@@ -7,6 +7,7 @@ var shadowBoatState = "orig_boat_state"
 var shadowQuaternionQueue = shadowBoatState + ".orientation.";
 var shadowPositionQueue = shadowBoatState + ".pos";
 var waypointsQueue = "waypoints";
+var pathpointsQueue = "planner_points";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};
 var shadowQuaternion = {w: 1, x: 0, y: 0, z: 0};
@@ -188,6 +189,27 @@ function addVector(frame, color, x, y, xyQueue, angleQueue, lenQueue, scale) {
   }
 }
 
+function pathpointsListener() {
+  var points = fields[pathpointsQueue].value.points;
+  var id_base = "path_points";
+  var i = 0;
+  for (; i < 10; ++i) {
+    var id = id_base + i;
+    $("#"+id).remove();
+  }
+  for (i = 1; i < points.length; i++) {
+    var id = id_base + i;
+    var prevpos = toInertialSvgCoords(points[i-1]);
+    var pos = toInertialSvgCoords(points[i]);
+    $("#"+id).remove();
+    var iframe = $("." + inertialFrame);
+    console.log(points[i-1]);
+    iframe.html(iframe.html() + "<line id='" + id + "' x1='" + prevpos.x +
+                "' y1='" + prevpos.y + "' x2='" + pos.x + "' y2='" + pos.y
+                + "'style='stroke:rgb(0,0,0);stroke-width:1' />");
+  }
+}
+
 function waypointsListener() {
   var points = fields[waypointsQueue].value.points;
   var id_base = "waypoint_marker";
@@ -333,6 +355,7 @@ function initializeBoatHandlers() {
   addHandler(positionQueue, boatPositionListener);
   addHandler(shadowPositionQueue, shadowBoatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
+  addHandler(pathpointsQueue, pathpointsListener);
 
   addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
   addVector("demo_hull_loc", "orange", 0, 0, "true_wind", null, null, 15);

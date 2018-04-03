@@ -18,6 +18,8 @@ constexpr int LinePlan::kMaxNpts;
 
 LinePlan::LinePlan()
     : Node(dt), lonlat_ref_(0.0, 0.0), lonlat_scale_(0.0, 0.0),
+      pathpoints_lonlat_msg_(AllocateMessage<msg::WaypointList>()),
+      pathpoints_queue_("planner_points", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::WaypointList>("waypoints",
@@ -93,6 +95,8 @@ LinePlan::LinePlan()
 
 void LinePlan::Iterate() {
   if (tack_mode_ != msg::ControlMode_TACKER_LINE_PLAN) {
+    pathpoints_lonlat_msg_->clear_points();
+    pathpoints_queue_.send(pathpoints_lonlat_msg_);
     return;
   }
   if (lonlat_scale_.squaredNorm() < 1e-10) {
@@ -102,6 +106,7 @@ void LinePlan::Iterate() {
   double heading = GetGoalHeading();
   heading_msg_->set_heading(heading);
   heading_cmd_.send(heading_msg_);
+  pathpoints_queue_.send(pathpoints_lonlat_msg_);
 }
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
@@ -250,6 +255,13 @@ double LinePlan::GetGoalHeading() {
   // Because the returned path doesn't include the last point, add it.
   path.push_back(alpha * waypoints_[next_waypoint_].first +
                  (1.0 - alpha) * waypoints_[next_waypoint_].second);
+  pathpoints_lonlat_msg_->clear_points();
+  for (const auto &pt : path) {
+    Point ptll = FrameToLonLat(pt);
+    msg::Waypoint *msg_pt = pathpoints_lonlat_msg_->add_points();
+    msg_pt->set_x(ptll.x());
+    msg_pt->set_y(ptll.y());
+  }
 
   double heading = util::atan2(path[1] - path[0]);
   return heading;
