@@ -114,11 +114,14 @@ StateEstimator::StateEstimator()
       // TODO(james): Filter
       double heel = msg.ballast_state().heel();
       euler_angles_[0] = heel;
-      omega_[0] = (heel - last_inclinometer_) / dt;
+      // Add in filter to prevent silly velocity measurements
+      omega_[0] += 0.2 * ((heel - last_inclinometer_) / dt - omega_[0]);
 
       double ballast_angle = msg.ballast_state().ballast();
       state_msg_->mutable_internal()->set_ballast(ballast_angle);
       double ballastdot = (ballast_angle - last_ballast_) / dt;
+      double ballastdot =
+          state_msg_->mutable_internal()->ballastdot() * 0.8 + 0.2 * ballastdot;
       state_msg_->mutable_internal()->set_ballastdot(ballastdot);
       last_ballast_time_ = Time();
     }
