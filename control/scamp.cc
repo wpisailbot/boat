@@ -28,6 +28,9 @@ SCAMP::SCAMP()
         if (msg.has_rudder_zero()) {
           consts_msg_->set_rudder_zero(msg.rudder_zero());
         }
+        if (msg.has_ballast_zero()) {
+          consts_msg_->set_ballast_zero(msg.ballast_zero());
+        }
       });
 
   RegisterHandler<msg::can::CANMaster>("can65281" /*Analog Pot*/,
@@ -45,7 +48,7 @@ SCAMP::SCAMP()
     std::unique_lock<std::mutex> lck(state_msg_mut_);
     if (msg.has_ballast_state() && msg.ballast_state().has_ballast()) {
       state_msg_->Clear();
-      state_msg_->set_ballast(msg.ballast_state().ballast() +
+      state_msg_->set_ballast(msg.ballast_state().ballast() -
                               consts_msg_->ballast_zero());
       state_queue_.send(state_msg_);
     }
