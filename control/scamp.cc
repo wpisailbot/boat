@@ -15,8 +15,8 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   consts_msg_->set_rudder_zero(99);
-  consts_msg_->set_winch_0_pot(980);
-  consts_msg_->set_winch_90_pot(600);
+  consts_msg_->set_winch_0_pot(0);
+  consts_msg_->set_winch_90_pot(1023);
 
   RegisterHandler<msg::ZeroingConstants>(
       "zeroing_consts", [this](const msg::ZeroingConstants &msg) {
@@ -149,7 +149,7 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   // Also, create a deadband
   volts = std::abs(volts) < 1 ? 0 : volts;
   // And only permit 6V, until we know what we are doing:
-  volts = std::min(std::max(volts, (float)-6.), (float)6.);
+  volts = std::min(std::max(volts, (float)-12.), (float)12.);
   volts *= (consts_msg_->winch_90_pot() > consts_msg_->winch_0_pot()) ? -1 : 1;
   int raw_val = volts / 12. * 90. + 90;
 
