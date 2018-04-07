@@ -107,6 +107,7 @@ message ZeroingConstants {
   optional int32 rudder_zero = 1;
   optional int32 winch_0_pot = 2;
   optional int32 winch_90_pot = 3;
+  optional double ballast_zero = 4;
 }
 
 message Vector3f {

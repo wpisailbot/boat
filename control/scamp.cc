@@ -15,6 +15,7 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   consts_msg_->set_rudder_zero(99);
+  consts_msg_->set_ballast_zero(0.0);
   consts_msg_->set_winch_0_pot(0);
   consts_msg_->set_winch_90_pot(1023);
 
@@ -32,10 +33,22 @@ SCAMP::SCAMP()
   RegisterHandler<msg::can::CANMaster>("can65281" /*Analog Pot*/,
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
+    state_msg_->Clear();
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
     state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
     state_queue_.send(state_msg_);
+  });
+
+  RegisterHandler<msg::can::CANMaster>("can65285" /*Ballast State*/,
+                                       [this](const msg::can::CANMaster &msg) {
+    std::unique_lock<std::mutex> lck(state_msg_mut_);
+    if (msg.has_ballast_state() && msg.ballast_state().has_ballast()) {
+      state_msg_->Clear();
+      state_msg_->set_ballast(msg.ballast_state().ballast() +
+                              consts_msg_->ballast_zero());
+      state_queue_.send(state_msg_);
+    }
   });
 
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
