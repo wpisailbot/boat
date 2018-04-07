@@ -40,6 +40,9 @@ SimpleControl::SimpleControl(bool do_rudder)
 
   consts_msg_->set_ballast_arm_kp(5.0);
   consts_msg_->set_ballast_arm_kd(2.0);
+  consts_msg_->set_ballast_arm_kff_arm(1.0);
+  consts_msg_->set_ballast_arm_kff_heel(1.0);
+
   consts_msg_->set_nominal_heel(0.15);
 
   consts_msg_->set_rigid_port_servo_pos(15);
@@ -154,8 +157,14 @@ void SimpleControl::Iterate() {
   double ballast_error = ballast_goal - ballast;
   double dballast_error = -ballastdot;
   double ballast_voltage = consts_msg_->ballast_arm_kp() * ballast_error +
-                           consts_msg_->ballast_arm_kd() * dballast_error;
+                           consts_msg_->ballast_arm_kd() * dballast_error -
+                           consts_msg_->ballast_arm_kff_arm() * ballast -
+                           consts_msg_->ballast_arm_kff_heel() * heel;
   ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
+  if (std::abs(ballast_error) < 0.1) {
+    // If sufficiently close, then tack advantage of non-backdrivability:
+    ballast_voltage = 0.0;
+  }
 
   ballast_msg_->set_voltage(ballast_voltage);
 
