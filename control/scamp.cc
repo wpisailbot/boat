@@ -1,5 +1,6 @@
 #include "scamp.h"
 #include "control/actuator_cmd.pb.h"
+#include "control/util.h"
 #include "gflags.h"
 
 namespace sailbot {
@@ -165,6 +166,7 @@ void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
   if (cmd.has_vel()) {
     raw_ballast_ = cmd.vel() + 90;
   } else if (cmd.has_voltage()) {
+    double volts = util::Clip((double)cmd.voltage(), -4.0, 4.0);
     raw_ballast_ = cmd.voltage() * 90.0 / 12.0 + 90.0;
   }
 }

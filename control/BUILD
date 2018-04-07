@@ -38,7 +38,9 @@ cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
-  deps=[":actuator_cmd_proto", "//util:node"],
+  deps=[":actuator_cmd_proto",
+        ":util",
+        "//util:node"],
 )
 cc_binary(
   name="scamp_main",
