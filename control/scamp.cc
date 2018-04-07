@@ -34,9 +34,9 @@ SCAMP::SCAMP()
     state_msg_->set_sail(
         WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
     state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
-    state_msg_->set_ballast(raw_ballast_);
     state_queue_.send(state_msg_);
   });
+
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
     if (IsAuto(WINCH)) {
       volts_winch_ = cmd.voltage();
@@ -61,6 +61,13 @@ SCAMP::SCAMP()
                                   [this](const msg::RudderCmd &cmd) {
     if (IsManualWiFi(RUDDER)) {
       SetRawFromRudderCmd(cmd);
+    }
+  });
+
+  RegisterHandler<msg::BallastCmd>("ballast_cmd",
+                                   [this](const msg::BallastCmd &cmd) {
+    if (IsAuto(BALLAST)) {
+      SetRawFromBallastCmd(cmd);
     }
   });
 
@@ -155,7 +162,11 @@ void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
 }
 
 void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
-  raw_ballast_ = cmd.vel()+90;
+  if (cmd.has_vel()) {
+    raw_ballast_ = cmd.vel() + 90;
+  } else if (cmd.has_voltage()) {
+    raw_ballast_ = cmd.voltage() * 90.0 / 12.0 + 90.0;
+  }
 }
 
 float SCAMP::WinchPotToAngle(float pot_val) {

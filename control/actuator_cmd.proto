@@ -17,6 +17,7 @@ message RudderCmd {
 
 message BallastCmd {
   optional float vel = 11;
+  optional float voltage = 12;
 }
 
 message HeadingCmd {
@@ -83,6 +84,13 @@ message ControllerConstants {
   optional float winch_kp = 3;
   optional float sail_heel_k = 4;
   optional float qf = 5;
+
+  optional float ballast_arm_kp = 10;
+  optional float ballast_arm_kd = 11;
+  optional float ballast_heel_kp = 12;
+  optional float ballast_heel_ki = 13;
+  optional float ballast_heel_kd = 14;
+  optional float nominal_heel = 15;
 
   optional float rigid_port_servo_pos = 20;
   optional float rigid_starboard_servo_pos = 21;

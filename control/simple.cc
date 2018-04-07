@@ -33,6 +33,15 @@ SimpleControl::SimpleControl(bool do_rudder)
   consts_msg_->set_rudder_kp(1.);
   consts_msg_->set_winch_kp(13);
   consts_msg_->set_sail_heel_k(1);
+
+  consts_msg_->set_ballast_heel_kp(1.0);
+  consts_msg_->set_ballast_heel_ki(0.0);
+  consts_msg_->set_ballast_heel_kd(0.0);
+
+  consts_msg_->set_ballast_arm_kp(5.0);
+  consts_msg_->set_ballast_arm_kd(2.0);
+  consts_msg_->set_nominal_heel(0.15);
+
   consts_msg_->set_rigid_port_servo_pos(15);
   consts_msg_->set_rigid_starboard_servo_pos(85);
   {
@@ -96,6 +105,9 @@ void SimpleControl::Iterate() {
   float vy = boat_state_->vel().y();
   float yaw = boat_state_->euler().yaw();
   float heel = boat_state_->euler().roll();
+  float heel_rate = boat_state_->omega().x();
+  float ballast = boat_state_->internal().ballast();
+  float ballastdot = boat_state_->internal().ballastdot();
   VLOG(2) << "yaw: " << yaw << " heel: " << heel;
 
   float goal_heading = heading_;
@@ -127,7 +139,25 @@ void SimpleControl::Iterate() {
                                   : consts_msg_->rigid_starboard_servo_pos());
   }
 
-  ballast_msg_->set_vel(-0.5 * heel);
+  double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir);
+  double heel_error = heel_goal - heel;
+  double dheel_error = -heel_rate;
+  heel_error_integrator_ += heel_error * dt;
+  heel_error_integrator_ = util::Clip(heel_error_integrator_, -0.5, 0.5);
+
+  double ballast_goal =
+      consts_msg_->ballast_heel_kp() * heel_error +
+      consts_msg_->ballast_heel_ki() * heel_error_integrator_ +
+      consts_msg_->ballast_heel_kd() * dheel_error;
+  ballast_goal = util::Clip(ballast_goal, -1.0, 1.0);
+
+  double ballast_error = ballast_goal - ballast;
+  double dballast_error = -ballastdot;
+  double ballast_voltage = consts_msg_->ballast_arm_kp() * ballast_error +
+                           consts_msg_->ballast_arm_kd() * dballast_error;
+  ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
+
+  ballast_msg_->set_voltage(ballast_voltage);
 
   float vel = std::sqrt(vx * vx + vy * vy);
   double max_rudder =
