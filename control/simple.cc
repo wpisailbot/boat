@@ -127,8 +127,21 @@ void SimpleControl::Iterate() {
                                   : consts_msg_->rigid_starboard_servo_pos());
   }
 
-  ballast_msg_->set_vel(-0.5 * heel);
 
+  
+
+  // did we ever write anything for reading the arm angle?
+  
+  float arm_error = 0;// #TODO arm error
+  float arm_integrated = 0;// #TODO arm integrated error
+  float arm_diff = 0;// #TODO arm derivative
+
+  float arm_voltage = b_kp * arm_error + b_ki * arm_integrated + b_kd * arm_diff + b_kh * heel + b_ka * arm_angle);
+    
+  if(arm_voltage < 1.5 && arm_voltage > -1.5){
+    arm_voltage = 0;
+  }
+  ballast_msg_->set_vel(arm_voltage);
   float vel = std::sqrt(vx * vx + vy * vy);
   double max_rudder =
       vel < 0 ? 0.3 : (vel < 0.5 ? 0.75 * consts_msg_->max_rudder()

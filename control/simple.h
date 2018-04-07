@@ -39,6 +39,13 @@ class SimpleControl : public Node {
   float last_goal_ = 0;
   float goal_cost_ = 0;
 
+    //BALLAST CONTROL CONSTANTS
+  const float b_kp = 0.35; //proportional constant
+  const float b_ki = 0.003;
+  const float b_kd = 0.3;
+  const float b_kh = -0.0457; //heel compensation
+  const float b_ka = -0.0334; //arm compensation
+
 };
 
 }  // control
