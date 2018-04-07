@@ -111,7 +111,7 @@ void SetWaypoint(msg::Waypoint* p, double x, double y) {
 }  // namespace
 
 TEST_F(SimpleControlTest, NavigationChallenge) {
-//  FLAGS_v = 2;
+  FLAGS_v = 1;
   msg::WaypointList waypoints;
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
@@ -123,8 +123,18 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
+
+  msg::Obstacles obstacles;
+  msg::WaypointList *obs1 = obstacles.add_polygons();
+  SetWaypoint(obs1->add_points(), 16, 3);
+  SetWaypoint(obs1->add_points(), 16, -3);
+  SetWaypoint(obs1->add_points(), 25, -3);
+  SetWaypoint(obs1->add_points(), 25, 3);
   sim_node_.set_wind(0 * M_PI / 4, 3.5);
-  Sleep(75);
+  ProtoQueue<msg::Obstacles> obs_q("planner_obstacles", true);
+  obs_q.send(&obstacles);
+
+  Sleep(7500);
   ASSERT_TRUE(true);
 }
 

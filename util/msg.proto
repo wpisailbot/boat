@@ -49,6 +49,7 @@ message LogEntry {
   optional VisionData vision_data = 516;
   optional BallastCmd manual_ballast_cmd = 517;
   optional WaypointList planner_points = 518;
+  optional Obstacles planner_obstacles = 519;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;

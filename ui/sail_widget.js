@@ -8,6 +8,7 @@ var shadowQuaternionQueue = shadowBoatState + ".orientation.";
 var shadowPositionQueue = shadowBoatState + ".pos";
 var waypointsQueue = "waypoints";
 var pathpointsQueue = "planner_points";
+var obstaclesQueue = "planner_obstacles";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};
 var shadowQuaternion = {w: 1, x: 0, y: 0, z: 0};
@@ -189,9 +190,7 @@ function addVector(frame, color, x, y, xyQueue, angleQueue, lenQueue, scale) {
   }
 }
 
-function pathpointsListener() {
-  var points = fields[pathpointsQueue].value.points;
-  var id_base = "path_points";
+function drawPoints(points, id_base) {
   var i = 0;
   for (; i < 10; ++i) {
     var id = id_base + i;
@@ -203,10 +202,33 @@ function pathpointsListener() {
     var pos = toInertialSvgCoords(points[i]);
     $("#"+id).remove();
     var iframe = $("." + inertialFrame);
-    console.log(points[i-1]);
     iframe.html(iframe.html() + "<line id='" + id + "' x1='" + prevpos.x +
                 "' y1='" + prevpos.y + "' x2='" + pos.x + "' y2='" + pos.y
                 + "'style='stroke:rgb(0,0,0);stroke-width:1' />");
+  }
+}
+
+function pathpointsListener() {
+  var points = fields[pathpointsQueue].value.points;
+  var id_base = "path_points";
+  drawPoints(points, id_base);
+}
+
+function pathObstacleListener() {
+  var obstacles = fields[obstaclesQueue].value.polygons;
+  var ii = 0;
+  var id_base = "path_obstacles";
+  for (; ii < 10; ii++) {
+    var id = id_base + ii + "_";
+    drawPoints([], id);
+  }
+  for (ii = 0; ii < obstacles.length; ii++) {
+    var id = id_base + ii + "_";
+    var obspoints = obstacles[ii].points;
+    if (obspoints.length > 1) {
+      obspoints.push(obspoints[0]);
+      drawPoints(obspoints, id);
+    }
   }
 }
 
@@ -356,6 +378,7 @@ function initializeBoatHandlers() {
   addHandler(shadowPositionQueue, shadowBoatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
   addHandler(pathpointsQueue, pathpointsListener);
+  addHandler(obstaclesQueue, pathObstacleListener);
 
   addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
   addVector("demo_hull_loc", "orange", 0, 0, "true_wind", null, null, 15);

@@ -30,6 +30,8 @@ WebSocketServer::WebSocketServer(int port)
   t.detach();
 }
 
+// NOTE: There still seem to be issues with the way that everything shuts down,
+// resulting in possible seg faults.
 WebSocketServer::~WebSocketServer() {
   for (auto &thread : threads_) {
     thread.join();

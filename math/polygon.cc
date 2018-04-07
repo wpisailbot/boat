@@ -23,12 +23,22 @@ bool ProjectsToLine(Point l0, Point l1, Point pt) {
 }
 
 Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
-  size_t N = pts_.size();
-  CHECK_LT(1, N) << "Need at least 2 points for a polygon";
-  for (size_t ii = 0; ii < N; ++ii) {
-    CHECK_GE(DistToLine(pts[ii], pts[(ii + 1) % N], pts[(ii + 2) % N]), 0.0)
-        << "Either not convex or not counter-clockwise";
+  CHECK(ValidatePoints(pts)) << "Points not correctly arranged";
+}
+
+bool Polygon::ValidatePoints(const std::vector<Point> pts) {
+  size_t N = pts.size();
+  if (N < 2) {
+    LOG(ERROR) << "Need at least 2 points for a polygon";
+    return false;
   }
+  for (size_t ii = 0; ii < N; ++ii) {
+    if (DistToLine(pts[ii], pts[(ii + 1) % N], pts[(ii + 2) % N]) < 0.0) {
+      LOG(ERROR) << "Either not convex or not counter-clockwise";
+      return false;
+    }
+  }
+  return true;
 }
 
 double Polygon::DistToPoint(Point pt) const {

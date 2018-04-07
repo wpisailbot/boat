@@ -41,6 +41,8 @@ class Polygon {
    */
   Polygon(std::vector<Point> pts);
 
+  static bool ValidatePoints(const std::vector<Point> pts);
+
   std::vector<Point> pts() const { return pts_; }
   std::vector<Point> *mutable_pts() { return &pts_; }
   Point pt(size_t ii) const { return pts_[ii]; }

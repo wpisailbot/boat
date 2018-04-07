@@ -45,6 +45,10 @@ class LinePlan : public Node {
 
   LinePlan();
 
+  ~LinePlan() {
+    delete pathpoints_lonlat_msg_;
+  }
+
   void Iterate() override;
 
   /**
@@ -90,7 +94,7 @@ class LinePlan : public Node {
   // to the later turns (provides some hysteresis):
   constexpr static float kPreTurnScale = 5.0;
   // Maximum number of turn points
-  constexpr static int kMaxNpts = 5;
+  constexpr static int kMaxNpts = 2;
 
   // None of these functions below account for obstacles.
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,

@@ -25,8 +25,9 @@ message HeadingCmd {
 }
 
 message Waypoint {
-  optional float x = 1;
-  optional float y = 2;
+  // NOTE: Changed to double when tuning planner on 2 April 2018
+  optional double x = 1;
+  optional double y = 2;
   optional float theta = 3;
 }
 
@@ -43,6 +44,12 @@ message WaypointList {
   optional bool defined_start = 3 [default = true];
   // Whether to loop through the waypoints continuously
   optional bool repeat = 4 [default = false];
+}
+
+message Obstacles {
+  // Each polygons is a list of polygon vertices
+  // Polygon vertices must be in a counter-clockwise order.
+  repeated WaypointList polygons = 1;
 }
 
 message ControlMode {

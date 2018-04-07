@@ -108,6 +108,11 @@
     <input type="button" onclick='sendMessage("waypoints", {restart: true, defined_start: false, points: JSON.parse($("#wp_many").val())});' value="Send Waypoints">
     </div>
     <div>
+      Obstacles: <span class="data_output" field="planner_obstacles"></span> </td>
+      Send Obstacles: <input type="textbox" id="plan_obs"> </td>
+    <input type="button" onclick='sendMessage("planner_obstacles", {polygons: JSON.parse($("#plan_obs").val())});' value="Send Obstacles">
+    </div>
+    <div>
       Ping: <input type="textbox" class="data_input" field="a" msg="ping" value="0.0">
       <input type="button" class="data_submit" msg="ping" value="Ping!">
     </div>
