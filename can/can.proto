@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "control/actuator_cmd.proto";
+
 package sailbot.msg.can;
 
 option cc_enable_arenas = true;
@@ -153,6 +155,36 @@ message DebugSCAMP {
   optional uint32 data2 = 2;
 }
 
+message BallastState {
+  optional float heel = 1;
+  optional float ballast = 2;
+}
+
+message SailbotState {
+  optional ControlMode.MODE rigid = 1;
+  optional ControlMode.MODE ballast = 2;
+  optional ControlMode.MODE winch = 3;
+  optional ControlMode.MODE rudder = 4;
+  optional ControlMode.TACKER tacker = 5;
+}
+
+message SailbotConn {
+  enum ConnectionState {
+    GOOD = 0;
+    BAD = 1;
+    UNKNOWN = 255;
+  }
+  optional ConnectionState rigid_conn = 1;
+  optional ConnectionState radio_conn = 2;
+  optional ConnectionState wifi_conn = 3;
+  optional ConnectionState jetson_conn = 4;
+  optional ConnectionState ui_conn = 5;
+}
+
+message BatteryVoltage {
+  optional float voltage = 2; // in volts
+}
+
 message CANMaster {
   optional bool outgoing = 1 [default = true]; // Whether to send out over wire
   optional SystemTime sys_time = 126992;
@@ -170,4 +202,8 @@ message CANMaster {
   optional PWMWrite pwm_write = 65282;
   optional DebugSCAMP debug_scamp1 = 65283;
   optional DebugSCAMP debug_scamp2 = 65284;
+  optional BallastState ballast_state = 65285;
+  optional SailbotState sailbot_state = 65296;
+  optional SailbotConn sailbot_conn = 65297;
+  optional BatteryVoltage battery_voltage = 65312;
 }

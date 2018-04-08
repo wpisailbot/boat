@@ -58,6 +58,7 @@ message ControlMode {
     LINE = 1;
     REWARD = 2;
     DISABLED = 3;
+    LINE_PLAN = 4;
   }
   optional MODE winch_mode = 1;
   optional TACKER tacker = 2;

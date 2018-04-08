@@ -57,7 +57,7 @@ class LineTacker : public Node {
   std::atomic<float> cur_speed_; // m/s
   std::atomic<float> cur_yaw_rate_; // rad/s
 
-  std::atomic<int> tack_mode_{msg::ControlMode_TACKER_REWARD};
+  std::atomic<int> tack_mode_{msg::ControlMode_TACKER_NONE};
 
   std::mutex consts_mutex_;
   msg::TackerConstants *consts_msg_;

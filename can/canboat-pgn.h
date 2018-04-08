@@ -478,6 +478,62 @@ Pgn pgnList[] =
 }
 
 ,
+
+{ "Ballast State", 0xFF05, true, 4, 0,
+  { { "Heel", BYTES(2), RES_RADIANS, true, "radians", "Heel angle of boat"}
+  , { "Ballast Arm", BYTES(2), RES_RADIANS, true, "radians", "Angle of ballast arm" }
+  , { 0 }
+  }
+}
+
+// States correspond with those in the sailbot::msg::ControlMode proto
+// The states shall be enums with the possible values:
+// 0: Manual/RC
+// 1: Autonomous
+// 2: Manual/network (i.e., joystick over WiFi)
+// 3: Disabled
+// 4: Filtered/RC
+//
+// The tacker state is:
+// 0: None: Goes straight to waypoints
+// 1: Line: The "line tacker"
+// 2: Reward: Heuristic-based
+// 3: Disabled: Doesn't output anyhting
+// 4: Line Plan: The line planner
+//
+// Connection States are zero = good, all ones = unknown, other = bad
+// Define error states later
+,
+{ "Sailbot State", 0xFF10, true, 8, 0,
+  { { "Wing State", BYTES(1), 1, false, 0, "" } // Rigid wing state data
+  , { "Ballast", BYTES(1), 1, false, 0, "" } // Ballast state
+  , { "Winch", BYTES(1), 1, false, 0, "" } // winch state
+  , { "Rudder", BYTES(1), 1, false, 0, "" } // Rudder state
+  , { "Tacker", BYTES(1), 1, false, 0, "" } // Tacker state
+  , { 0 }
+  }
+}
+,
+{ "Connection Status", 0xFF11, true, 8, 0,
+  { { "Wing Connection", BYTES(1), 1, false, 0, "" } // Looks for wing messages
+  , { "Radio Connection", BYTES(1), 1, false, 0, "" } // Looks for shore bridge
+  , { "WiFi Connection", BYTES(1), 1, false, 0, "" } // Looks for WiFi radio
+  , { "Jetson Connection", BYTES(1), 1, false, 0, "" } // Looks for Jetson
+  , { "UI Connection", BYTES(1), 1, false, 0, "" } // Looks for any computer using the UI
+  , { 0 }
+  }
+}
+
+,
+{ "Battery Voltage", 0xFF20, true, 4, 0,
+  { { "Ignore", BYTES(3), 1, false, "", ""} // TODO: Parse these
+  , { "Voltage", BYTES(1), 0.1, false, "volts", "Battery Voltage"}
+  , { 0 }
+  }
+}
+
+,
+
 { "Attitude", 127257, true, 7, 0,
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Yaw", BYTES(2), RES_RADIANS, true, "rad", "" }

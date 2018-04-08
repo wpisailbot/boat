@@ -71,6 +71,7 @@ class SimpleControlTest : public TestWrapper {
     msg::ControlMode mode_msg;
     mode_msg.set_winch_mode(msg::ControlMode_MODE_AUTO);
     mode_msg.set_rudder_mode(msg::ControlMode_MODE_AUTO);
+    mode_msg.set_tacker(msg::ControlMode_TACKER_LINE_PLAN);
     mode_queue.send(&mode_msg);
   }
 
