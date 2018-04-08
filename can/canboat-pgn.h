@@ -526,8 +526,7 @@ Pgn pgnList[] =
 
 ,
 { "Battery Voltage", 0xFF20, true, 4, 0,
-  { { "Ignore", BYTES(3), 1, false, "", ""} // TODO: Parse these
-  , { "Voltage", BYTES(1), 0.1, false, "volts", "Battery Voltage"}
+  { { "Voltage", BYTES(1), 0.1, false, "volts", "Battery Voltage"}
   , { 0 }
   }
 }
