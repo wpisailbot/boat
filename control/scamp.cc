@@ -37,8 +37,8 @@ SCAMP::SCAMP()
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
     state_msg_->Clear();
-    state_msg_->set_sail(
-        WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
+    sail_pos_ = WinchPotToAngle(msg.analog_pot().val());
+    state_msg_->set_sail(sail_pos_); // TODO(james): Add sign
     state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
     state_queue_.send(state_msg_);
   });
@@ -63,7 +63,7 @@ SCAMP::SCAMP()
   RegisterHandler<msg::SailCmd>("manual_sail_cmd",
                                 [this](const msg::SailCmd &cmd) {
     if (IsManualWiFi(WINCH)) {
-      volts_winch_ = is_connected_ ? cmd.voltage() : 0.;
+      volts_winch_ = cmd.voltage();
     }
   });
 
@@ -132,7 +132,7 @@ SCAMP::SCAMP()
     if (IsDisabled(WINCH)) {
       raw_winch_ = 90;
     }
-    if (IsDisabled(BALLAST) || !IsManualWiFi(BALLAST)) {
+    if (IsDisabled(BALLAST)) {
       raw_ballast_ = 90;
     }
   });
@@ -155,10 +155,9 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   // Don't allow it to run amok outside of bounds
   {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
-    float pos = state_msg_->sail();
-    if (pos > M_PI / 2. - 0.1) {
+    if (sail_pos_ > M_PI / 2. - 0.1) {
       volts = std::min(volts, (float)0.);
-    } else if (pos < 0.1) {
+    } else if (sail_pos_ < 0.1) {
       volts = std::max(volts, (float)0.);
     }
   }
@@ -183,7 +182,7 @@ void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
     raw_ballast_ = cmd.vel() + 90;
   } else if (cmd.has_voltage()) {
     double volts = util::Clip((double)cmd.voltage(), -4.0, 4.0);
-    raw_ballast_ = cmd.voltage() * 90.0 / 12.0 + 90.0;
+    raw_ballast_ = volts * 90.0 / 12.0 + 90.0;
   }
 }
 

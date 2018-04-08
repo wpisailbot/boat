@@ -32,7 +32,7 @@ SimpleControl::SimpleControl(bool do_rudder)
   consts_msg_->set_max_rudder(1.0);
   consts_msg_->set_rudder_kp(1.);
   consts_msg_->set_winch_kp(13);
-  consts_msg_->set_sail_heel_k(1);
+  consts_msg_->set_sail_heel_k(0);
 
   consts_msg_->set_ballast_heel_kp(1.0);
   consts_msg_->set_ballast_heel_ki(0.0);
