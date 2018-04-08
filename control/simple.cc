@@ -81,12 +81,11 @@ SimpleControl::SimpleControl(bool do_rudder)
                                     [this](const msg::ControlMode &mode) {
     if (mode.has_rigid_mode()) {
       switch (mode.rigid_mode()) {
-      case msg::ControlMode::MANUAL_RC:
-      case msg::ControlMode::FILTERED_RC:
-        auto_rigid_wing_ = false;
+      case msg::ControlMode::AUTO:
+        auto_rigid_wing_ = true;
         break;
       default:
-        auto_rigid_wing_ = true;
+        auto_rigid_wing_ = false;
         break;
       }
     }
@@ -182,7 +181,7 @@ void SimpleControl::Iterate() {
   rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);
-  if ((counter_ % int(.1 / dt)) == 0)
+  if (auto_rigid_wing_ && (counter_ % int(.1 / dt)) == 0)
     rigid_cmd_.send(rigid_msg_);
   if (do_rudder_) {
     rudder_cmd_.send(rudder_msg_);
