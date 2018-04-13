@@ -414,7 +414,8 @@ version should also work, but we have no need for a GUI.
 3. Plug the BBB into your computer, ssh in with `ssh debian@192.168.7.2`,
 password `temppwd` by default.
 4. While ssh'd in, do `mkdir -p ~/bin/sailbot` to create the directory where
-   sailbot stuff will happen.
+   sailbot stuff will happen, and do a `mkdir ~/logs` to ensure that the boat
+   will have a place to log data.
 5. Deploy code to the beaglebone by `bazel run -c opt --cpu bbb //scripts:deploy -- 192.168.7.2`
 5. To setup the web UI, you need to configure the Apache server:
    1. Change `/etc/apache2/apache2.conf`, and add:
