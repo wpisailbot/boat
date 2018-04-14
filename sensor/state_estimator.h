@@ -32,6 +32,11 @@ class StateEstimator : public Node {
 
   msg::BoatState* state_msg_;
   msg::Vector3f* wind_msg_;
+
+  // The latest readings from the movable ballast encoder and inclinometer
+  std::atomic<double> last_inclinometer_, last_ballast_;
+  // The time at which we last received a ballast reading:
+  util::monotonic_clock::time_point last_ballast_time_, last_inclinometer_time_;
 };
 
 }  // namespace sailbot

@@ -17,6 +17,7 @@ message RudderCmd {
 
 message BallastCmd {
   optional float vel = 11;
+  optional float voltage = 12;
 }
 
 message HeadingCmd {
@@ -91,6 +92,20 @@ message ControllerConstants {
   optional float sail_heel_k = 4;
   optional float qf = 5;
 
+  // PD constants for loop controlling arm to arm angle
+  optional float ballast_arm_kp = 10;
+  optional float ballast_arm_kd = 11;
+  // Feedforwards constants to try to do gravity compensation.
+  // Apply voltage to arm based on raw angle of arm/heel
+  optional float ballast_arm_kff_arm = 16;
+  optional float ballast_arm_kff_heel = 17;
+  // PID constants to generate goal arm angle from heel
+  optional float ballast_heel_kp = 12;
+  optional float ballast_heel_ki = 13;
+  optional float ballast_heel_kd = 14;
+  // Desired heel angle (will be made negative depending on tack).
+  optional float nominal_heel = 15;
+
   optional float rigid_port_servo_pos = 20;
   optional float rigid_starboard_servo_pos = 21;
 }
@@ -99,6 +114,7 @@ message ZeroingConstants {
   optional int32 rudder_zero = 1;
   optional int32 winch_0_pot = 2;
   optional int32 winch_90_pot = 3;
+  optional double ballast_zero = 4;
 }
 
 message Vector3f {

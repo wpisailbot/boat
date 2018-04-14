@@ -73,8 +73,11 @@ void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
 }
 
 void SimulatorNode::ProcessBallast(const msg::BallastCmd& cmd) {
-  if (cmd.has_vel() && !std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel())) {
     bdot_ = cmd.vel();
+  } else if (cmd.has_voltage()) {
+    bdot_ = cmd.voltage() / 12.0;
+  }
 }
 
 void SimulatorNode::Run() {

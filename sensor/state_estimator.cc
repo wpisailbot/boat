@@ -92,7 +92,46 @@ StateEstimator::StateEstimator()
   RegisterHandler<msg::InternalBoatState>("internal_state",
                                        [this](const msg::InternalBoatState &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
-    *state_msg_->mutable_internal() = msg;
+    if (msg.has_sail()) {
+      state_msg_->mutable_internal()->set_sail(msg.sail());
+    }
+    if (msg.has_rudder()) {
+      state_msg_->mutable_internal()->set_rudder(msg.rudder());
+    }
+    if (msg.has_ballast()) {
+      state_msg_->mutable_internal()->set_ballast(msg.ballast());
+      double dt =
+          std::chrono::nanoseconds(Time() - last_ballast_time_).count() / 1e9;
+      dt = std::max(dt, 0.001); // Prevent divide-by-zero
+
+      double ballast_angle = msg.ballast();
+      state_msg_->mutable_internal()->set_ballast(ballast_angle);
+      double ballastdot = (ballast_angle - last_ballast_) / dt;
+      ballastdot =
+          state_msg_->internal().ballastdot() * 0.5 + 0.5 * ballastdot;
+      state_msg_->mutable_internal()->set_ballastdot(ballastdot);
+
+      last_ballast_ = ballast_angle;
+      last_ballast_time_ = Time();
+    }
+  });
+  // State from inclinometer + ballast encoder:
+  RegisterHandler<msg::can::CANMaster>("can65285",
+                                       [this](const msg::can::CANMaster &msg) {
+    std::unique_lock<std::mutex> lck(state_msg_mutex_);
+    if (msg.has_ballast_state() && msg.ballast_state().has_heel()) {
+      double dt =
+          std::chrono::nanoseconds(Time() - last_inclinometer_time_).count() / 1e9;
+      dt = std::max(dt, 0.001); // Prevent divide-by-zero
+      // TODO(james): Filter
+      double heel = msg.ballast_state().heel();
+      euler_angles_[0] = heel;
+      // Add in filter to prevent silly velocity measurements
+      omega_[0] += 0.5 * ((heel - last_inclinometer_) / dt - omega_[0]);
+
+      last_inclinometer_ = heel;
+      last_inclinometer_time_ = Time();
+    }
   });
 }
 

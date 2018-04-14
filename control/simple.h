@@ -39,6 +39,7 @@ class SimpleControl : public Node {
   float last_goal_ = 0;
   float goal_cost_ = 0;
 
+  double heel_error_integrator_ = 0;
 };
 
 }  // control

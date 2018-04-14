@@ -477,6 +477,15 @@ Pgn pgnList[] =
   }
 }
 
+,
+
+{ "Ballast State", 0xFF05, true, 4, 0,
+  { { "Heel", BYTES(2), RES_RADIANS, true, "radians", "Heel angle of boat"}
+  , { "Ballast Arm", BYTES(2), RES_RADIANS, true, "radians", "Angle of ballast arm" }
+  , { 0 }
+  }
+}
+
 // States correspond with those in the sailbot::msg::ControlMode proto
 // The states shall be enums with the possible values:
 // 0: Manual/RC
@@ -516,6 +525,14 @@ Pgn pgnList[] =
 }
 
 ,
+{ "Battery Voltage", 0xFF20, true, 4, 0,
+  { { "Voltage", BYTES(1), 0.1, false, "volts", "Battery Voltage"}
+  , { 0 }
+  }
+}
+
+,
+
 { "Attitude", 127257, true, 7, 0,
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Yaw", BYTES(2), RES_RADIANS, true, "rad", "" }

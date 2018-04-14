@@ -35,6 +35,7 @@
       </tr>
       <tr>
         <td> Sail Cmd: <span class="data_output" field="sail_cmd" /> </td>
+        <td> Manual Sail Cmd: <span class="data_output" field="manual_sail_cmd" /> </td>
         <td> Rudder Cmd: <span class="data_output" field="rudder_cmd" /> </td>
         <td> Heading Cmd: <span class="data_output" field="heading_cmd" /> </td>
         <td> Ballast Cmd: <span class="data_output" field="ballast_cmd" /> </td>
@@ -44,7 +45,7 @@
     </table>
     <div>
       Rigid Wing Send:
-      State: <input type="textbox" class="data_input" field="state" msg="rigid_wing_cmd" value="0">
+      State: <input type="textbox" class="data_input" field="state" msg="rigid_wing_cmd" value="7">
       Heel: <input type="textbox" class="data_input" field="heel" msg="rigid_wing_cmd" value="0">
       Max Heel: <input type="textbox" class="data_input" field="max_heel" msg="rigid_wing_cmd" value="1">
       Servo Pos: <input type="textbox" class="data_input" field="servo_pos" msg="rigid_wing_cmd" value="50">
@@ -85,8 +86,10 @@
       <span class="data_output" field="can65281"></span> <br>
       <span class="data_output" field="can65282"></span> <br>
       <span class="data_output" field="can65283"></span> <br>
+      <span class="data_output" field="can65285"></span> <br>
       <span class="data_output" field="can65296"></span> <br>
       <span class="data_output" field="can65297"></span> <br>
+      <span class="data_output" field="can65312"></span> <br>
       <span class="data_output" field="sbus_value"></span> <br>
       <span class="data_output" field="connection_status"></span> <br>
     </div>
