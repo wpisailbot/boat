@@ -5,7 +5,8 @@
 DIR="$( cd "$( dirname $0 )" && pwd )"
 $DIR/bringup-can.sh
 sleep 1 # Shouldn't be necessary, but give can interface time to come up
-$DIR/logger_main -logfilename /home/debian/logs/logfile-$(date +%s) &
+mkdir -p ~/logs
+$DIR/logger_main -logfilename /home/debian/logs/logfile-$(($( ls /home/debian/logs/logfile-* | grep -o "[0-9]*$" | sort -rn | sed -n 1p ) + 1)) &
 $DIR/can-dump &
 $DIR/server_main &
 sleep 0.5
