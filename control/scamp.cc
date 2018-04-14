@@ -15,7 +15,7 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   consts_msg_->set_rudder_zero(99);
-  consts_msg_->set_ballast_zero(0.0);
+  consts_msg_->set_ballast_zero(-1.7);
   consts_msg_->set_winch_0_pot(0);
   consts_msg_->set_winch_90_pot(1023);
 

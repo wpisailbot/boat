@@ -160,8 +160,9 @@ void SimpleControl::Iterate() {
                            consts_msg_->ballast_arm_kff_arm() * ballast -
                            consts_msg_->ballast_arm_kff_heel() * heel;
   ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
-  if (std::abs(ballast_error) < 0.1) {
+  if (std::abs(ballast_error) < 0.1 || std::abs(ballast) > 1.5) {
     // If sufficiently close, then tack advantage of non-backdrivability:
+    // Also, if ballast position is clearly absurd, don't apply voltage
     ballast_voltage = 0.0;
   }
 
