@@ -61,11 +61,15 @@
         <td> Goto X: <input type="textbox" id="goto-x"> </td>
         <td> Goto Y: <input type="textbox" id="goto-y"> </td>
         <td> <input type="button" id="goto-submit" value="Go"> </td>
+        <td> <input type="button" id="clear-obstacles" value="Clear Obstacles"
+              onclick='sendMessage("planner_obstacles", {});'>
+        </td>
       </tr>
       <tr>
         <td> Goto X rel m: <input type="textbox" id="goto-rel-x"> </td>
         <td> Goto Y rel m: <input type="textbox" id="goto-rel-y"> </td>
         <td> <input type="button" id="goto-rel-submit" value="Go"> </td>
+        <td> <input type="button" id="create-obstacle" value="Create Obstacle"> </td>
       </tr>
       <tr>
         <td> Time: <span class="data_output" field="time"></span> sec </td>

@@ -92,9 +92,9 @@ class LinePlan : public Node {
   constexpr static float kGateWidth = 20.0;
   // Amount to weight the very first turn relative
   // to the later turns (provides some hysteresis):
-  constexpr static float kPreTurnScale = 5.0;
+  constexpr static float kPreTurnScale = 10.0;
   // Maximum number of turn points
-  constexpr static int kMaxNpts = 2;
+  constexpr static int kMaxNpts = 3;
 
   // None of these functions below account for obstacles.
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,

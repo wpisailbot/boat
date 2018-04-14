@@ -51,8 +51,8 @@ TEST(PolygonTest, DistToLine) {
 TEST(PolygonTest, DistToInsidePt) {
   std::vector<Point> pts({{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}});
   Polygon poly(pts);
-  EXPECT_EQ(0.0, poly.DistToPoint({0.5, 0.5}))
-      << "Points inside of polygon should be zero distance away";
+  EXPECT_EQ(-0.5, poly.DistToPoint({0.5, 0.5}))
+      << "Points inside of polygon should be negative distance away";
 }
 
 TEST(PolygonTest, OnEdgePoint) {
@@ -81,6 +81,13 @@ TEST(PolygonTest, TwoPointsFunction) {
   EXPECT_EQ(0.5, poly.DistToPoint({0.0, 0.5}));
   EXPECT_EQ(0.5, poly.DistToPoint({0.5, 0.5}));
   EXPECT_EQ(0.25, poly.DistToPoint({0.75, -0.25}));
+}
+
+TEST(PolygonTest, Centroid) {
+  std::vector<Point> pts({{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}});
+  Polygon poly(pts);
+  EXPECT_EQ(0.5, poly.centroid().x()) << "Centroid should be centered";
+  EXPECT_EQ(0.5, poly.centroid().y()) << "Centroid should be centered";
 }
 
 }  // namespace sailbot

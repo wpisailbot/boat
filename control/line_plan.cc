@@ -70,6 +70,8 @@ LinePlan::LinePlan()
       }
       if (Polygon::ValidatePoints(obstaclepts)) {
         obstacles_lonlat_.emplace_back(obstaclepts);
+      } else {
+        LOG(WARNING) << "Invalid obstacle";
       }
     }
     UpdateObstacles();
@@ -109,7 +111,7 @@ LinePlan::LinePlan()
 }
 
 void LinePlan::Iterate() {
-  LOG(INFO) << "Iterate";
+  //LOG(INFO) << "Iterate";
   if (tack_mode_ != msg::ControlMode_TACKER_LINE_PLAN) {
     pathpoints_lonlat_msg_->clear_points();
     pathpoints_queue_.send(pathpoints_lonlat_msg_);
@@ -148,6 +150,7 @@ void LinePlan::UpdateObstacles() {
       obstacles_[ii].mutable_pts()->at(jj) =
           LonLatToFrame(obstacles_[ii].pt(jj));
     }
+    obstacles_[ii].ProcessPts();
   }
 }
 
@@ -269,8 +272,8 @@ double LinePlan::GetGoalHeading() {
                                 "least one point (our current position)";
 
   // Because the returned path doesn't include the last point, add it.
-  path.push_back(alpha * waypoints_[next_waypoint_].first +
-                 (1.0 - alpha) * waypoints_[next_waypoint_].second);
+  path.push_back((1.0 - alpha) * waypoints_[next_waypoint_].first +
+                 alpha * waypoints_[next_waypoint_].second);
   pathpoints_lonlat_msg_->clear_points();
   for (const auto &pt : path) {
     Point ptll = FrameToLonLat(pt);
@@ -327,12 +330,14 @@ void LinePlan::FindPath(const Vector2d &startpt,
     }
 
     VLOG(1) << "cost: " << lowest_cost;
-    LOG(INFO) << "cost: " << lowest_cost;
+    //LOG(INFO) << "cost: " << lowest_cost;
 
     if (any_viable) {
       // Will be zero if no improvements were found
       dcost = nptscost - lowest_cost;
-      lowest_cost = nptscost;
+      if (dcost < 0) {
+        lowest_cost = nptscost;
+      }
     }
 
     ++Npts;
@@ -348,18 +353,18 @@ LinePlan::OptimizeTacks(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
   double step = 0.05;
-  for (int ii = 0; ii < 150; ++ii) {
-    if (ii > 50) {
+  for (int ii = 0; ii < 50; ++ii) {
+    if (ii > 20) {
       step = 1e-3;
     }
     BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha,
              finalcost, viable);
     if ((ii % 10) == 0 ) {
-      LOG(INFO) << ii << ": N: " << tackpts->size() << " cost: " << *finalcost;
+      //LOG(INFO) << ii << ": N: " << tackpts->size() << " cost: " << *finalcost;
     }
   }
-  LOG(INFO) << "N: " << tackpts->size() << " cost: " << *finalcost
-            << " viable: " << *viable;
+  //LOG(INFO) << "N: " << tackpts->size() << " cost: " << *finalcost
+  //          << " viable: " << *viable;
 }
 
 void LinePlan::GenerateHypotheses(const Vector2d &startpt,
@@ -493,7 +498,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                  scale_pre, obstacles, &cost, &dcostdpt, &lineviable);
     if (viable != nullptr) *viable = *viable && lineviable;
     tackpts->at(ii) -= step * dcostdpt;
-    LOG(INFO) << "pt: " << ii << " dcostdpt: " << dcostdpt.transpose();
+    //LOG(INFO) << "pt: " << ii << " dcostdpt: " << dcostdpt.transpose();
     if (finalcost != nullptr) {
       // Strictly speaking calculates cost of previous iteration, but this
       // avoids
@@ -929,7 +934,9 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
     Point evalpt = start + alpha * (end - start);
     for (size_t jj = 0; jj < obstacles.size(); ++jj) {
       double dist = obstacles[jj].DistToPoint(evalpt);
-      *cost += kObstacleCost * std::exp(-dist) * dx;
+      //*cost += kObstacleCost * std::exp(-dist) * dx;
+      double diff = std::max(0.0, 10.0 - dist) / 10.0;
+      *cost += kObstacleCost * diff * diff * dx;
       normcost += kObstacleCost * std::exp(-dist);
     }
   }

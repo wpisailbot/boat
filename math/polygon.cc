@@ -24,6 +24,7 @@ bool ProjectsToLine(Point l0, Point l1, Point pt) {
 
 Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
   CHECK(ValidatePoints(pts)) << "Points not correctly arranged";
+  ProcessPts();
 }
 
 bool Polygon::ValidatePoints(const std::vector<Point> pts) {
@@ -39,6 +40,30 @@ bool Polygon::ValidatePoints(const std::vector<Point> pts) {
     }
   }
   return true;
+}
+
+void Polygon::ProcessPts() {
+  return;
+  // To calculate centroid, we use the formulas from
+  // wikipedia:
+  double area = 0;
+  const int N = pts_.size();
+  for (int ii = 0; ii < N; ++ii) {
+    int nextidx = (ii + 1) % N;
+    area += 0.5 *
+            (pts_[ii].x() * pts_[nextidx].y() - pts_[nextidx].x() * pts_[ii].y());
+  }
+
+  centroid_.x() = 0;
+  centroid_.y() = 0;
+  for (int ii = 0; ii < N; ++ii) {
+    int nextidx = (ii + 1) % N;
+    double common =
+        pts_[ii].x() * pts_[nextidx].y() - pts_[nextidx].x() * pts_[ii].y();
+    centroid_.x() += (pts_[ii].x() + pts_[nextidx].x()) * common;
+    centroid_.y() += (pts_[ii].y() + pts_[nextidx].y()) * common;
+  }
+  centroid_ /= 6.0 * area;
 }
 
 double Polygon::DistToPoint(Point pt) const {
@@ -68,7 +93,7 @@ double Polygon::DistToPoint(Point pt) const {
 
   if (d0 < 0.0 && d1 < 0.0) {
     // Point is inside of polygon
-    return 0.0;
+    return std::min(d0, d1);
   } else if (d1proj && d1 >= 0.0) {
     // Point projects onto (minvertex, minvertex+1) edge
     return d1;
