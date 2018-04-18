@@ -454,7 +454,12 @@ in, wait for all the lights to go off, remove the SD card, and boot again.
         netmask 255.255.255.0
     ```
 
-### Alternate config for configuring CAN on boot (Only tested for 8.6)
+Furthermore, you may want to install the `fake-hwclock` package on debian.
+This will make it so that, when you reboot the system, rather than the
+system clock resetting to the same epoch time every time, it will stay
+incremented. The clock will still be inaccurate, but it will be monotonic.
+
+### Alternate config for configuring CAN on boot (Only tested for Debian 8.6)
 The following steps replace the `bringup-can.sh` file:
 1. Add the following to /boot/uEnv.txt (may need to change to `BB-CAN1` depending on setup)\
    `cape_enable=bone_capemgr.enable_partno=BB-DCAN1` <-Debian 8.6
@@ -1115,7 +1120,90 @@ by looking at examples in our code), the reflection relies on a few concepts:
   access individual fields by name by retrieving the `FieldDescriptor` with a
   call to `Message::GetDescriptor()->FindFieldByName(name)`.
 
+By accessing these, we can do things like find out fields that are filled in,
+find out what type a field is, locate fields given a string as a name, etc, even
+if we don't know all that information at compile-time.
+
 ## WebSocket Server
+
+In order to communicate with off-boat processes (namely, the UI and the
+remote joystick controller), we need something that functions over the
+WiFi/Ethernet network, rather than the CAN bus or the on-board RAM of
+the BBB.
+
+The code for this server is in `ui/server.*`, the HTML/Javascript
+that interfaces with it is in the various `ui/*.js`, and the
+python Gamepad controller using this is in our
+[GamePad library](https://github.com/wpisailbot/F310_Gamepad_Parser/blob/master/parser_main.py).
+
+The method presented here was created in a somewhat ad-hoc manner to be easy
+to use when creating a Javascript/HTML UI. It is _not_ intended to be a remotely
+real-time thing nor is it particularly efficient (it uses JSON encoding, which
+is optimized more for ease of human use/debugging than performance).
+
+Now, to actually describe what we use:
+We use a third-party WebSocket library,
+[uWebSockets](https://github.com/uNetworking/uWebSockets). WebSockets, in
+general, are a protocol that functions over regular sockets and happens
+to have support in JavaScript. I don't really know what the details are the
+protocol are, but it does appear to do things like support encryption and
+what-not. Over this WebSocket connection, we transmit JSON back and forth. Each
+message is a JSON object where queue names are keys and the contents of the
+messages are the message itself (such that it can be parsed by the protobuf
+libraries). When sending requests to the server running on the Beaglebone,
+if the value of a field is null, then you are requesting that the server
+send you data on the message. The server does not proactively send messages,
+it only responds to a client message being sent.
+
+On-board the Beaglebone, the uWebSocket library is used to run a server which
+serves requests on some specified port (we've been using 13000, but that is
+arbitrary). This allows us to spawn a thread for each message we receive.
+We then parse the JSON, using the example client message
+`{"foo":null,"bar.baz":null,"foobar":{"foo":1,"bar":2}}`, which is attempting to
+retrieve the `foo` message, the `baz` field of the `bar` message, and send
+a new message on the `foobar` queue with the `foo` and `bar` fields set
+to 1 and 2 respectively:
+1. Manually identifying the comma-separated fields of the message, in
+   the example breaking it into `"foo":null`, `"bar.baz":null`, and
+   `"foobar":{"foo":1,"bar":2}`.
+2. Identify which queue this corresponds to and what the value is:
+   1. If value is null, finish parsing the name down as many fields
+      deep as it goes, and retrieve the most recent value from that queue.
+      This applies to the `foo` and `bar` requests.
+   2. If not null, the name should be just the name of a queue (you can't
+      send just the sub-field of a message-it is somewhat
+      meaningless to do so). Parse this using the protobuf
+      `JsonStringToMessage` function. In this example, we have the
+      `foobar` queue to send the `{"foo":1,"bar":2}` message on.
+3. Construct a reply that consists, at a minimum, of a `time` message
+   which just is a double of the current time (based on the monotonic clock,
+   may not be system time). This is sent even if the client wasn't requesting
+   the values of any messages. We also, of course, include the messages
+   the client requested.
+   For this example, let us say that the current value of the `foo` queue
+   is consists of `{"a":1,"b":0}` and the current value of `bar.baz` is
+   `0.5`, and the current reply is `123.456`, so the reply will be:
+   `{"time":123.456,"foo":{"a":1,"b":0},"bar.baz":0.5}`.
+
+### Discussion
+
+This setup has a variety of issues:
+
+- It is not highly performant. If you look at the CPU usage on the BBB,
+  the server consistently has the highest CPU usage. The fact that it has higher
+  than average CPU usage is not particularly surprising, but there are almost
+  certainly performance issues. We have not done a thorough analysis to know
+  which parts to focus on optimizing, but something almost certainly can be.
+- The uWebSocket library depends on OpenSSL. This is, in itself, entirely
+  reasonable. However, we do not need OpenSSL, and OpenSSL takes a long time
+  to build, thus bloating our code-base and build process.
+- The uWebSocket library has no mechanism by which to shut-down. As such,
+  when attempting to cleanly shut-down when, say, running a series of
+  test suites, it has some probability of seg-faulting. This only
+  seems to occur if there are open connections at the time of the shut-down.
+
+The primary convenience of the setup is that it makes it quite easy to, for instance,
+write a quick python program to control the robot.
 
 ## Testing Infrastructure
 
