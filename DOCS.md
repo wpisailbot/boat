@@ -1207,9 +1207,48 @@ write a quick python program to control the robot.
 
 ## Testing Infrastructure
 
+There are two broad classes of testing which we attempt to perform using the
+build system itself:
+- Unit testing, to test individual functions
+- Simulation tests, where we spin up as much of the stack as we can easily
+  test/simulate. This is more for debugging/testing than performing automated
+  tests.
+
+For all the testing, we use the googletest libraries, which provides some useful
+utilities for the unit testing (for simulations, it is less valuable, but we
+still use it).
+
+For unit testing, see e.g. `math/polygon_test.cc` for a relatively simple
+example. The build target for this is a `cc_test` target specified in
+`math/BUILD` and can be run by doing `bazel test //math:polygon_test`.
+
+We add a bit more complication to support the simulation testing so that
+we can minimize code duplication. The main shared code here is in
+`util/testing.*` where we create a wrapper class for testing which:
+- Sets up the fake clock
+- Turns on in-process queues to avoid interacting with outside world
+- Handles shutdown state
+
+This is then used in `control/control_test.cc`, which is the main simulation
+test. This test works by using the googletest Test Fixture system (the thing
+which allows creating a class that is created/removed on each test to share code
+and setup between tests). The test constructs and starts nodes for each of the
+system components, including the simulator which spoofs the sensors and system
+dynamics. By also starting up the UI server, we can then debug the system by
+looking at the UI on `localhost` or the such.
+
 # Boat-Specific Infrastructure
 
-NMEA2000, Rigid-wing, Joystick usage, RC-controller, SCAMP
+Much of the previously discussed software infrastructure is relevant to many
+types of robots. We now discuss some of the software we have for interacting
+with boat-specific utilities:
+
+- NMEA2000, the CAN protocol used
+- The rigid wing, which essentially just requires opening a socket
+- Controlling the code using a joystick or other external method
+- UART-based RC control using a Hobby-style RC controller
+- Interacting with the custom motor controllers, referred to in 2016-2017 as
+  SCAMPs
 
 # Controls Software
 
