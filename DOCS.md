@@ -1243,12 +1243,127 @@ Much of the previously discussed software infrastructure is relevant to many
 types of robots. We now discuss some of the software we have for interacting
 with boat-specific utilities:
 
-- NMEA2000, the CAN protocol used
+- NMEA 2000, the CAN protocol used (this section is the longest)
 - The rigid wing, which essentially just requires opening a socket
 - Controlling the code using a joystick or other external method
 - UART-based RC control using a Hobby-style RC controller
 - Interacting with the custom motor controllers, referred to in 2016-2017 as
   SCAMPs
+
+## NMEA 2000
+
+NMEA 2000 is a CAN protocol which is used in marine applications. It is based
+heavily on the J1939 standard for automotive applications.
+We use NMEA 2000 and CAN because:
+- The Airmar 220WX uses NMEA 2000
+- CAN itself is an appropriate choice for on-boat communications (more than
+  enough bandwidth for our purposes, robust, widely used)
+- NMEA 2000 is not complicated enough to make it obnoxious to use
+
+The code for interacting with CAN on the robot can be found in the `can/`
+directory.
+
+### Basic CAN Information
+
+The CAN bus, as you likely know, is a two-wire differential bus which tends to
+be reasonably robust and is commonly used in robotic and automotive
+applications. Many processors (in our case, both the BBB and the Jetson TX2)
+on-chip CAN interfaces which just require adding a transceiver chip to connect
+to the actual CAN bus.
+
+The CAN protocol itself consists of frames sent over the bus. Each frame
+consists of a CAN ID and up to 8 bytes of data, as well as a few other sundry
+bits and protocol details (e.g., error-checking bits, bit-stuffing). There
+exists a basic and extended frame format, where the main distinction is the
+length of the ID (11 or 29 bits). We use the extended format for NMEA 2000. If
+multiple devices attempt to transmit at the same time on the bus, then priority
+is decided by whoever first transmits a recessive bit when the other transmits a
+dominant bit. This means that IDs with smaller first bits will be higher
+priority. This is taken advantage of in the NMEA 2000 message structure.
+
+On the beaglebone, we take advantage of the SocketCAN libraries to provide
+software access to the CAN bus, whereby we access the bus in a similar manner to
+that of a regular network socket. The CAN device itself is enabled by performing
+the steps in the BBB Setup section of this document (namely, adding it to the
+device tree, then enabling appropriate kernel modules, and then bringing up the
+network interface with the appropriate baud rate).
+
+To actually access the CAN bus in code, we treat it very similarly to a normal
+socket, albeit with a few slightly different structures, e.g. to allow us to
+pass CAN IDs back and forth, or to specify whether we want to use standard or
+extended frames.
+
+The socket setup is not particularly novel, and can be found in the `CanNode` object
+constructor in `can/can.cc`, where more work goes into setting the generic
+socket options to create a 1-second `read` timeout than the actual CAN setup (we
+set a timeout so that if we ask the code to shutdown, we can guarantee that the
+`read` calls will always complete within 1 second and so make shutdown time at
+most 1 second).
+
+When sending/receiving messages, we use the `read`/`write` system calls, sending
+and receiving `can_frame` structs. The `can_frame` struct (from the SocketCAN
+library) consists of:
+```c
+struct can_frame {
+  canid_t can_id;  /* 32 bit CAN_ID + EFF/RTR/ERR flags */
+  __u8    can_dlc; /* frame payload length in byte (0 .. CAN_MAX_DLEN) */
+  __u8    __pad;   /* padding */
+  __u8    __res0;  /* reserved / padding */
+  __u8    __res1;  /* reserved / padding */
+  __u8    data[CAN_MAX_DLEN] __attribute__((aligned(8)));
+};
+```
+
+The `can_id` field is the 29 bits of the CAN ID itself; the other bits are EFF
+(whether or not we use the Extended Frame Format, RTR (Remote Transmission
+Request, which we never use), and ERR (presumably something to do with errors,
+not sure though). The 29 CAN ID bits are the lowest order bits, and the EFF bit
+is the highest order bit (on the BBB, the EFF bit is accessible by doing
+`0x80000000 & can_id`).
+The `can_dlc` is the number of data bytes, and `data` is the data.
+
+### NMEA 2000 Details
+
+NMEA 2000 specifies a few important details (namely, 250000 bits / second on the
+CAN bus and Extended Frame Format), and the rest of the protocol consists of
+specifying the exact format of the CAN ID field and the data formats. It also
+consists of a library of PGNs and what the format of each is. It also specifies
+some interactions, e.g. how to assign device IDs when multiple devices are on
+the bus. We ignore these issues.
+
+PGNs are a key component of the standard. The PGN is an identifier specifying
+the data format of a message, and is sent as part of the CAN ID. For instance,
+the "Rate of Turn" message has a PGN of 127251, which says that the data shall
+be 5 bytes long, with 1 byte that is a counter (to distinguish between duplicate
+messages) and 4 bytes that will be the rotation rate, where 4-byte rotation
+rates are a specific type in the NMEA 2000 standard and so has a particular
+resolution and data format.
+
+Before discussing that in too much detail, we first discuss the details of how
+the CAN ID is packed. The NMEA 2000 standard specifies that the CAN ID will be
+packed as follows, starting from the highest order (first transmitted, highest
+magnitude when setting the 32-bit int in C++):
+
+| Bits           | Field   |
+| -------------- | ------- |
+| 29,28,27       | Priority (lower # = higher priority) |
+| 26             | Reserved |
+| 25             | Highest bit of PGN |
+| 24-17 (1 byte) | Higher order byte of PGN |
+| 16-9  (1 byte) | If previous byte is <240, destination address, otherwise lower order byte of PGN |
+| 8-1 (1 byte) | Source Address |
+
+### Implementation
+
+### Queue Interface
+
+## Rigid Wing
+
+## External Joystick Control
+
+## RC Control
+
+## Motor Controllers
 
 # Controls Software
 
