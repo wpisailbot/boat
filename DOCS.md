@@ -1331,18 +1331,29 @@ consists of a library of PGNs and what the format of each is. It also specifies
 some interactions, e.g. how to assign device IDs when multiple devices are on
 the bus. We ignore these issues.
 
+All of the information presented here is based a large part on the work
+of the [CAN Boat](https://github.com/canboat/canboat) project,
+which attempts to reverse engineer the NMEA 2000 standard; in particular, while
+information on the construction of the CAN ID for NMEA 2000 can be found on the
+Internet with relative ease, information on the actual message formats and
+construction is harder to come across (as it is part of the proprietary
+standard) and so we must rely on our own experience and the CAN Boat project's
+reverse engineering.
+
 PGNs are a key component of the standard. The PGN is an identifier specifying
 the data format of a message, and is sent as part of the CAN ID. For instance,
 the "Rate of Turn" message has a PGN of 127251, which says that the data shall
 be 5 bytes long, with 1 byte that is a counter (to distinguish between duplicate
 messages) and 4 bytes that will be the rotation rate, where 4-byte rotation
 rates are a specific type in the NMEA 2000 standard and so has a particular
-resolution and data format.
+resolution and data format. We use the definitions from the CAN Boat project
+and use a subset of their code in `can/canboat-pgn.h`, which contains a list of
+PGN definitions.
 
-Before discussing that in too much detail, we first discuss the details of how
-the CAN ID is packed. The NMEA 2000 standard specifies that the CAN ID will be
+But first, the details of how
+the CAN ID is packed: The NMEA 2000 standard specifies that the CAN ID will be
 packed as follows, starting from the highest order (first transmitted, highest
-magnitude when setting the 32-bit int in C++):
+magnitude when setting the 32-bit int in C++) bits:
 
 | Bits           | Field   |
 | -------------- | ------- |
@@ -1353,11 +1364,186 @@ magnitude when setting the 32-bit int in C++):
 | 16-9  (1 byte) | If previous byte is <240, destination address, otherwise lower order byte of PGN |
 | 8-1 (1 byte) | Source Address |
 
-### Implementation
+See, e.g., `can/can_test.cc` for an example of converting from the
+PGN + Address(es) + Priority to CAN ID and back.
+
+In our setup, we have only worked with things without destination addresses and
+largely ignored issues of priority and source addresses. As such, there may
+be errors in the code or misinformation in this document regarding the exact
+handling of those issues.
+
+For message which consist of multiple packets, the CAN ID does not change; the
+information for such a message is encoded in the data fields. When receiving a
+multi-packet message, the only way to know that it is multi-packet is if the PGN
+specification says so. If it is multi-packet, then the protocol is as follows:
+- The first byte of every packet is an index; the highest 3 bits (mask `0xE0`)
+  of the byte identify which message it is a part of, the lower 5 (mask `0x1F`)
+  identify the index within the message. This means a multi-packet message can
+  consist of at most 32 packets, corresponding to (7 * 32 - 1 = 223) bytes.
+- The second byte of the first packet in each message will be the length in
+  bytes of
+  the message overall. I do not know if this length includes the length and
+  index
+  bytes themselves.
+
+We do not currently support sending multi-packet messages; as I mentioned,
+we also do not pay attention to the content of the length bytes, and we
+do not support repeated fields within messages.
+
+Finally, when it comes to the actual content of the data fields, things
+become a bit more tricky, and at this point reading some of the code
+in `can/can.cc` may become necessary for proper understanding:
+1. It appears that if all the bits within a field are set to 1 then
+   that field should be interpreted as unset and ignored. I am not
+   sure if this is part of the NMEA 2000 standard or simply a convention.
+2. Bytes are stored in little-endian format, which is convenient for the
+   BBB, because, for multi-byte byte-aligned fields, we can simply use
+   a `memcpy` to copy fields over.
+3. Fields which are not byte aligned (i.e., they start or end in the middle
+   of a byte somewhere), the exact ordering issues are dealt with in
+   `CanNode::ExtractNumberField`. We currently do not support sending
+   non-byte aligned fields.
+
+The exact lengths of each field are defined in the PGN specification,
+for which we use the code from CAN Boat as mentioned before in
+`can/canboat-pgn.h`. The code should be somewhat self-explanatory,
+but here is a commented example:
+
+```cpp
+// Each entry in the array is of type Pgn, for which the commented
+// definition is available in can/canboat-pgn.h
+// First, the name of the message (can be anything), then the PGN
+// number itself, then an irrelevant boolean, then the length in bytes,
+// then whether there are any repeating fields in the message.
+{ "Wind Data", 130306, true, 6, 0,
+    // Each field is of type Field and consists of a name,
+    // a length in bits (BYTES(N) = 8 * N), a "resolution",
+    // whether the field is signed/unsigned, the units of the field
+    // and a longer description.
+    // The SID is a common field which is used as an index to identify
+    // out-of-order or skipped messages.
+  { { "SID", BYTES(1), 1, false, 0, "" }
+  , { "Wind Speed", BYTES(2), 0.01, false, "m/s", "" }
+  , { "Wind Angle", BYTES(2), RES_RADIANS, false, "rad", "" }
+  , { "Reference", 3, RES_LOOKUP, false, LOOKUP_WIND_REFERENCE, "" }
+  , { 0 }
+  }
+}
+```
+
+These definitions include one relevant issue not mentioned: The resolution
+of each field. For all fields, the resolution is either a positive
+number, in which case you simply multiply the integer value of the field
+by the resolution to get the number in the correct units. For
+special types of field, the resolution will be a negative integer
+which has some special meaning depending on the field. e.g., dates
+have a special format. In the wind example, the reference
+field refers to whether the wind is being measured relative to the boat,
+absolutely, whether it uses true or magnetic north, etc. Special
+fields require different logic to handle them in the parsing code.
 
 ### Queue Interface
 
+When we are parsing the message, we simultaneously fill in the
+corresponding protobuf message, using definitions from `can/can.proto`.
+For each PGN that we want set out over the logs, a queue is defined in
+the `LogEntry` protobuf with a name defined as `can12345` where `12345`
+is the PGN (this specific format is so that the names can easily be
+parsed; an astute observer will note that this shouldn't strictly
+be necessary, but it is how the code is written); equally if not
+more importantly, the id number within the protobuf is the PGN. Each
+queue is of type `CANMaster` and, similar to how the `LogEntry` proto
+itself is used, the `CANMaster` proto contains a single message
+for each relevant PGN and at any given time only one should be filled in.
+Within the `CANMaster` proto, the name of each message is irrelevant,
+but the numbers must correspond with the PGNs. The `CANMaster` protobuf
+also includes an `outgoing` field. This is used to signal whether
+a given message is something that came in over the CAN bus and
+is being sent out by the CAN node or whether the message is being sent out
+by one of our processes and the CAN node should then send it out.
+
+For each message, the definition corresponds closely with the definition
+of the PGN in `can/canboat-pgn.h`, e.g. for the wind one:
+
+```cpp
+message WindData {
+  optional uint32 SID = 1;
+  optional float wind_speed = 2; // m/s
+  optional float wind_angle = 3; // radians
+  enum WIND_REFERENCE {
+    TRUE_NORTH_REF = 0;
+    MAGNETIC_NORTH_REF = 1;
+    APPARENT = 2;
+    TRUE_BOAT_REF = 3;
+    TRUE_WATER_REF = 4;
+  }
+  optional WIND_REFERENCE reference = 4;
+}
+```
+
+Note how the numbers for each field correspond to their order in
+the actual NMEA2000 messages. If you do not want to have a particular
+field of a message parsed, you can simply skip
+that number when creating the protobuf definition (e.g., the `SystemTime`
+definition does this). For non-numeric fields which have a resolution
+of `RES_LOOKUP`, we use enumerations where the numbers within the enumeration
+correspond with the actual numbers sent on the bus for that message.
+
+### Implementation
+
+The bulk of our implementation occurs in `can/can.*`, with some other
+files in the `can/` directory being relevant.
+
 ## Rigid Wing
+
+The code that runs on the rigid wing is available at
+https://github.com/wpisailbot/rigid_wing and should probably be rewritten.
+The code for talking to the rigid wing is available in `rigid_wing/`.
+
+For talking between the rigid wing and the boat, we use regular sockets, with
+the specific definition that the messages _to_ the boat and _from_ the wing
+shall consist of 13 bytes in the format:
+`[123 456 789]`, where the spaces and brackets are somewhat irrelevant but
+should be there, and the three three-digit numbers must always be three
+digits long, shall be parsed as base-10, and correspond with:
+1. The current angle of attack of the wing, in degrees
+2. The current servo position (range 0-100)
+3. The current battery voltage (range 0-999)
+
+For messages _from_ the boat and _to_ the wing, we use: `[0 123 45 678]`,
+where we have:
+1. The wing state to set (see `rigid_wing/rigid_wing.proto`)
+2. The current heel angle (degrees)
+3. The maximum desired heel angle, for auto-trimming (degrees, 0-90)
+4. The desired servo position (0-100)
+
+The main issues with this setup are that:
+1. It uses a custom protocol; we would prefer to avoid having too many
+   custom protocols to maintain on the boat.
+2. The connections can be flaky and high-latency at times. This may
+   be a TCP/UDP problem, or an isue with the WiFi chip being used on
+   the rigid wing, or a code issue with how the WiFi chip is used
+   by the teensy.
+
+### Teensy Code
+
+On the teensy side, all the code is in a single file (see
+https://github.com/wpisailbot/rigid_wing, rigid_teensy.ino),
+and essentially consists of initializing the teensy and then running
+in loops trying to make everything run.
+
+Surprisingly, the teensy is actually able to reconnect to the boat
+after losing a connection or never gaining one in the first place.
+
+### Boat Code
+
+The on-boat code is relatively limited, with most of the complexity
+in the actual initialization of the socket (which is mostly boilerplate). The
+only subtlety is doing the same as we do on any other I/O related processes:
+setting up the socket so that it is only blocking for some period of time;
+that way, the `read`s are always guaranteed to return in finite time and so we
+can shutdown the code cleanly by simply checking if we need to shutdown
+whenever a read times out.
 
 ## External Joystick Control
 
