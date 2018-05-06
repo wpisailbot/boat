@@ -15,7 +15,7 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   consts_msg_->set_rudder_zero(99);
-  consts_msg_->set_ballast_zero(-1.7);
+  consts_msg_->set_ballast_zero(-1.775);
   consts_msg_->set_winch_0_pot(0);
   consts_msg_->set_winch_90_pot(1023);
 
@@ -181,7 +181,7 @@ void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
   if (cmd.has_vel()) {
     raw_ballast_ = cmd.vel() + 90;
   } else if (cmd.has_voltage()) {
-    double volts = util::Clip((double)cmd.voltage(), -4.0, 4.0);
+    double volts = util::Clip((double)cmd.voltage(), -12.0, 12.0);
     raw_ballast_ = volts * 90.0 / 12.0 + 90.0;
   }
 }

@@ -12,6 +12,7 @@ $DIR/server_main &
 sleep 0.5
 #$DIR/adaptive_control_main &
 $DIR/simple_control_main &
+$DIR/ballast_control_main &
 $DIR/line_tacking_main -initial_waypoints $DIR/waypoints.pba &
 $DIR/line_plan_main &
 $DIR/rigid_wing_main &

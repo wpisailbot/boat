@@ -25,6 +25,10 @@ message HeadingCmd {
   optional float extra_sail = 10;
 }
 
+message HeelCmd {
+  optional float heel = 1;
+}
+
 message Waypoint {
   // NOTE: Changed to double when tuning planner on 2 April 2018
   optional double x = 1;
@@ -103,6 +107,7 @@ message ControllerConstants {
   optional float ballast_heel_kp = 12;
   optional float ballast_heel_ki = 13;
   optional float ballast_heel_kd = 14;
+  optional float ballast_heel_kff_goal = 18;
   // Desired heel angle (will be made negative depending on tack).
   optional float nominal_heel = 15;
 

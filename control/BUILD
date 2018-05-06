@@ -20,6 +20,12 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="ballast_control",
+  srcs=["ballast.cc"],
+  hdrs=["ballast.h"],
+  deps=[":actuator_cmd_proto", "//util:node", ":util"],
+)
+cc_library(
   name="adaptive_control",
   srcs=["adaptive.cc"],
   hdrs=["adaptive.h"],
@@ -62,6 +68,11 @@ cc_binary(
   name="simple_control_main",
   srcs=["simple_main.cc"],
   deps=[":simple_control"],
+)
+cc_binary(
+  name="ballast_control_main",
+  srcs=["ballast_main.cc"],
+  deps=[":ballast_control"],
 )
 cc_binary(
   name="adaptive_control_main",
