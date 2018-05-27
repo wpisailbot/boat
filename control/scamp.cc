@@ -39,7 +39,7 @@ SCAMP::SCAMP()
     state_msg_->Clear();
     sail_pos_ = WinchPotToAngle(msg.analog_pot().val());
     state_msg_->set_sail(sail_pos_); // TODO(james): Add sign
-    state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
+    state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * M_PI / 180.);
     state_queue_.send(state_msg_);
   });
 
@@ -172,7 +172,7 @@ void SCAMP::SetRawFromSailCmd(float volts) {
 }
 
 void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
-  int raw_val = -cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
+  int raw_val = cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
 
   raw_rudder_ = raw_val;
 }

@@ -211,7 +211,9 @@ function drawPoints(points, id_base) {
 function pathpointsListener() {
   var points = fields[pathpointsQueue].value.points;
   var id_base = "path_points";
-  drawPoints(points, id_base);
+  if (points != null) {
+    drawPoints(points, id_base);
+  }
 }
 
 function pathObstacleListener() {
@@ -324,7 +326,6 @@ function clicked(evt){
   var y = evt.clientY - dim.top;
   var simPos = svgInertialToBoat(svgMainToInertial({x : x, y : y}));
   if (!isCreatingObstacles) {
-    // If SIHFT is pressed, reset waypoints
     gotoWaypoint(simPos.x, simPos.y, evt.shiftKey);
   } else {
     if (lastClickPosition != null && lastClickPosition.length == 2) {
@@ -364,6 +365,9 @@ function clicked(evt){
         pts = [pt1, pt2, pt3];
       }
       var obstacles = fields[obstaclesQueue].value;
+      if (obstacles == null) {
+        obstacles = {};
+      }
       if (obstacles.polygons == null) {
         obstacles.polygons = [];
       }

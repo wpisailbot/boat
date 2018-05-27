@@ -140,10 +140,9 @@ void SimpleControl::Iterate() {
                                  : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
+  float heading_err = util::norm_angle(goal_heading - cur_heading);
   float goal_rudder =
-      std::min(std::max(-0.4 * util::norm_angle(goal_heading - cur_heading /*yaw*/),
-                        -max_rudder),
-               max_rudder);
+      std::min(std::max(-0.4 * heading_err, -max_rudder), max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
@@ -153,7 +152,8 @@ void SimpleControl::Iterate() {
   if (do_rudder_) {
     rudder_cmd_.send(rudder_msg_);
   }
-  double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir);
+  double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir) +
+                     0 * util::Clip(1.0 * heading_err, -0.25, 0.25);
   heel_msg_->set_heel(heel_goal);
   heel_cmd_.send(heel_msg_);
   if (counter_ % 100 == 0) {

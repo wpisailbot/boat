@@ -1,5 +1,6 @@
 #include "ballast.h"
 #include "control/actuator_cmd.pb.h"
+#include "util/node.h"
 
 namespace sailbot {
 namespace control {
@@ -9,14 +10,14 @@ BallastControl::BallastControl()
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       ballast_cmd_("ballast_cmd", true), consts_queue_("control_consts", true) {
   consts_msg_->set_ballast_heel_kp(1.0);
-  consts_msg_->set_ballast_heel_ki(1.0);
-  consts_msg_->set_ballast_heel_kd(0.3);
-  consts_msg_->set_ballast_heel_kff_goal(2.0);
+  consts_msg_->set_ballast_heel_ki(2.0);
+  consts_msg_->set_ballast_heel_kd(0.0);
+  consts_msg_->set_ballast_heel_kff_goal(4.0);
 
-  consts_msg_->set_ballast_arm_kp(50.0);
-  consts_msg_->set_ballast_arm_kd(15.0);
-  consts_msg_->set_ballast_arm_kff_arm(4.0);
-  consts_msg_->set_ballast_arm_kff_heel(4.0);
+  consts_msg_->set_ballast_arm_kp(40.0);
+  consts_msg_->set_ballast_arm_kd(0.0);
+  consts_msg_->set_ballast_arm_kff_arm(0.0);
+  consts_msg_->set_ballast_arm_kff_heel(0.0);
 
   {
     std::unique_lock<std::mutex> l(consts_mutex_);
@@ -78,7 +79,7 @@ void BallastControl::Iterate() {
 
   double ballast_error = ballast_goal - ballast_;
   double dballast_error = -ballast_dot_;
-  double ballast_error_deadband = 0.05;
+  double ballast_error_deadband = 0.00;
   // Create deadband around ballast goal, and ensure
   // that error is continuous
   if (ballast_error > 0.0) {
@@ -91,13 +92,15 @@ void BallastControl::Iterate() {
                            consts_msg_->ballast_arm_kff_arm() * ballast_ -
                            consts_msg_->ballast_arm_kff_heel() * heel_;
   ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
+  double voltage_deadband = last_voltage_ == 0 ? 2.5 : 1.0;
   if (std::abs(ballast_error) < 0.001 || std::abs(ballast_) > 1.5 ||
-      std::abs(ballast_voltage) < 1.0) {
+      std::abs(ballast_voltage) < voltage_deadband) {
     // If sufficiently close, then tack advantage of non-backdrivability:
     // Also, if ballast position is clearly absurd, don't apply voltage
     ballast_voltage = 0.0;
   }
 
+  last_voltage_ = ballast_voltage;
   ballast_msg_->set_voltage(ballast_voltage);
   ballast_cmd_.send(ballast_msg_);
   if (++counter_ % 110 == 0) {

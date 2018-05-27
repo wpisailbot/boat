@@ -29,6 +29,8 @@ class BallastControl : public Node {
 
   std::atomic<double> heel_error_integrator_{0};
 
+  double last_voltage_ = 0;
+
   int counter_ = 0;
 };
 
