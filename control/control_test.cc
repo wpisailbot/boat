@@ -134,7 +134,7 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
   ProtoQueue<msg::Obstacles> obs_q("planner_obstacles", true);
   obs_q.send(&obstacles);
 
-  Sleep(7500);
+  Sleep(75);
   ASSERT_TRUE(true);
 }
 
