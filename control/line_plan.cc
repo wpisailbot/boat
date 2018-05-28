@@ -14,6 +14,7 @@ constexpr float LinePlan::kSailableReach;
 constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
 constexpr float LinePlan::kPreTurnScale;
+constexpr float LinePlan::kAlphaCrossCost;
 constexpr int LinePlan::kMaxNpts;
 
 LinePlan::LinePlan()
@@ -159,6 +160,9 @@ void LinePlan::UpdateWaypoints() {
   size_t Nway = waypoints_lonlat_.size();
   if (Nway <= 1) return;
   waypoints_.resize(Nway);
+  // None of these are true "gates".
+  are_gates_.clear();
+  are_gates_.resize(Nway, false);
 
   Point curpt = LonLatToFrame(waypoints_lonlat_[0]);
   waypoints_[0] = std::make_pair(curpt, curpt); // Create sane first waypoint.
@@ -242,8 +246,15 @@ void LinePlan::UpdateWaypointInc() {
   const Vector2d &gate_start = waypoints_[next_waypoint_].first;
   const Vector2d &gate_end = waypoints_[next_waypoint_].second;
 
-  if (ProjectsToLine(gate_start, gate_end, prev_boat_pos_) &&
-      ProjectsToLine(gate_start, gate_end, boat_pos_)) {
+  bool passed_line = false;
+  if (are_gates_[next_waypoint_]) {
+    passed_line = ProjectsToLine(gate_start, gate_end, prev_boat_pos_) &&
+                  ProjectsToLine(gate_start, gate_end, boat_pos_);
+  } else {
+    passed_line = ProjectsToRay(gate_start, gate_end, prev_boat_pos_) &&
+                  ProjectsToRay(gate_start, gate_end, boat_pos_);
+  }
+  if (passed_line) {
     // Check that distances are different signs:
     double d0 = DistToLine(gate_start, gate_end, prev_boat_pos_);
     double d1 = DistToLine(gate_start, gate_end, boat_pos_);
@@ -352,19 +363,58 @@ LinePlan::OptimizeTacks(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                         double *finalcost, bool *viable) {
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
+  std::vector<std::vector<Point>> tacks = {*tackpts};
+  std::vector<double> alphas = {*alpha};
+  OptimizeMultipleTacks({gate}, nextpt, winddir, obstacles, cur_yaw, &tacks,
+                        &alphas, finalcost, viable);
+  *tackpts = tacks[0];
+  *alpha = alphas[0];
+}
+
+// Optimize for multiple consecutive paths at once:
+void LinePlan::OptimizeMultipleTacks(
+    const std::vector<std::pair<Vector2d, Vector2d>> &gates,
+    const Vector2d &nextpt, double winddir,
+    const std::vector<Polygon> &obstacles, double cur_yaw,
+    std::vector<std::vector<Vector2d>> *tacks, std::vector<double> *alphas,
+    double *finalcost, bool *viable) {
+  CHECK_NOTNULL(tacks);
+  CHECK_NOTNULL(alphas);
+  const int Nlegs = tacks->size();
+  CHECK_EQ(Nlegs, alphas->size())
+      << "We should have the same number of points as alphas";
+  CHECK_EQ(Nlegs, gates.size())
+      << "We should have the same number of points as gates";
+  for (int ii = 0; ii < Nlegs; ++ii) {
+    CHECK(!tacks->at(ii).empty())
+        << "You should have at least one element in each path segment";
+  }
   double step = 0.05;
+
+  Eigen::Vector2d npt;
   for (int ii = 0; ii < 50; ++ii) {
     if (ii > 20) {
-      step = 1e-3;
+      step = 1.5e-3;
     }
-    BackPass(gate, nextpt, winddir, obstacles, cur_yaw, step, tackpts, alpha,
-             finalcost, viable);
-    if ((ii % 10) == 0 ) {
-      //LOG(INFO) << ii << ": N: " << tackpts->size() << " cost: " << *finalcost;
+    if (finalcost != nullptr) *finalcost = 0;
+    if (viable != nullptr) *viable = true;
+    for (int jj = 0; jj < Nlegs; ++jj) {
+      const std::pair<Vector2d, Vector2d> &gate = gates[jj];
+      npt = jj == Nlegs - 1 ? nextpt : tacks->at(jj + 1)[0];
+      double cyaw = cur_yaw;
+      if (jj > 0) {
+        tacks->at(jj)[0] =
+            gate.first + alphas->at(jj - 1) * (gate.second - gate.first);
+        cyaw = util::atan2(tacks->at(jj)[0] - tacks->at(jj - 1).back());
+      }
+      double segmentcost;
+      bool segmentviable;
+      BackPass(gate, npt, winddir, obstacles, cyaw, step, &tacks->at(jj),
+               &alphas->at(jj), &segmentcost, &segmentviable);
+      if (finalcost != nullptr) *finalcost += segmentcost;
+      if (viable != nullptr) *viable = *viable && segmentviable;
     }
   }
-  //LOG(INFO) << "N: " << tackpts->size() << " cost: " << *finalcost
-  //          << " viable: " << *viable;
 }
 
 void LinePlan::GenerateHypotheses(const Vector2d &startpt,
@@ -472,7 +522,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                  &dcostdalpha, &lineviable);
   if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
-  *alpha = util::Clip(*alpha, 0.0, 1.0);
+  *alpha = std::max(0.0, *alpha);//util::Clip(*alpha, 0.0, 1.0);
   if (finalcost != nullptr) {
     // Strictly speaking calculates cost of previous iteration, but this avoids
     // an instability if dcostdalpha is very high.
@@ -801,9 +851,14 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
  */
 void LinePlan::CrossFinishCost(double alpha,
                                double *cost, double *dcostdalpha) {
-  const double alpham5 = alpha - 0.5;
-  *CHECK_NOTNULL(cost) = 4.0 * alpham5 * alpham5;
-  *CHECK_NOTNULL(dcostdalpha) = 8.0 * alpham5;
+//  const double alpham5 = alpha - 0.5;
+//  *CHECK_NOTNULL(cost) = kAlphaCrossCost * alpham5 * alpham5;
+//  *CHECK_NOTNULL(dcostdalpha) = 2.0 * kAlphaCrossCost * alpham5;
+  // Protect against negative and small numbers)
+  alpha = std::max(0.1, alpha);
+  const double base_cost = kAlphaCrossCost * std::exp(alpha) / std::sqrt(alpha);
+  *CHECK_NOTNULL(cost) = base_cost;
+  *CHECK_NOTNULL(dcostdalpha) = base_cost * (1.0 - 0.5 / alpha);
 }
 
 /**
@@ -911,8 +966,12 @@ void LinePlan::StraightLineCost(double len, double heading, double winddir,
  * Computes cost by choosing discrete points along the line segment,
  * attempting to approximate the integral along the line of the
  * cost at any given point.
- * The cost at any given point shall be kObstacleCost * e^{-x}
+ * The cost at any given point shall be kObstacleCost * (max(10 - x, 0) / 10)^2
  * where x is the distance from the point to the polygon.
+ * The idea of the maximum and the 10 - x is to ignore
+ * the obstacle once we get more than 10m away from it,
+ * as it will no longer really be relevant.
+ * when you get too far into an obstacle
  * WARNING: If you think that your line might cross the obstacle,
  *   then beware of each half of the line having low cost and
  *   not having a clear gradient to follow.

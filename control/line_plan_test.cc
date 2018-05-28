@@ -48,14 +48,14 @@ void TryCrossFinishCost(double alpha, double expcost, double expdalpha,
                         const char *desc) {
   double cost, dalpha;
   LinePlan::CrossFinishCost(alpha, &cost, &dalpha);
-  EXPECT_EQ(expcost, cost) << desc << ": Incorrect cost";
-  EXPECT_EQ(expdalpha, dalpha) << desc << ": Incorrect dcostdalpha";
+  EXPECT_NEAR(expcost, cost, 1e-3) << desc << ": Incorrect cost";
+  EXPECT_NEAR(expdalpha, dalpha, 1e-3) << desc << ": Incorrect dcostdalpha";
 }
 
 TEST(LinePlanUtilTest, CrossFinishTest) {
-  TryCrossFinishCost(0.0, 1.0, -4.0, "Basic alpha=0");
-  TryCrossFinishCost(0.5, 0.0, 0.0, "At min cost");
-  TryCrossFinishCost(1.0, 1.0, 4.0, "At alpha=1");
+  TryCrossFinishCost(0.0, 17.4743, -69.8971, "Basic alpha=0");
+  TryCrossFinishCost(0.5, 11.6582, 0.0, "At min cost");
+  TryCrossFinishCost(1.0, 13.5914, 6.7957, "At alpha=1");
 }
 
 TEST(LinePlanUtilTest, SingleLineCostTest) {
@@ -265,26 +265,32 @@ TEST(LinePlanUtilTest, ObstacleCostTest) {
   obstacles.push_back(Polygon({{2.0, 0.0}, {2.0, 2.0}}));
 
   // A line of length one distance 1.0 from the obstacle should
-  // produce a cost of nearly e^{-1}.
+  // produce a cost of nearly (10 - 1)^2 / 100
   LinePlan::ObstacleCost({1.0, 0.0}, {1.0, 1.0}, obstacles, &cost,
                          &dcostdstart);
-  double expcost = kCost * std::exp(-1.0);
+  double expcost = kCost * (10 - 1) * (10 - 1) / 100.0;
+  // The derivative in the x direction (away/towards the
+  // obstacle) should the the derivative w.r.t. the
+  // distance times one half (because we are only
+  // moving one end of the line).
+  double dexpcostdx = kCost * (10 - 1) / 100.0;
   double tol = 5e-4;
   EXPECT_NEAR(expcost, cost, tol);
   EXPECT_NEAR(-expcost, dcostdstart.y(), tol);
   // x derivative should be around half of the derivative of exp(-x):
-  EXPECT_NEAR(expcost / 2.0, dcostdstart.x(), tol);
+  EXPECT_NEAR(dexpcostdx, dcostdstart.x(), tol);
 
   // Check that integrating over line not of length 1 works:
   obstacles.clear();
   obstacles.push_back(Polygon({{2.0, 0.0}, {2.0, 5.0}}));
   LinePlan::ObstacleCost({1.0, 0.0}, {1.0, 2.5}, obstacles, &cost,
                          &dcostdstart);
-  expcost = kCost * std::exp(-1.0) * 2.5;
+  expcost = kCost * 9 * 9 * 2.5 / 100.0;
+  dexpcostdx = kCost * 9 * 2.5 / 100.0;
   EXPECT_NEAR(expcost, cost, tol);
   EXPECT_NEAR(-expcost / 2.5, dcostdstart.y(), tol);
   // x derivative should be around half of the derivative of exp(-x):
-  EXPECT_NEAR(expcost / 2.0, dcostdstart.x(), tol);
+  EXPECT_NEAR(dexpcostdx, dcostdstart.x(), tol);
 }
 
 // Run a set of tests on BackPass, for situations when we are only using one
@@ -489,9 +495,10 @@ TEST_F(BackPassTest, UpwindMultipointTack) {
   nextpt << 15.0, 0.0;
   tackpts = {{0.0, 0.0}, {5.0, 1.0}, {10.0, -1.0}};
   orig_tackpts = tackpts;
-  // Need to run two passes because it takes a moment for things to settle.
-  BackPass(M_PI, 1.0);
-  BackPass(M_PI, 1.0);
+  // Need to run multiple passes because it takes a moment for things to settle.
+  for (int ii = 0; ii < 10; ++ii) {
+    BackPass(M_PI, 0.05);
+  }
   EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
       << "First point should've moved up a tick";
   EXPECT_GT(orig_tackpts[2].y(), tackpts[2].y())
@@ -504,7 +511,9 @@ TEST_F(BackPassTest, OutOfAlignmentInitial) {
   orig_tackpts = tackpts;
   alpha = 0.3;
   orig_alpha = alpha;
-  BackPass(0.0, 1.0);
+  for (int ii = 0; ii < 10; ++ii) {
+    BackPass(0.0, 0.05);
+  }
   EXPECT_GT(orig_tackpts[1].y(), tackpts[1].y())
       << "Middle point should've moved down to straighten out";
   EXPECT_LT(orig_alpha, alpha)
@@ -739,6 +748,7 @@ TEST_F(OptimizerTest, UpwindBasicOpt) {
 
 // Test upwind leg, forcing more tacks due to obstacles:
 TEST_F(OptimizerTest, UpwindForceTacks) {
+  FLAGS_v = 1;
   winddir = M_PI;
   alpha = 0.0;
   tackpts.clear();

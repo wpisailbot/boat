@@ -19,6 +19,11 @@ double DistToLine(Point l0, Point l1, Point pt);
  * point on (l0, l1) to pt.
  */
 bool ProjectsToLine(Point l0, Point l1, Point pt);
+/**
+ * Determines weather the point pt projects onto the ray that
+ * starts at l0 and passes through l1.
+ */
+bool ProjectsToRay(Point l0, Point l1, Point pt);
 
 /**
  * 2D polygon, all math done in Euclidean plane. i.e., this will not perfectly

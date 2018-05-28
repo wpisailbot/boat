@@ -22,6 +22,12 @@ bool ProjectsToLine(Point l0, Point l1, Point pt) {
   return dot > 0.0 && dot < line.squaredNorm();
 }
 
+bool ProjectsToRay(Point l0, Point l1, Point pt) {
+  Point line = l1 - l0;
+  double dot = line.dot(pt - l0);
+  return dot > 0.0;
+}
+
 Polygon::Polygon(std::vector<Point> pts) : pts_(pts) {
   CHECK(ValidatePoints(pts)) << "Points not correctly arranged";
   ProcessPts();

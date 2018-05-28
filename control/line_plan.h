@@ -85,7 +85,7 @@ class LinePlan : public Node {
   // If kObstacleCost = 1, then the cost will be integral e^-x dl with
   // x the distance to a given obstacle, l being the line we are
   // following.
-  constexpr static float kObstacleCost = 100.0;
+  constexpr static float kObstacleCost = 50.0;
   // Cost per unit length of a line, cost / meter
   constexpr static float kLengthCost = 0.1;
   // Default length of a gate, in meters.
@@ -94,7 +94,10 @@ class LinePlan : public Node {
   // to the later turns (provides some hysteresis):
   constexpr static float kPreTurnScale = 10.0;
   // Maximum number of turn points
-  constexpr static int kMaxNpts = 3;
+  constexpr static int kMaxNpts = 4;
+  // Weighting for how near we get to the "preferred"
+  // distance from the waypoint
+  constexpr static float kAlphaCrossCost = 5.0;
 
   // None of these functions below account for obstacles.
   static void SingleLineCost(const Vector2d &startline, const Vector2d &endline,
@@ -149,6 +152,14 @@ class LinePlan : public Node {
                             const std::vector<Polygon> &obstacles,
                             double cur_yaw, std::vector<Vector2d> *tackpts,
                             double *alpha, double *finalcost, bool *viable);
+
+  static void
+  OptimizeMultipleTacks(const std::vector<std::pair<Vector2d, Vector2d>> &gates,
+                        const Vector2d &nextpt, double winddir,
+                        const std::vector<Polygon> &obstacles, double cur_yaw,
+                        std::vector<std::vector<Vector2d>> *tacks,
+                        std::vector<double> *alphas, double *finalcost,
+                        bool *viable);
 
   // Provides a seeding of points to use for OptimizeTacks.
   // For beam reaches/downwinds, seeds with straight line path.
@@ -247,6 +258,8 @@ class LinePlan : public Node {
   // current position, to waypoints_[0]... and terminated at waypoints_.back()
   // At any given instant, we are straing to sail to waypoint next_waypoint_.
   std::vector<std::pair<Point, Point>> waypoints_;
+  // Whether given waypoints are gates or buoys:
+  std::vector<bool> are_gates_;
   std::atomic<int> next_waypoint_{0};
 
   msg::HeadingCmd *heading_msg_;
