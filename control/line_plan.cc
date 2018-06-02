@@ -304,6 +304,16 @@ void LinePlan::FindPath(const Vector2d &startpt,
                         std::vector<Vector2d> *tackpts, double *alpha) {
   CHECK_NOTNULL(tackpts);
   CHECK_NOTNULL(alpha);
+  std::vector<double> alphas;
+  std::vector<std::vector<Vector2d>> tacks;
+  FindMultiplePath(startpt, {gate}, nextpt, winddir, obstacles, cur_yaw, &tacks,
+                   &alphas);
+  *alpha = alphas[0];
+  *tackpts = tacks[0];
+#if 1
+#else
+  CHECK_NOTNULL(tackpts);
+  CHECK_NOTNULL(alpha);
   // Lowest cost thus far
   double lowest_cost = std::numeric_limits<double>::infinity();
   double dcost = -lowest_cost;
@@ -337,6 +347,80 @@ void LinePlan::FindPath(const Vector2d &startpt,
         nptscost = itercost;
         *tackpts = path;
         *alpha = iteralpha;
+      }
+    }
+
+    VLOG(1) << "cost: " << lowest_cost;
+    //LOG(INFO) << "cost: " << lowest_cost;
+
+    if (any_viable) {
+      // Will be zero if no improvements were found
+      dcost = nptscost - lowest_cost;
+      if (dcost < 0) {
+        lowest_cost = nptscost;
+      }
+    }
+
+    ++Npts;
+  }
+#endif
+}
+
+void LinePlan::FindMultiplePath(
+    const Vector2d &startpt,
+    const std::vector<std::pair<Vector2d, Vector2d>> &gates,
+    const Vector2d &nextpt, double winddir,
+    const std::vector<Polygon> &obstacles, double cur_yaw,
+    std::vector<std::vector<Vector2d>> *tacks, std::vector<double> *alphas) {
+  CHECK_NOTNULL(tacks);
+  CHECK_NOTNULL(alphas);
+  const int Nlegs = gates.size();
+  tacks->resize(Nlegs, {});
+  alphas->resize(Nlegs, 0.5);
+  // Lowest cost thus far
+  double lowest_cost = std::numeric_limits<double>::infinity();
+  double dcost = -lowest_cost;
+  // For initial endpt, use halfway along gate:
+  std::vector<Vector2d> nominal_endpts;
+  for (const auto &gate : gates) {
+    nominal_endpts.push_back(0.5 * (gate.first + gate.second));
+  }
+
+  int Npts = 0;
+
+  while (Npts < kMaxNpts) {// && dcost < -1e-2) {
+    std::vector<std::vector<std::vector<Vector2d>>> paths;
+    int maxNpaths = 0;
+    for (int ii = 0; ii < Nlegs; ++ii) {
+      std::vector<std::vector<Vector2d>> hypos;
+      Vector2d legstart = ii == 0 ? startpt : nominal_endpts[ii - 1];
+      GenerateHypotheses(legstart, nominal_endpts[ii], winddir, Npts, &hypos);
+      paths.push_back(hypos);
+      maxNpaths = std::max(maxNpaths, (int)hypos.size());
+    }
+
+    double nptscost = lowest_cost;
+    bool any_viable = false;
+
+    for (int ii = 0; ii < maxNpaths; ++ii) {
+      std::vector<std::vector<Vector2d>> iter_tacks;
+      for (int jj = 0; jj < Nlegs; ++jj) {
+        int legn = std::min(ii, (int)paths[jj].size() - 1);
+        iter_tacks.push_back(paths[jj][legn]);
+      }
+      std::vector<double> iter_alphas;
+      iter_alphas.resize(Nlegs, 0.5);
+      double itercost;
+      bool viable;
+      OptimizeMultipleTacks(gates, nextpt, winddir, obstacles, cur_yaw,
+                            &iter_tacks, &iter_alphas, &itercost, &viable);
+      any_viable = viable || any_viable;
+      // Use this path if it is both the cheapest and isn't disqualified
+      // for some reason (e.g., upwind legs).
+      if (viable && itercost < nptscost) {
+        nptscost = itercost;
+        *tacks = iter_tacks;
+        *alphas = iter_alphas;
       }
     }
 
@@ -412,6 +496,7 @@ void LinePlan::OptimizeMultipleTacks(
       BackPass(gate, npt, winddir, obstacles, cyaw, step, &tacks->at(jj),
                &alphas->at(jj), &segmentcost, &segmentviable);
       if (finalcost != nullptr) *finalcost += segmentcost;
+      // TODO(james): Consider only enforcing viability on first tack
       if (viable != nullptr) *viable = *viable && segmentviable;
     }
   }
@@ -522,7 +607,8 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                  &dcostdalpha, &lineviable);
   if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
-  *alpha = std::max(0.0, *alpha);//util::Clip(*alpha, 0.0, 1.0);
+  // TODO(james): Clip alpha to 1 programmatically based on are_gates_.
+  *alpha = util::Clip(*alpha, 0.0, 1.0);
   if (finalcost != nullptr) {
     // Strictly speaking calculates cost of previous iteration, but this avoids
     // an instability if dcostdalpha is very high.

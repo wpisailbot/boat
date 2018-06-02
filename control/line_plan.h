@@ -186,6 +186,14 @@ class LinePlan : public Node {
                        const std::vector<Polygon> &obstacles, double cur_yaw,
                        std::vector<Vector2d> *tackpts, double *alpha);
 
+  static void
+  FindMultiplePath(const Vector2d &startpt,
+                   const std::vector<std::pair<Vector2d, Vector2d>> &gates,
+                   const Vector2d &nextpt, double winddir,
+                   const std::vector<Polygon> &obstacles, double cur_yaw,
+                   std::vector<std::vector<Vector2d>> *tacks,
+                   std::vector<double> *alphas);
+
   // Compute the gate attached to a waypoint given the waypoints before and
   // after it. If either the first or last waypoint overlaps with the gate
   // waypoint, create gate with middle waypoint in middle of the gate. If all
