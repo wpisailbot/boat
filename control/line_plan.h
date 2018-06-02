@@ -94,7 +94,7 @@ class LinePlan : public Node {
   // to the later turns (provides some hysteresis):
   constexpr static float kPreTurnScale = 10.0;
   // Maximum number of turn points
-  constexpr static int kMaxNpts = 4;
+  constexpr static int kMaxNpts = 6;
   // Weighting for how near we get to the "preferred"
   // distance from the waypoint
   constexpr static float kAlphaCrossCost = 5.0;

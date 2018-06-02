@@ -1,5 +1,6 @@
 #include "line_plan.h"
 #include "control/util.h"
+#include <math.h>
 #include <algorithm>
 
 namespace sailbot {
@@ -272,25 +273,38 @@ double LinePlan::GetGoalHeading() {
     return yaw_;
   }
   int future_idx = std::min((int)(waypoints_.size() - 1), next_waypoint_ + 1);
-  std::vector<Vector2d> path;
-  double alpha;
+  std::vector<std::vector<Vector2d>> paths;
+  std::vector<double> alphas;
   Vector2d nextpt =
       0.5 * (waypoints_[future_idx].first + waypoints_[future_idx].second);
-  FindPath(boat_pos_, waypoints_[next_waypoint_], nextpt, wind_dir_, obstacles_,
-           yaw_, &path, &alpha);
+  int Nlegs = std::max(1, std::min(2, (int)waypoints_.size() - next_waypoint_));
+  auto next_waypoint_iter = waypoints_.begin() + next_waypoint_;
+  std::vector<std::pair<Point, Point>> plan_for_gates(
+      next_waypoint_iter, next_waypoint_iter + Nlegs);
+  FindMultiplePath(boat_pos_, plan_for_gates, nextpt, wind_dir_, obstacles_,
+           yaw_, &paths, &alphas);
 
-  CHECK_LE(1.0, path.size()) << "The path from FindPath MUST always contain at "
-                                "least one point (our current position)";
+  std::vector<Point> path;
+  for (int ii = 0; ii < paths.size(); ++ii) {
+    auto &leg = paths[ii];
+    CHECK_LE(1.0, leg.size())
+        << "The path from FindPath MUST always contain at "
+           "least one point (our current position)";
 
-  // Because the returned path doesn't include the last point, add it.
-  path.push_back((1.0 - alpha) * waypoints_[next_waypoint_].first +
-                 alpha * waypoints_[next_waypoint_].second);
-  pathpoints_lonlat_msg_->clear_points();
-  for (const auto &pt : path) {
-    Point ptll = FrameToLonLat(pt);
-    msg::Waypoint *msg_pt = pathpoints_lonlat_msg_->add_points();
-    msg_pt->set_x(ptll.x());
-    msg_pt->set_y(ptll.y());
+    double alpha = alphas[ii];
+
+    path.insert(path.end(), leg.begin(), leg.end());
+
+    // Because the returned path doesn't include the last point, add it.
+    path.push_back((1.0 - alpha) * waypoints_[next_waypoint_ + ii].first +
+                   alpha * waypoints_[next_waypoint_ + ii].second);
+    pathpoints_lonlat_msg_->clear_points();
+    for (const auto &pt : path) {
+      Point ptll = FrameToLonLat(pt);
+      msg::Waypoint *msg_pt = pathpoints_lonlat_msg_->add_points();
+      msg_pt->set_x(ptll.x());
+      msg_pt->set_y(ptll.y());
+    }
   }
 
   double heading = util::atan2(path[1] - path[0]);
@@ -382,8 +396,10 @@ void LinePlan::FindMultiplePath(
   double dcost = -lowest_cost;
   // For initial endpt, use halfway along gate:
   std::vector<Vector2d> nominal_endpts;
-  for (const auto &gate : gates) {
+  for (int ii = 0; ii < Nlegs; ++ii) {
+    const auto &gate = gates[ii];
     nominal_endpts.push_back(0.5 * (gate.first + gate.second));
+    tacks->at(ii).push_back(nominal_endpts.back());
   }
 
   int Npts = 0;
@@ -414,6 +430,7 @@ void LinePlan::FindMultiplePath(
       bool viable;
       OptimizeMultipleTacks(gates, nextpt, winddir, obstacles, cur_yaw,
                             &iter_tacks, &iter_alphas, &itercost, &viable);
+//      viable = true; // XXX TODO(james): Fix
       any_viable = viable || any_viable;
       // Use this path if it is both the cheapest and isn't disqualified
       // for some reason (e.g., upwind legs).
@@ -476,7 +493,7 @@ void LinePlan::OptimizeMultipleTacks(
   double step = 0.05;
 
   Eigen::Vector2d npt;
-  for (int ii = 0; ii < 50; ++ii) {
+  for (int ii = 0; ii < 50 - 30; ++ii) {
     if (ii > 20) {
       step = 1.5e-3;
     }
@@ -497,7 +514,7 @@ void LinePlan::OptimizeMultipleTacks(
                &alphas->at(jj), &segmentcost, &segmentviable);
       if (finalcost != nullptr) *finalcost += segmentcost;
       // TODO(james): Consider only enforcing viability on first tack
-      if (viable != nullptr) *viable = *viable && segmentviable;
+      if (jj == 0 && viable != nullptr) *viable = *viable && segmentviable;
     }
   }
 }
