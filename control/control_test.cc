@@ -110,35 +110,58 @@ void SetWaypoint(msg::Waypoint* p, double x, double y) {
 }
 }  // namespace
 
+// Notes for precision challenge:
+// Adding obstacles around edges to guide behavior
+// In order to prioritize precision over convenience,
+// I strongly suggesting reducing the kPreTurnScale
+// variable in LinePlan to reduce hysteresis effects.
+// I currently do not account for turning radius anywhere.
 TEST_F(SimpleControlTest, NavigationChallenge) {
-  FLAGS_v = 1;
+//  FLAGS_v = 1;
   msg::WaypointList waypoints;
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
   msg::Waypoint* p3 = waypoints.add_points();
   msg::Waypoint* p4 = waypoints.add_points();
   SetWaypoint(p1, 0, 0);
-  SetWaypoint(p2, 15, -10);
-  SetWaypoint(p3, 15, 10);
+  SetWaypoint(p2, 43, -25);
+  SetWaypoint(p3, 43, 25);
   SetWaypoint(p4, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
 
   msg::Obstacles obstacles;
   msg::WaypointList *obs1 = obstacles.add_polygons();
-  SetWaypoint(obs1->add_points(), 16, 3);
-  SetWaypoint(obs1->add_points(), 16, -3);
-  SetWaypoint(obs1->add_points(), 25, -3);
-  SetWaypoint(obs1->add_points(), 25, 3);
+  SetWaypoint(obs1->add_points(), -10, -40);
+  SetWaypoint(obs1->add_points(), -10, -400);
+  SetWaypoint(obs1->add_points(), 100, -400);
+  SetWaypoint(obs1->add_points(), 100, -40);
+  msg::WaypointList *obs2 = obstacles.add_polygons();
+  SetWaypoint(obs2->add_points(), -10, 400);
+  SetWaypoint(obs2->add_points(), -10, 40);
+  SetWaypoint(obs2->add_points(), 100, 40);
+  SetWaypoint(obs2->add_points(), 100, 400);
+  msg::WaypointList *obs3 = obstacles.add_polygons();
+  SetWaypoint(obs3->add_points(), 60, 40);
+  SetWaypoint(obs3->add_points(), 60, -40);
+  SetWaypoint(obs3->add_points(), 400, -40);
+  SetWaypoint(obs3->add_points(), 400, 40);
+  msg::WaypointList *obs4 = obstacles.add_polygons();
+  SetWaypoint(obs4->add_points(), -100, 40);
+  SetWaypoint(obs4->add_points(), -100, -40);
+  SetWaypoint(obs4->add_points(), 0, -40);
+  SetWaypoint(obs4->add_points(), 0, 40);
+
   sim_node_.set_wind(0 * M_PI / 4, 3.5);
   ProtoQueue<msg::Obstacles> obs_q("planner_obstacles", true);
   obs_q.send(&obstacles);
 
-  Sleep(75);
+  Sleep(7500);
   ASSERT_TRUE(true);
 }
 
 TEST_F(SimpleControlTest, Square) {
+  //FLAGS_v = 1;
   msg::WaypointList waypoints;
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
@@ -168,7 +191,56 @@ TEST_F(SimpleControlTest, Square) {
   obs_q.send(&obstacles);
 
   sim_node_.set_wind(0, 3);
-  Sleep(150);
+  Sleep(15000);
+  ASSERT_TRUE(true);
+}
+
+TEST_F(SimpleControlTest, StationKeep) {
+  //FLAGS_v = 1;
+  msg::WaypointList waypoints;
+  msg::Waypoint* p1 = waypoints.add_points();
+  msg::Waypoint* p2 = waypoints.add_points();
+  SetWaypoint(p1, 0, 0);
+  SetWaypoint(p2, 0, 0);
+  ProtoQueue<msg::WaypointList> way_q("waypoints", true);
+  way_q.send(&waypoints);
+
+  msg::Obstacles obstacles;
+  msg::WaypointList *obs1 = obstacles.add_polygons();
+  SetWaypoint(obs1->add_points(), -10, -20);
+  SetWaypoint(obs1->add_points(), -10, -400);
+  SetWaypoint(obs1->add_points(), 100, -400);
+  SetWaypoint(obs1->add_points(), 100, -20);
+  msg::WaypointList *obs2 = obstacles.add_polygons();
+  SetWaypoint(obs2->add_points(), -10, 400);
+  SetWaypoint(obs2->add_points(), -10, 20);
+  SetWaypoint(obs2->add_points(), 100, 20);
+  SetWaypoint(obs2->add_points(), 100, 400);
+  msg::WaypointList *obs3 = obstacles.add_polygons();
+  SetWaypoint(obs3->add_points(), 20, 20);
+  SetWaypoint(obs3->add_points(), 20, -20);
+  SetWaypoint(obs3->add_points(), 400, -20);
+  SetWaypoint(obs3->add_points(), 400, 20);
+  msg::WaypointList *obs4 = obstacles.add_polygons();
+  SetWaypoint(obs4->add_points(), -400, 20);
+  SetWaypoint(obs4->add_points(), -400, -20);
+  SetWaypoint(obs4->add_points(), -20, -20);
+  SetWaypoint(obs4->add_points(), -20, 20);
+
+  ProtoQueue<msg::Obstacles> obs_q("planner_obstacles", true);
+  obs_q.send(&obstacles);
+
+  sim_node_.set_wind(0, 3);
+
+  Sleep(40);
+
+  SetWaypoint(p2, 0, 100);
+  way_q.send(&waypoints);
+  obstacles.clear_polygons();
+  obs_q.send(&obstacles);
+
+  Sleep(300);
+
   ASSERT_TRUE(true);
 }
 
