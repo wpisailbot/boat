@@ -52,26 +52,26 @@ WaypointManager::WaypointManager()
           station_keep_state_ = GOTO_START;
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
-          control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+          control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           control_mode_queue_.send(control_mode_msg_);
           break;
         case msg::ChallengeControl::WAYPOINT:
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
-          control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+          control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           break;
         case msg::ChallengeControl::VISION:
           vision_state_ = FOLLOW_WAYPOINTS;
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
-          control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+          control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           control_mode_queue_.send(control_mode_msg_);
           break;
         case msg::ChallengeControl::OBSTACLE:
           obstacle_state_ = WAYPOINT;
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
-          control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+          control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           control_mode_queue_.send(control_mode_msg_);
           break;
         }
@@ -181,7 +181,7 @@ void WaypointManager::DoVisionSearch() {
         control_mode_queue_.send(control_mode_msg_);
       } else if (vision_confidence_ < kVisionConfidenceThreshold) {
         control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+        control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
         control_mode_queue_.send(control_mode_msg_);
       }
       break;
@@ -198,8 +198,9 @@ void WaypointManager::DoObstacleAvoid() {
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
         control_mode_queue_.send(control_mode_msg_);
         initial_avoid_diff_heading_ =
-            M_PI / 2 *
-            (util::norm_angle(vision_abs_heading_ - boat_yaw_) > 0 ? 1 : -1);
+            M_PI / 2.0 *
+            (util::norm_angle(vision_abs_heading_ - boat_yaw_) > 0 ? 1.0
+                                                                   : -1.0);
         obstacle_state_ = AVOID;
       }
       break;
@@ -209,7 +210,7 @@ void WaypointManager::DoObstacleAvoid() {
       heading_cmd_queue_.send(heading_cmd_msg_);
       if (vision_confidence_ < kVisionObstacleThreshold) {
         control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::REWARD);
+        control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
         control_mode_queue_.send(control_mode_msg_);
         obstacle_state_ = WAYPOINT;
       }

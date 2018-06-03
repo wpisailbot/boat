@@ -32,7 +32,9 @@ LinePlan::LinePlan()
       pathpoints_lonlat_msg_(new msg::WaypointList),//AllocateMessage<msg::WaypointList>()),
       pathpoints_queue_("planner_points", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
-      heading_cmd_("heading_cmd", true) {
+      heading_cmd_("heading_cmd", true),
+      state_msg_(AllocateMessage<msg::TackerState>()),
+      state_queue_("tacker_state", true) {
   RegisterHandler<msg::WaypointList>(
       "waypoints",
       [this](const msg::WaypointList &msg) { ReceiveWaypoints(msg); });
@@ -221,6 +223,9 @@ void LinePlan::UpdateWaypointInc() {
     return;
   }
   if (!repeat_waypoints_ && next_waypoint_ == waypoints_.size() - 1) {
+    state_msg_->set_done(true);
+    state_msg_->set_last_waypoint(next_waypoint_ - 1);
+    state_queue_.send(state_msg_);
     // If we are already on the last waypoint, don't do anything.
     return;
   }
@@ -252,6 +257,9 @@ void LinePlan::UpdateWaypointInc() {
       next_waypoint_ = next_waypoint_ % waypoints_.size();
     }
   }
+  state_msg_->set_done(false);
+  state_msg_->set_last_waypoint(next_waypoint_ - 1);
+  state_queue_.send(state_msg_);
 }
 
 double LinePlan::GetGoalHeading() {

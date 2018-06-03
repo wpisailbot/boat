@@ -293,6 +293,9 @@ class LinePlan : public Node {
   msg::HeadingCmd *heading_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_;
 
+  msg::TackerState *state_msg_;
+  ProtoQueue<msg::TackerState> state_queue_;
+
   std::atomic<int> tack_mode_{msg::ControlMode_TACKER_NONE};
 
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, TurnCostTest);
