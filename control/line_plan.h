@@ -78,21 +78,21 @@ class LinePlan : public Node {
   constexpr static float kUpwindCost = 300.0;
   // Scalar for the cost associated with an overall upwind stretch,
   // on the assumption that we would end up adding tacking later.
-  constexpr static float kUpwindApproxCost = 2.0;
+  constexpr static float kUpwindApproxCost = 0 * 2.0;
   // The nearest to the wind that we physically can sail:
-  constexpr static float kSailableReach = M_PI_4;
+  constexpr static float kSailableReach = M_PI / 6.0;
   // The relative cost of being near obstacles.
   // If kObstacleCost = 1, then the cost will be integral e^-x dl with
   // x the distance to a given obstacle, l being the line we are
   // following.
-  constexpr static float kObstacleCost = 50.0;
+  constexpr static float kObstacleCost = 100;
   // Cost per unit length of a line, cost / meter
-  constexpr static float kLengthCost = 0.1;
+  constexpr static float kLengthCost = 1.0;
   // Default length of a gate, in meters.
   constexpr static float kGateWidth = 20.0;
   // Amount to weight the very first turn relative
   // to the later turns (provides some hysteresis):
-  constexpr static float kPreTurnScale = 10.0;
+  constexpr static float kPreTurnScale = 200.0;
   // Maximum number of turn points
   constexpr static int kMaxNpts = 6;
   // Weighting for how near we get to the "preferred"
@@ -176,7 +176,8 @@ class LinePlan : public Node {
   //   element will always be startpt.
   static void GenerateHypotheses(const Vector2d &startpt, const Vector2d &endpt,
                                  double winddir, int Npts,
-                                 std::vector<std::vector<Vector2d>> *paths);
+                                 std::vector<std::vector<Vector2d>> *paths,
+                                 bool clear_paths = true);
 
   // Actually put GenerateHypotheses and OptimizeTacks together to
   // produce a final path.

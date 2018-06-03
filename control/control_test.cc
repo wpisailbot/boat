@@ -146,12 +146,27 @@ TEST_F(SimpleControlTest, Square) {
   msg::Waypoint* p4 = waypoints.add_points();
   msg::Waypoint* p5 = waypoints.add_points();
   SetWaypoint(p1, 0, 0);
-  SetWaypoint(p2, 0, 50);
-  SetWaypoint(p3, -50, 50);
-  SetWaypoint(p4, -50, 0);
+  SetWaypoint(p2, 0, 100);
+  SetWaypoint(p3, -300, 100);
+  SetWaypoint(p4, -300, 0);
   SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
+
+  msg::Obstacles obstacles;
+  msg::WaypointList *obs1 = obstacles.add_polygons();
+  SetWaypoint(obs1->add_points(), 50, 500);
+  SetWaypoint(obs1->add_points(), -350, 500);
+  SetWaypoint(obs1->add_points(), -350, 115);
+  SetWaypoint(obs1->add_points(), 50, 115);
+  msg::WaypointList *obs2 = obstacles.add_polygons();
+  SetWaypoint(obs2->add_points(), 50, -15);
+  SetWaypoint(obs2->add_points(), -350, -15);
+  SetWaypoint(obs2->add_points(), -350, -400);
+  SetWaypoint(obs2->add_points(), 50, -400);
+  ProtoQueue<msg::Obstacles> obs_q("planner_obstacles", true);
+  obs_q.send(&obstacles);
+
   sim_node_.set_wind(0, 3);
   Sleep(150);
   ASSERT_TRUE(true);

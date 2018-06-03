@@ -73,7 +73,10 @@ LinePlan::LinePlan()
       if (Polygon::ValidatePoints(obstaclepts)) {
         obstacles_lonlat_.emplace_back(obstaclepts);
       } else {
-        LOG(WARNING) << "Invalid obstacle";
+        LOG(ERROR) << "Invalid obstacle; see protobuf definition";
+        if (FLAGS_v) {
+          LOG(FATAL) << "Invalid obstacle; see protobuf definition";
+        }
       }
     }
     UpdateObstacles();
@@ -277,7 +280,7 @@ double LinePlan::GetGoalHeading() {
   std::vector<double> alphas;
   Vector2d nextpt =
       0.5 * (waypoints_[future_idx].first + waypoints_[future_idx].second);
-  int Nlegs = std::max(1, std::min(2, (int)waypoints_.size() - next_waypoint_));
+  int Nlegs = std::max(1, std::min(1, (int)waypoints_.size() - next_waypoint_));
   auto next_waypoint_iter = waypoints_.begin() + next_waypoint_;
   std::vector<std::pair<Point, Point>> plan_for_gates(
       next_waypoint_iter, next_waypoint_iter + Nlegs);
@@ -392,8 +395,6 @@ void LinePlan::FindMultiplePath(
   tacks->resize(Nlegs, {});
   alphas->resize(Nlegs, 0.5);
   // Lowest cost thus far
-  double lowest_cost = std::numeric_limits<double>::infinity();
-  double dcost = -lowest_cost;
   // For initial endpt, use halfway along gate:
   std::vector<Vector2d> nominal_endpts;
   for (int ii = 0; ii < Nlegs; ++ii) {
@@ -401,58 +402,60 @@ void LinePlan::FindMultiplePath(
     nominal_endpts.push_back(0.5 * (gate.first + gate.second));
     tacks->at(ii).push_back(nominal_endpts.back());
   }
+  // Vector of hypotheses:
+  // Mth point along Nth hypothesis for Pth leg is
+  // hypothesis[N][P][M]
+  std::vector<std::vector<std::vector<Vector2d>>> hypotheses;
 
-  int Npts = 0;
-
-  while (Npts < kMaxNpts) {// && dcost < -1e-2) {
-    std::vector<std::vector<std::vector<Vector2d>>> paths;
-    int maxNpaths = 0;
-    for (int ii = 0; ii < Nlegs; ++ii) {
-      std::vector<std::vector<Vector2d>> hypos;
-      Vector2d legstart = ii == 0 ? startpt : nominal_endpts[ii - 1];
-      GenerateHypotheses(legstart, nominal_endpts[ii], winddir, Npts, &hypos);
-      paths.push_back(hypos);
-      maxNpaths = std::max(maxNpaths, (int)hypos.size());
+  for (int ii = 0; ii < Nlegs; ++ii) {
+    Vector2d legstart = ii == 0 ? startpt : nominal_endpts[ii - 1];
+    std::vector<std::vector<Point>> hypos;
+    for (int jj = 0; jj < kMaxNpts; ++jj) {
+      GenerateHypotheses(legstart, nominal_endpts[ii], winddir, jj, &hypos,
+                         /*clear_paths=*/false);
     }
-
-    double nptscost = lowest_cost;
-    bool any_viable = false;
-
-    for (int ii = 0; ii < maxNpaths; ++ii) {
-      std::vector<std::vector<Vector2d>> iter_tacks;
-      for (int jj = 0; jj < Nlegs; ++jj) {
-        int legn = std::min(ii, (int)paths[jj].size() - 1);
-        iter_tacks.push_back(paths[jj][legn]);
+    LOG(INFO) << "Nleg: " << ii << " nypos " << hypos.size();
+    int Nprevhyp = hypotheses.size();
+    for (int newhyp = 0; newhyp < hypos.size(); ++newhyp) {
+      for (int prevhyp = 0; prevhyp < Nprevhyp; ++prevhyp) {
+        if (newhyp > 0) {
+          // Only need to copy data past the first hypothesis we go through
+          // Subtract one from end because we will have added on extra
+          // hypotheses at this point.
+          hypotheses.emplace_back(hypotheses[prevhyp].begin(),
+                                  hypotheses[prevhyp].end() - 1);
+        }
+        hypotheses[Nprevhyp * newhyp + prevhyp].push_back(hypos[newhyp]);
       }
-      std::vector<double> iter_alphas;
-      iter_alphas.resize(Nlegs, 0.5);
-      double itercost;
-      bool viable;
-      OptimizeMultipleTacks(gates, nextpt, winddir, obstacles, cur_yaw,
-                            &iter_tacks, &iter_alphas, &itercost, &viable);
-//      viable = true; // XXX TODO(james): Fix
-      any_viable = viable || any_viable;
-      // Use this path if it is both the cheapest and isn't disqualified
-      // for some reason (e.g., upwind legs).
-      if (viable && itercost < nptscost) {
-        nptscost = itercost;
-        *tacks = iter_tacks;
-        *alphas = iter_alphas;
+      if (Nprevhyp == 0) {
+        // We are on the first leg and so need to create things from scratch
+        hypotheses.push_back({hypos[newhyp]});
       }
     }
+  }
 
-    VLOG(1) << "cost: " << lowest_cost;
-    //LOG(INFO) << "cost: " << lowest_cost;
+  *tacks = hypotheses[0];
 
-    if (any_viable) {
-      // Will be zero if no improvements were found
-      dcost = nptscost - lowest_cost;
-      if (dcost < 0) {
-        lowest_cost = nptscost;
-      }
+  double lowest_cost = std::numeric_limits<double>::infinity();
+  int cnt = 0;
+  for (auto &hypothesis : hypotheses) {
+    VLOG(1) << "===WORKING IN " << cnt++ << "th HYPOTHESIS===";
+    std::vector<double> iter_alphas;
+    iter_alphas.resize(Nlegs, 0.5);
+    double itercost;
+    bool viable;
+    OptimizeMultipleTacks(gates, nextpt, winddir, obstacles, cur_yaw,
+                          &hypothesis, &iter_alphas, &itercost, &viable);
+    //      viable = true; // XXX TODO(james): Fix
+    // Use this path if it is both the cheapest and isn't disqualified
+    // for some reason (e.g., upwind legs).
+    VLOG(1) << "cost: " << itercost << " viable: " << viable;
+    if (viable && itercost < lowest_cost) {
+      lowest_cost = itercost;
+      *tacks = hypothesis;
+      *alphas = iter_alphas;
+      VLOG(1) << "Replacing lowest cost";
     }
-
-    ++Npts;
   }
 }
 
@@ -490,16 +493,18 @@ void LinePlan::OptimizeMultipleTacks(
     CHECK(!tacks->at(ii).empty())
         << "You should have at least one element in each path segment";
   }
-  double step = 0.05;
+  double step = 0.01;
 
   Eigen::Vector2d npt;
-  for (int ii = 0; ii < 50 - 30; ++ii) {
+  for (int ii = 0; ii < 50 - 0; ++ii) {
     if (ii > 20) {
-      step = 1.5e-3;
+      step = 3.0e-3;
     }
     if (finalcost != nullptr) *finalcost = 0;
     if (viable != nullptr) *viable = true;
     for (int jj = 0; jj < Nlegs; ++jj) {
+      VLOG(1) << "===BackPass ON " << jj << "th LEG in " << ii
+              << "th ITERATION===";
       const std::pair<Vector2d, Vector2d> &gate = gates[jj];
       npt = jj == Nlegs - 1 ? nextpt : tacks->at(jj + 1)[0];
       double cyaw = cur_yaw;
@@ -512,9 +517,11 @@ void LinePlan::OptimizeMultipleTacks(
       bool segmentviable;
       BackPass(gate, npt, winddir, obstacles, cyaw, step, &tacks->at(jj),
                &alphas->at(jj), &segmentcost, &segmentviable);
+      VLOG(1) << "BackPass cost result: " << segmentcost;
       if (finalcost != nullptr) *finalcost += segmentcost;
       // TODO(james): Consider only enforcing viability on first tack
-      if (jj == 0 && viable != nullptr) *viable = *viable && segmentviable;
+      if (jj == -1 && viable != nullptr)
+        *viable = *viable && segmentviable;
     }
   }
 }
@@ -522,9 +529,13 @@ void LinePlan::OptimizeMultipleTacks(
 void LinePlan::GenerateHypotheses(const Vector2d &startpt,
                                   const Vector2d &endpt, double winddir,
                                   int Npts,
-                                  std::vector<std::vector<Vector2d>> *paths) {
-  CHECK_NOTNULL(paths)->clear();
+                                  std::vector<std::vector<Vector2d>> *paths,
+                                  bool clear_paths) {
+  CHECK_NOTNULL(paths);
   CHECK_LE(0, Npts);
+  if (clear_paths) {
+    paths->clear();
+  }
   if (Npts == 0) {
     paths->push_back({startpt});
     return;
@@ -540,7 +551,7 @@ void LinePlan::GenerateHypotheses(const Vector2d &startpt,
   paths->push_back({startpt});
   for (int ii = 0; ii < Npts; ++ii) {
     double alpha = (ii + 0.5) / (double)Npts;
-    paths->at(0).push_back(startpt + alpha * diff);
+    paths->back().push_back(startpt + alpha * diff);
   }
   // In upwind/close reaches, we are also going to tack a bit.
   // We construct these by presuming that each tack (except the first and last)
@@ -562,6 +573,7 @@ void LinePlan::GenerateHypotheses(const Vector2d &startpt,
 
     paths->push_back({startpt});
     paths->push_back({startpt});
+    int idx1 = paths->size() - 2, idx2 = paths->size() - 1;
 
     for (int ii = 0; ii < Npts; ++ii) {
       double dominantmult = 0.5 + std::floor(ii / 2.0);
@@ -574,8 +586,8 @@ void LinePlan::GenerateHypotheses(const Vector2d &startpt,
 
       Vector2d perp(-diff.y(), diff.x());
 
-      paths->at(1).push_back(startpt + diff * lon1 + perp * latoffset1);
-      paths->at(2).push_back(startpt + diff * lon2 + perp * latoffset2);
+      paths->at(idx1).push_back(startpt + diff * lon1 + perp * latoffset1);
+      paths->at(idx2).push_back(startpt + diff * lon2 + perp * latoffset2);
     }
   }
 }
@@ -622,10 +634,11 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
   SingleLineCost(gate.first, gate.second, tackpts->at(Npts - 1), *alpha,
                  penultimate_heading, nextpt, winddir, obstacles, &cost,
                  &dcostdalpha, &lineviable);
+  VLOG(1) << "alpha cost: " << cost;
   if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
   // TODO(james): Clip alpha to 1 programmatically based on are_gates_.
-  *alpha = util::Clip(*alpha, 0.0, 1.0);
+  *alpha = util::Clip(*alpha, 0.05, 1.0);
   if (finalcost != nullptr) {
     // Strictly speaking calculates cost of previous iteration, but this avoids
     // an instability if dcostdalpha is very high.
@@ -658,6 +671,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
       // an instability if dcostdpt is very high.
       *finalcost += cost;
     }
+    VLOG(1) << "line pair cost: " << cost;
 
     postheading = util::atan2(postpt - curpt);
     postpt = curpt;
@@ -871,8 +885,8 @@ void LinePlan::LinePairCost(const Eigen::Vector2d &startpt,
   // Calculate costs for all 3 turns:
   double turncost, dcostdstart, dcostdend;
   TurnCost(preheading, headinga, winddir, &turncost, &dcostdstart, &dcostdend);
-  VLOG(1) << "Preturn: cost " << turncost << " dcostdend " << dcostdend
-          << " dhadpt " << dhadturnpt;
+  VLOG(1) << "Preturn: cost (before pre-scale) " << turncost << " dcostdend "
+          << dcostdend << " dhadpt " << dhadturnpt;
   *cost += turncost * scale_pre_cost;
   *dcostdturnpt += dcostdend * dhadturnpt * scale_pre_cost;
 
@@ -1038,25 +1052,37 @@ void LinePlan::TurnCost(double startheading, double endheading, double winddir,
 void LinePlan::StraightLineCost(double len, double heading, double winddir,
                                 bool is_real, double *cost, double *dcostdlen,
                                 double *dcostdheading, bool *viable) {
-
   // We try to supply a really large cost on sending us off on highly
   // upwind courses, although we don't want to deal with numerical issues.
+
+  // If winddir == heading, we are downwind
   double headingnorm = util::norm_angle(winddir + M_PI - heading);
+  // 0 if straight upwind, M_PI if straight downwind
   double upwindness = std::abs(headingnorm);
   double kUp = is_real ? kUpwindCost : kUpwindApproxCost;
   if (viable != nullptr) *viable = upwindness > kSailableReach;
-  upwindness = util::Clip(upwindness, 0.00, 1.0);
-  double upwindscalar = 1.0 + kUp * (1.0 - upwindness * upwindness);
-  VLOG(1) << "heading: " << heading << " winddir: " << winddir
-          << " headingnorm: " << headingnorm << " len: " << len;
+  const double kMaxUpwindness = 0.9;
+  upwindness = util::Clip(upwindness, 0.00, kMaxUpwindness);
+  //double upwindscalar = 1.0 + kUp * (1.0 - upwindness * upwindness);
+  double upwindexp = std::exp(10.0 * (upwindness - M_PI / 6.0));
+  double dupwindexpdheading = -10.0 * upwindexp * util::Sign(headingnorm);
+  double upwindscalar = kUp / (1.0 + upwindexp);
+  // dupwindscalar / dheading =
+  //    -kUp / (1 + upwindexp)^2 * dupwindexpdheading
+  double dupwindscalardheading =
+      -upwindscalar / (1 + upwindexp) * dupwindexpdheading;
 
   *CHECK_NOTNULL(cost) = upwindscalar * kLengthCost * len;
+  VLOG(1) << "line cost: " << *cost << " heading: " << heading
+          << " winddir: " << winddir << " headingnorm: " << headingnorm
+          << " len: " << len;
   *CHECK_NOTNULL(dcostdlen) = upwindscalar * kLengthCost;
-  if (upwindness == 1.0 || upwindness == 0.0) {
+  if (upwindness == kMaxUpwindness || upwindness == 0.0) {
     *CHECK_NOTNULL(dcostdheading) = 0.0;
   } else {
     *CHECK_NOTNULL(dcostdheading) =
-        util::Sign(headingnorm) * 2.0 * kUp * upwindness * kLengthCost * len;
+      kLengthCost * len * dupwindscalardheading;
+//        util::Sign(headingnorm) * 2.0 * kUp * upwindness * kLengthCost * len;
   }
 }
 
@@ -1087,10 +1113,9 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
   // We shall divide the line into Npts intervals and
   // evaluate at the midpoint of each interval.
   constexpr int Npts = 10;
-  double dx = (start - end).norm() / Npts;
+  double dx = (start - end).norm() / (double)Npts;
   // If cost is nullptr, there isn't really any point to calling this function.
   *CHECK_NOTNULL(cost) = 0.0;
-  double normcost = 0;
   for (int ii = 0; ii < Npts; ++ii) {
     double alpha = ((double)ii + 0.5) / (double)Npts;
     Point evalpt = start + alpha * (end - start);
@@ -1099,7 +1124,6 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
       //*cost += kObstacleCost * std::exp(-dist) * dx;
       double diff = std::max(0.0, 10.0 - dist) / 10.0;
       *cost += kObstacleCost * diff * diff * dx;
-      normcost += kObstacleCost * std::exp(-dist);
     }
   }
 
