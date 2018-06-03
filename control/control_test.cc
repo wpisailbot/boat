@@ -113,7 +113,7 @@ void SetWaypoint(msg::Waypoint* p, double x, double y) {
 // Notes for precision challenge:
 // Adding obstacles around edges to guide behavior
 // In order to prioritize precision over convenience,
-// I strongly suggesting reducing the kPreTurnScale
+// I suggest considering reducing the kPreTurnScale
 // variable in LinePlan to reduce hysteresis effects.
 // I currently do not account for turning radius anywhere.
 TEST_F(SimpleControlTest, NavigationChallenge) {
@@ -163,16 +163,17 @@ TEST_F(SimpleControlTest, NavigationChallenge) {
 TEST_F(SimpleControlTest, Square) {
   //FLAGS_v = 1;
   msg::WaypointList waypoints;
+  waypoints.set_repeat(true);
   msg::Waypoint* p1 = waypoints.add_points();
   msg::Waypoint* p2 = waypoints.add_points();
   msg::Waypoint* p3 = waypoints.add_points();
   msg::Waypoint* p4 = waypoints.add_points();
-  msg::Waypoint* p5 = waypoints.add_points();
+  //msg::Waypoint* p5 = waypoints.add_points();
   SetWaypoint(p1, 0, 0);
   SetWaypoint(p2, 0, 100);
   SetWaypoint(p3, -300, 100);
   SetWaypoint(p4, -300, 0);
-  SetWaypoint(p5, 0, 0);
+  //SetWaypoint(p5, 0, 0);
   ProtoQueue<msg::WaypointList> way_q("waypoints", true);
   way_q.send(&waypoints);
 

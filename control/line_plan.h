@@ -94,7 +94,9 @@ class LinePlan : public Node {
   // to the later turns (provides some hysteresis):
   constexpr static float kPreTurnScale = 200.0;
   // Maximum number of turn points
-  constexpr static int kMaxNpts = 6;
+//  constexpr static int kMaxLegpts = 6;
+  constexpr static int kMaxTotalpts = 6;
+  constexpr static int kMaxLegs = 1;
   // Weighting for how near we get to the "preferred"
   // distance from the waypoint
   constexpr static float kAlphaCrossCost = 5.0;
@@ -142,8 +144,9 @@ class LinePlan : public Node {
   static void BackPass(const std::pair<Vector2d, Vector2d> &gate,
                        const Vector2d &nextpt, double winddir,
                        const std::vector<Polygon> &obstacles, double cur_yaw,
-                       double step, std::vector<Vector2d> *tackpts,
-                       double *alpha, double *finalcost, bool *viable);
+                       double step, bool prescale,
+                       std::vector<Vector2d> *tackpts, double *alpha,
+                       double *finalcost, bool *viable);
 
   // Optimizes tackpts/alpha. You should seed tackpts/alpha with
   // some sane initial values.
@@ -270,6 +273,8 @@ class LinePlan : public Node {
   // Whether given waypoints are gates or buoys:
   std::vector<bool> are_gates_;
   std::atomic<int> next_waypoint_{0};
+  // Whether to repeat waypoints when we finish them.
+  std::atomic<bool> repeat_waypoints_{false};
 
   msg::HeadingCmd *heading_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_;

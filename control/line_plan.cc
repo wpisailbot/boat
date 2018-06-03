@@ -16,7 +16,9 @@ constexpr float LinePlan::kGateWidth;
 constexpr float LinePlan::kObstacleCost;
 constexpr float LinePlan::kPreTurnScale;
 constexpr float LinePlan::kAlphaCrossCost;
-constexpr int LinePlan::kMaxNpts;
+//constexpr int LinePlan::kMaxLegpts;
+constexpr int LinePlan::kMaxTotalpts;
+constexpr int LinePlan::kMaxLegs;
 
 LinePlan::LinePlan()
     : Node(dt), lonlat_ref_(0.0, 0.0), lonlat_scale_(0.0, 0.0),
@@ -31,11 +33,9 @@ LinePlan::LinePlan()
       return;
     }
     std::unique_lock<std::mutex> lck(data_mutex_);
-    // TODO(james): Support repeat flag.
     // TODO(james): Test properly
-    if (msg.repeat()) {
-      LOG(ERROR) << "Repeating waypoints not supported in line planner";
-    }
+
+    repeat_waypoints_ = msg.repeat();
 
     waypoints_lonlat_.clear();
 
@@ -178,9 +178,20 @@ void LinePlan::UpdateWaypoints() {
     nextpt = LonLatToFrame(waypoints_lonlat_[ii+1]);
     waypoints_[ii] = MakeGateFromWaypoints(curpt, prevpt, nextpt);
   }
-  // Make final waypoint a point rather than gate.
-  Point lastpt = LonLatToFrame(waypoints_lonlat_[Nway-1]);
-  waypoints_[Nway-1] = std::make_pair(lastpt, lastpt);
+  if (repeat_waypoints_) {
+    Point prevpt = curpt;
+    curpt = nextpt;
+    nextpt = LonLatToFrame(waypoints_lonlat_[0]);
+    waypoints_[Nway-1] = MakeGateFromWaypoints(curpt, prevpt, nextpt);
+
+    prevpt = curpt;
+    curpt = nextpt;
+    nextpt = LonLatToFrame(waypoints_lonlat_[1]);
+    waypoints_[0] = MakeGateFromWaypoints(curpt, prevpt, nextpt);
+  } else {
+    // Make final waypoint a point rather than gate.
+    waypoints_[Nway-1] = std::make_pair(nextpt, nextpt);
+  }
 }
 
 // Produces a gate at the waypoint gatept given previous and next waypoints.
@@ -241,7 +252,7 @@ std::pair<Point, Point> LinePlan::MakeGateFromWaypoints(const Point &gatept,
 }
 
 void LinePlan::UpdateWaypointInc() {
-  if (next_waypoint_ == waypoints_.size() - 1) {
+  if (!repeat_waypoints_ && next_waypoint_ == waypoints_.size() - 1) {
     // If we are already on the last waypoint, don't do anything.
     return;
   }
@@ -255,8 +266,13 @@ void LinePlan::UpdateWaypointInc() {
     passed_line = ProjectsToLine(gate_start, gate_end, prev_boat_pos_) &&
                   ProjectsToLine(gate_start, gate_end, boat_pos_);
   } else {
-    passed_line = ProjectsToRay(gate_start, gate_end, prev_boat_pos_) &&
-                  ProjectsToRay(gate_start, gate_end, boat_pos_);
+    if ((gate_start - gate_end).norm() < 1e-6) {
+      // If the "gate" is really a point, just pass if we go within 5 meters.
+      passed_line = (boat_pos_ - gate_start).norm() < 5;
+    } else {
+      passed_line = ProjectsToRay(gate_start, gate_end, prev_boat_pos_) &&
+                    ProjectsToRay(gate_start, gate_end, boat_pos_);
+    }
   }
   if (passed_line) {
     // Check that distances are different signs:
@@ -264,6 +280,8 @@ void LinePlan::UpdateWaypointInc() {
     double d1 = DistToLine(gate_start, gate_end, boat_pos_);
     if (d0 * d1 <= 0) {
       ++next_waypoint_;
+      // For if we are repeating
+      next_waypoint_ = next_waypoint_ % waypoints_.size();
     }
   }
 }
@@ -275,15 +293,23 @@ double LinePlan::GetGoalHeading() {
   if (waypoints_.size() < 1) {
     return yaw_;
   }
-  int future_idx = std::min((int)(waypoints_.size() - 1), next_waypoint_ + 1);
+  int future_idx = next_waypoint_ + 1;
+  future_idx = repeat_waypoints_
+                   ? future_idx % waypoints_.size()
+                   : std::min((int)(waypoints_.size() - 1), future_idx);
   std::vector<std::vector<Vector2d>> paths;
   std::vector<double> alphas;
   Vector2d nextpt =
       0.5 * (waypoints_[future_idx].first + waypoints_[future_idx].second);
-  int Nlegs = std::max(1, std::min(1, (int)waypoints_.size() - next_waypoint_));
-  auto next_waypoint_iter = waypoints_.begin() + next_waypoint_;
-  std::vector<std::pair<Point, Point>> plan_for_gates(
-      next_waypoint_iter, next_waypoint_iter + Nlegs);
+  int Nlegs = std::max(
+      1, repeat_waypoints_
+             ? kMaxLegs
+             : std::min(kMaxLegs, (int)waypoints_.size() - next_waypoint_));
+  std::vector<std::pair<Point, Point>> plan_for_gates;
+  for (int ii = 0; ii < Nlegs; ++ii) {
+    plan_for_gates.push_back(
+        waypoints_[(next_waypoint_ + ii) % waypoints_.size()]);
+  }
   FindMultiplePath(boat_pos_, plan_for_gates, nextpt, wind_dir_, obstacles_,
            yaw_, &paths, &alphas);
 
@@ -299,8 +325,8 @@ double LinePlan::GetGoalHeading() {
     path.insert(path.end(), leg.begin(), leg.end());
 
     // Because the returned path doesn't include the last point, add it.
-    path.push_back((1.0 - alpha) * waypoints_[next_waypoint_ + ii].first +
-                   alpha * waypoints_[next_waypoint_ + ii].second);
+    path.push_back((1.0 - alpha) * plan_for_gates[ii].first +
+                   alpha * plan_for_gates[ii].second);
     pathpoints_lonlat_msg_->clear_points();
     for (const auto &pt : path) {
       Point ptll = FrameToLonLat(pt);
@@ -392,6 +418,7 @@ void LinePlan::FindMultiplePath(
   CHECK_NOTNULL(tacks);
   CHECK_NOTNULL(alphas);
   const int Nlegs = gates.size();
+  const int MaxPtsPerLeg = std::max(1, kMaxTotalpts + 1 - Nlegs);
   tacks->resize(Nlegs, {});
   alphas->resize(Nlegs, 0.5);
   // Lowest cost thus far
@@ -406,30 +433,46 @@ void LinePlan::FindMultiplePath(
   // Mth point along Nth hypothesis for Pth leg is
   // hypothesis[N][P][M]
   std::vector<std::vector<std::vector<Vector2d>>> hypotheses;
+  std::vector<int> hypothesis_lengths;
+
 
   for (int ii = 0; ii < Nlegs; ++ii) {
     Vector2d legstart = ii == 0 ? startpt : nominal_endpts[ii - 1];
     std::vector<std::vector<Point>> hypos;
-    for (int jj = 0; jj < kMaxNpts; ++jj) {
+    for (int jj = 0; jj < MaxPtsPerLeg; ++jj) {
       GenerateHypotheses(legstart, nominal_endpts[ii], winddir, jj, &hypos,
                          /*clear_paths=*/false);
     }
     LOG(INFO) << "Nleg: " << ii << " nypos " << hypos.size();
     int Nprevhyp = hypotheses.size();
+    std::vector<int> old_hypothesis_lengths = hypothesis_lengths;
     for (int newhyp = 0; newhyp < hypos.size(); ++newhyp) {
+      int hypothesis_pts = hypos[newhyp].size();
       for (int prevhyp = 0; prevhyp < Nprevhyp; ++prevhyp) {
+        if (old_hypothesis_lengths[prevhyp] + hypothesis_pts >
+            MaxPtsPerLeg + ii) {
+          // If adding the new hypothesis onto the end would increase
+          // the total length above that which is allowed, don't do it (accounting
+          // for that we need 1 point for every leg).
+          continue;
+        }
+        int idx = prevhyp;
         if (newhyp > 0) {
           // Only need to copy data past the first hypothesis we go through
           // Subtract one from end because we will have added on extra
           // hypotheses at this point.
           hypotheses.emplace_back(hypotheses[prevhyp].begin(),
                                   hypotheses[prevhyp].end() - 1);
+          hypothesis_lengths.push_back(old_hypothesis_lengths[prevhyp]);
+          idx = hypotheses.size() - 1;
         }
-        hypotheses[Nprevhyp * newhyp + prevhyp].push_back(hypos[newhyp]);
+        hypotheses[idx].push_back(hypos[newhyp]);
+        hypothesis_lengths[idx] += hypothesis_pts;
       }
       if (Nprevhyp == 0) {
         // We are on the first leg and so need to create things from scratch
         hypotheses.push_back({hypos[newhyp]});
+        hypothesis_lengths.push_back(hypothesis_pts);
       }
     }
   }
@@ -515,8 +558,8 @@ void LinePlan::OptimizeMultipleTacks(
       }
       double segmentcost;
       bool segmentviable;
-      BackPass(gate, npt, winddir, obstacles, cyaw, step, &tacks->at(jj),
-               &alphas->at(jj), &segmentcost, &segmentviable);
+      BackPass(gate, npt, winddir, obstacles, cyaw, step, /*prescale=*/jj == 0,
+               &tacks->at(jj), &alphas->at(jj), &segmentcost, &segmentviable);
       VLOG(1) << "BackPass cost result: " << segmentcost;
       if (finalcost != nullptr) *finalcost += segmentcost;
       // TODO(james): Consider only enforcing viability on first tack
@@ -610,8 +653,9 @@ void LinePlan::GenerateHypotheses(const Vector2d &startpt,
 void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
                         const Eigen::Vector2d &nextpt, double winddir,
                         const std::vector<Polygon> &obstacles, double cur_yaw,
-                        double step, std::vector<Eigen::Vector2d> *tackpts,
-                        double *alpha, double *finalcost, bool *viable) {
+                        double step, bool prescale,
+                        std::vector<Eigen::Vector2d> *tackpts, double *alpha,
+                        double *finalcost, bool *viable) {
   CHECK_NOTNULL(alpha);
   CHECK_NOTNULL(tackpts);
   CHECK_LE(1, tackpts->size()) << "tackpts should have at least one element";
@@ -657,7 +701,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
     // Heading of the boat coming into prept.
     double preheading =
         (ii == 1) ? cur_yaw : util::atan2(prept - tackpts->at(ii - 2));
-    double scale_pre = (ii == 1) ? kPreTurnScale : 1.0;
+    double scale_pre = (ii == 1 && prescale) ? kPreTurnScale : 1.0;
 
     Vector2d dcostdpt;
     LinePairCost(prept, postpt, curpt, preheading, postheading, winddir,

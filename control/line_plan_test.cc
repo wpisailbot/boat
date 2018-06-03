@@ -309,7 +309,7 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   std::vector<Point> orig_tackpts = tackpts;
   double orig_alpha = alpha;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr, nullptr);
   EXPECT_EQ(orig_tackpts[0], tackpts[0])
       << "BackPass should never touch the first point in tackpts";
   EXPECT_EQ(orig_alpha, alpha) << "In theory, should make no change to alpha";
@@ -318,7 +318,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // Now, for kicks, try with endpt on the goal line:
   nextpt << 0.0, 10.0;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_EQ(orig_tackpts[0], tackpts[0])
       << "BackPass should never touch the first point in tackpts";
   EXPECT_EQ(orig_alpha, alpha) << "In theory, should make no change to alpha";
@@ -330,7 +331,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // you go more upwind on the second.
   nextpt << 0.0, 10.0;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/-1.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha) << "Expected alpha to increase to move downwind";
   alpha = 0.5;
 
@@ -340,14 +342,16 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   nextpt << 0.0, 50.0; // Make very far away; otherwise any changes in initial
                        // turn will be counteracted by the second turn.
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha) << "Expected alpha to increase to turn less";
   alpha = 0.5;
 
   // A deviation in alpha should be corrected:
   alpha = 0.45;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha)
       << "Expected alpha to increase to pass through center of the gate";
   alpha = 0.5;
@@ -355,7 +359,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // Presence of an obstacle should shift the line:
   obstacles.push_back(Polygon({{3.0, 5.0}, {4.0, 13.0}, {2.5, 12.0}}));
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_GT(orig_alpha, alpha)
       << "Expected alpha to decrease to avoid obstacle";
   alpha = 0.5;
@@ -425,7 +430,7 @@ class BackPassTest : public ::testing::Test {
 
   void BackPass(double wind_dir, double step) {
     LinePlan::BackPass(gate, nextpt, wind_dir, obstacles, cur_yaw, step,
-                       &tackpts, &alpha, nullptr, nullptr);
+                       /*prescale=*/true, &tackpts, &alpha, nullptr, nullptr);
   }
 
   std::vector<Point> tackpts{{0.0, 0.0}, {10.0, 0.0}};
