@@ -13,8 +13,8 @@ sleep 0.5
 #$DIR/adaptive_control_main &
 $DIR/simple_control_main &
 $DIR/ballast_control_main &
-$DIR/line_tacking_main -initial_waypoints $DIR/waypoints.pba &
-$DIR/line_plan_main &
+#$DIR/line_tacking_main -initial_waypoints $DIR/waypoints.pba &
+$DIR/line_plan_main -initial_waypoints $DIR/waypoints.pba -initial_obstacles $DIR/obstacles.pba &
 $DIR/rigid_wing_main &
 $DIR/monitor_main &
 $DIR/state_estimator_main &

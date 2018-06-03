@@ -37,6 +37,7 @@ cc_library(
   hdrs=["line_plan.h"],
   deps=[":actuator_cmd_proto",
         "//util:node",
+        "//util:proto_util",
         "//math:polygon",
         "//sim:sim_physics"],
 )

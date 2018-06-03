@@ -1,7 +1,9 @@
 #include "line_plan.h"
 #include "control/util.h"
+#include "util/proto_util.h"
 #include <math.h>
 #include <algorithm>
+#include "gflags/gflags.h"
 
 namespace sailbot {
 namespace control {
@@ -20,67 +22,27 @@ constexpr float LinePlan::kAlphaCrossCost;
 constexpr int LinePlan::kMaxTotalpts;
 constexpr int LinePlan::kMaxLegs;
 
+DEFINE_string(initial_waypoints, "waypoints.pba",
+              "The initial set of waypoints to use when starting up");
+DEFINE_string(initial_obstacles, "obstacles.pba",
+              "The initial set of waypoints to use when starting up");
+
 LinePlan::LinePlan()
     : Node(dt), lonlat_ref_(0.0, 0.0), lonlat_scale_(0.0, 0.0),
       pathpoints_lonlat_msg_(new msg::WaypointList),//AllocateMessage<msg::WaypointList>()),
       pathpoints_queue_("planner_points", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
-      heading_cmd_("heading_cmd", true) {
-  RegisterHandler<msg::WaypointList>("waypoints",
-                                     [this](const msg::WaypointList &msg) {
-    if (msg.points_size() == 0) {
-      LOG(WARNING) << "Can't send me no waypoints";
-      return;
-    }
-    std::unique_lock<std::mutex> lck(data_mutex_);
-    // TODO(james): Test properly
-
-    repeat_waypoints_ = msg.repeat();
-
-    waypoints_lonlat_.clear();
-
-    if (msg.restart() || next_waypoint_ == 0) {
-      next_waypoint_ = 1;
-    }
-    next_waypoint_ = std::min(next_waypoint_.load(), msg.points_size() - 1);
-
-    if (!msg.defined_start()) {
-      waypoints_lonlat_.push_back(boat_pos_lonlat_);
-      // There's some ambiguity about what to do with the defined_start flag
-      // if the user does not request a restart, but for now only worry about
-      // if they do request a restart.
-    }
-
-    for (const msg::Waypoint &pt : msg.points()) {
-      waypoints_lonlat_.emplace_back(pt.x(), pt.y());
-    }
-
-    if (lonlat_scale_.x() == 0) {
-      // We do not have a lat/lon reference yet, so use first waypoint
-      ResetRef(waypoints_lonlat_[0]);
-    }
-    UpdateWaypoints();
-  });
-  RegisterHandler<msg::Obstacles>("planner_obstacles",
-                                     [this](const msg::Obstacles &msg) {
-    std::unique_lock<std::mutex> lck(data_mutex_);
-    obstacles_lonlat_.clear();
-    for (const msg::WaypointList& obstacle : msg.polygons()) {
-      std::vector<Point> obstaclepts;
-      for (const msg::Waypoint& pt : obstacle.points()) {
-        obstaclepts.emplace_back(pt.x(), pt.y());
-      }
-      if (Polygon::ValidatePoints(obstaclepts)) {
-        obstacles_lonlat_.emplace_back(obstaclepts);
-      } else {
-        LOG(ERROR) << "Invalid obstacle; see protobuf definition";
-        if (FLAGS_v) {
-          LOG(FATAL) << "Invalid obstacle; see protobuf definition";
-        }
-      }
-    }
-    UpdateObstacles();
-  });
+      heading_cmd_("heading_cmd", true),
+      obstacles_out_msg_(AllocateMessage<msg::Obstacles>()),
+      obstacles_queue_("planner_obstacles", true),
+      waypoints_out_msg_(AllocateMessage<msg::WaypointList>()),
+      waypoints_queue_("waypoints", true) {
+  RegisterHandler<msg::WaypointList>(
+      "waypoints",
+      [this](const msg::WaypointList &msg) { ReceiveWaypoints(msg); });
+  RegisterHandler<msg::Obstacles>(
+      "planner_obstacles",
+      [this](const msg::Obstacles &msg) { ReceiveObstacles(msg); });
 
   RegisterHandler<msg::ControlMode>("control_mode",
                                     [this](const msg::ControlMode &msg) {
@@ -113,10 +75,15 @@ LinePlan::LinePlan()
     wind_dir_ = std::atan2(msg.y(), msg.x());
   });
 
+  ReadWaypointsAndObstacles();
 }
 
 void LinePlan::Iterate() {
-  //LOG(INFO) << "Iterate";
+  if ((cnt_++ % 10) == 0) {
+    obstacles_queue_.send(obstacles_out_msg_);
+    waypoints_queue_.send(waypoints_out_msg_);
+  }
+  LOG(INFO) << "Iterate start";
   if (tack_mode_ != msg::ControlMode_TACKER_LINE_PLAN) {
     pathpoints_lonlat_msg_->clear_points();
     pathpoints_queue_.send(pathpoints_lonlat_msg_);
@@ -130,6 +97,7 @@ void LinePlan::Iterate() {
   heading_msg_->set_heading(heading);
   heading_cmd_.send(heading_msg_);
   pathpoints_queue_.send(pathpoints_lonlat_msg_);
+  LOG(INFO) << "Iterate end";
 }
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
@@ -162,6 +130,13 @@ void LinePlan::UpdateObstacles() {
 void LinePlan::UpdateWaypoints() {
   // Iterate through every waypoint and convert appropriately.
   size_t Nway = waypoints_lonlat_.size();
+  if (Nway == 1) {
+    waypoints_.clear();
+    Point pt = LonLatToFrame(waypoints_lonlat_[0]);
+    waypoints_.push_back({pt, pt});
+    next_waypoint_ = 0;
+    return;
+  }
   if (Nway <= 1) return;
   waypoints_.resize(Nway);
   // None of these are true "gates".
@@ -252,6 +227,9 @@ std::pair<Point, Point> LinePlan::MakeGateFromWaypoints(const Point &gatept,
 }
 
 void LinePlan::UpdateWaypointInc() {
+  if (waypoints_.size() == 0) {
+    return;
+  }
   if (!repeat_waypoints_ && next_waypoint_ == waypoints_.size() - 1) {
     // If we are already on the last waypoint, don't do anything.
     return;
@@ -443,7 +421,7 @@ void LinePlan::FindMultiplePath(
       GenerateHypotheses(legstart, nominal_endpts[ii], winddir, jj, &hypos,
                          /*clear_paths=*/false);
     }
-    LOG(INFO) << "Nleg: " << ii << " nypos " << hypos.size();
+    VLOG(1) << "Nleg: " << ii << " nypos " << hypos.size();
     int Nprevhyp = hypotheses.size();
     std::vector<int> old_hypothesis_lengths = hypothesis_lengths;
     for (int newhyp = 0; newhyp < hypos.size(); ++newhyp) {
@@ -1187,6 +1165,83 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
     ObstacleCost(dstart, end, obstacles, &dcost, nullptr);
     dcostdstart->y() = (dcost - *cost) / eps;
     VLOG(1) << "dObstacleCostdstart: " << dcostdstart->transpose();
+  }
+}
+
+void LinePlan::ReceiveObstacles(const msg::Obstacles &msg) {
+    std::unique_lock<std::mutex> lck(data_mutex_);
+    *obstacles_out_msg_ = msg;
+    obstacles_lonlat_.clear();
+    for (const msg::WaypointList& obstacle : msg.polygons()) {
+      std::vector<Point> obstaclepts;
+      for (const msg::Waypoint& pt : obstacle.points()) {
+        obstaclepts.emplace_back(pt.x(), pt.y());
+      }
+      if (Polygon::ValidatePoints(obstaclepts)) {
+        obstacles_lonlat_.emplace_back(obstaclepts);
+      } else {
+        LOG(ERROR) << "Invalid obstacle; see protobuf definition";
+        if (FLAGS_v) {
+          LOG(FATAL) << "Invalid obstacle; see protobuf definition";
+        }
+      }
+    }
+    UpdateObstacles();
+}
+
+void LinePlan::ReceiveWaypoints(const msg::WaypointList &msg) {
+    if (msg.points_size() == 0) {
+      LOG(WARNING) << "Can't send me no waypoints";
+      return;
+    }
+    std::unique_lock<std::mutex> lck(data_mutex_);
+    *waypoints_out_msg_ = msg;
+    // TODO(james): Test properly
+
+    repeat_waypoints_ = msg.repeat();
+
+    waypoints_lonlat_.clear();
+
+    if (msg.restart() || next_waypoint_ == 0) {
+      next_waypoint_ = 1;
+    }
+    next_waypoint_ = std::min(next_waypoint_.load(), msg.points_size() - 1);
+
+    if (!msg.defined_start()) {
+      waypoints_lonlat_.push_back(boat_pos_lonlat_);
+      // There's some ambiguity about what to do with the defined_start flag
+      // if the user does not request a restart, but for now only worry about
+      // if they do request a restart.
+    }
+
+    for (const msg::Waypoint &pt : msg.points()) {
+      waypoints_lonlat_.emplace_back(pt.x(), pt.y());
+    }
+
+    if (lonlat_scale_.x() == 0) {
+      // We do not have a lat/lon reference yet, so use first waypoint
+      ResetRef(waypoints_lonlat_[0]);
+    }
+    UpdateWaypoints();
+}
+
+void LinePlan::ReadWaypointsAndObstacles() {
+  msg::WaypointList way_list;
+  if (util::ReadProtoFromFile(FLAGS_initial_waypoints.c_str(), &way_list)) {
+    ReceiveWaypoints(way_list);
+    ProtoQueue<msg::WaypointList> q("waypoints", true);
+    q.send(&way_list);
+  } else {
+    LOG(WARNING) << "Unable to retrieve waypoints from file";
+  }
+
+  msg::Obstacles obs_list;
+  if (util::ReadProtoFromFile(FLAGS_initial_obstacles.c_str(), &obs_list)) {
+    ReceiveObstacles(obs_list);
+    ProtoQueue<msg::Obstacles> q("planner_obstacles", true);
+    q.send(&obs_list);
+  } else {
+    LOG(WARNING) << "Unable to retrieve obstacles from file";
   }
 }
 

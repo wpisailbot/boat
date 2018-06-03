@@ -68,7 +68,7 @@ class LinePlan : public Node {
   void ResetRef(const Point &newlonlatref);
 
  private:
-  constexpr static float dt = 1.0;
+  constexpr static float dt = 2.0;
   // Cost, used in TurnCost, of traversing the upwind no-go zones
   // relative to typical turns.
   constexpr static float kTackCost = 5.0;
@@ -212,11 +212,15 @@ class LinePlan : public Node {
    * obstacles_lonlat_ or to the transformations.
    */
   void UpdateObstacles();
+  // Do processing for handler
+  void ReceiveObstacles(const msg::Obstacles &msg);
 
   /**
    * Update the waypoints_ from the waypoints_lonlat_ vector.
    */
   void UpdateWaypoints();
+  // Do processing for handler
+  void ReceiveWaypoints(const msg::WaypointList &msg);
 
   /**
    * Increment next_waypoint_ as appropriate.
@@ -228,6 +232,16 @@ class LinePlan : public Node {
    * Figure out what the next heading should be
    */
   double GetGoalHeading();
+
+  /**
+   * Perform waypoint+obstacle initialization
+   * Should only be done in initialization, as this
+   * will use dynamic memory allocation (not that all the std::vector's
+   * in this whole class wouldn't cause more issue...) and, more importantly,
+   * File I/O
+   * Should be called AFTER we register all of our handlers.
+   */
+  void ReadWaypointsAndObstacles();
 
   std::mutex data_mutex_;
 
@@ -280,6 +294,14 @@ class LinePlan : public Node {
   ProtoQueue<msg::HeadingCmd> heading_cmd_;
 
   std::atomic<int> tack_mode_{msg::ControlMode_TACKER_NONE};
+
+  int cnt_ = 0; // Counter for iteration to send out obstacles less often
+  // Send out obstacles and waypoints periodically to ensure
+  // that everyone else is up-to-date with us.
+  msg::Obstacles *obstacles_out_msg_;
+  ProtoQueue<msg::Obstacles> obstacles_queue_;
+  msg::WaypointList *waypoints_out_msg_;
+  ProtoQueue<msg::WaypointList> waypoints_queue_;
 
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, TurnCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, CrossFinishTest);

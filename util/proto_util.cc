@@ -1,6 +1,9 @@
 #include "proto_util.h"
 #include "glog/logging.h"
+#include <fcntl.h>
 #include <google/protobuf/message.h>
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 namespace sailbot {
 namespace util {
@@ -44,6 +47,25 @@ double GetProtoNumberFieldById(const google::protobuf::Message* msg, int num) {
     return 0;
   }
   return GetProtoNumberField(field, msg);
+}
+
+// Returns true on success
+bool ReadProtoFromFile(const char *fname, google::protobuf::Message *proto) {
+  if (fname == nullptr) {
+    return false;
+  }
+  int fd = open(fname, O_RDONLY);
+  if (fd < 0) {
+    PLOG(WARNING) << "Failed to open file " << fname;
+    return false;
+  }
+  google::protobuf::io::FileInputStream finput(fd);
+  finput.SetCloseOnDelete(true);
+  if (!google::protobuf::TextFormat::Parse(&finput, proto)) {
+    LOG(WARNING) << "Failed to parse protobuf";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace util

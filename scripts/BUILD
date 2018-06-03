@@ -4,6 +4,7 @@ genrule(
         "startup.sh",
         "killall.sh",
         "waypoints.pba",
+        "obstacles.pba",
         "//util:logger_main",
         "//can:can-dump",
         "//ui:server_main",
