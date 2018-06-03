@@ -152,10 +152,14 @@ void SimpleControl::Iterate() {
   if (do_rudder_) {
     rudder_cmd_.send(rudder_msg_);
   }
-  double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir) +
-                     0 * util::Clip(1.0 * heading_err, -0.25, 0.25);
-  heel_msg_->set_heel(heel_goal);
-  heel_cmd_.send(heel_msg_);
+  if (std::abs(alphaw) > 1.4) {
+    // Don't send new heel command when we are sailing pretty much downwind;
+    // prevents oscillations which some people don't seem to like.
+    double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir) +
+                       0 * util::Clip(1.0 * heading_err, -0.25, 0.25);
+    heel_msg_->set_heel(heel_goal);
+    heel_cmd_.send(heel_msg_);
+  }
   if (counter_ % 100 == 0) {
     consts_queue_.send(consts_msg_);
   }
