@@ -121,7 +121,7 @@ cc_test(
   timeout="eternal",
   deps=[":simple_control",
         ":adaptive_control",
-        ":line_tacking",
+        #":line_tacking",
         ":line_plan",
         ":waypoint_manager",
         "//sensor:state_estimator",

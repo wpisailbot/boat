@@ -32,11 +32,7 @@ LinePlan::LinePlan()
       pathpoints_lonlat_msg_(new msg::WaypointList),//AllocateMessage<msg::WaypointList>()),
       pathpoints_queue_("planner_points", true),
       heading_msg_(AllocateMessage<msg::HeadingCmd>()),
-      heading_cmd_("heading_cmd", true),
-      obstacles_out_msg_(AllocateMessage<msg::Obstacles>()),
-      obstacles_queue_("planner_obstacles", true),
-      waypoints_out_msg_(AllocateMessage<msg::WaypointList>()),
-      waypoints_queue_("waypoints", true) {
+      heading_cmd_("heading_cmd", true) {
   RegisterHandler<msg::WaypointList>(
       "waypoints",
       [this](const msg::WaypointList &msg) { ReceiveWaypoints(msg); });
@@ -79,11 +75,6 @@ LinePlan::LinePlan()
 }
 
 void LinePlan::Iterate() {
-  if ((cnt_++ % 10) == 0) {
-    obstacles_queue_.send(obstacles_out_msg_);
-    waypoints_queue_.send(waypoints_out_msg_);
-  }
-  LOG(INFO) << "Iterate start";
   if (tack_mode_ != msg::ControlMode_TACKER_LINE_PLAN) {
     pathpoints_lonlat_msg_->clear_points();
     pathpoints_queue_.send(pathpoints_lonlat_msg_);
@@ -97,7 +88,6 @@ void LinePlan::Iterate() {
   heading_msg_->set_heading(heading);
   heading_cmd_.send(heading_msg_);
   pathpoints_queue_.send(pathpoints_lonlat_msg_);
-  LOG(INFO) << "Iterate end";
 }
 
 void LinePlan::ResetRef(const Point &newlonlatref) {
@@ -1170,7 +1160,6 @@ void LinePlan::ObstacleCost(const Eigen::Vector2d &start,
 
 void LinePlan::ReceiveObstacles(const msg::Obstacles &msg) {
     std::unique_lock<std::mutex> lck(data_mutex_);
-    *obstacles_out_msg_ = msg;
     obstacles_lonlat_.clear();
     for (const msg::WaypointList& obstacle : msg.polygons()) {
       std::vector<Point> obstaclepts;
@@ -1195,7 +1184,6 @@ void LinePlan::ReceiveWaypoints(const msg::WaypointList &msg) {
       return;
     }
     std::unique_lock<std::mutex> lck(data_mutex_);
-    *waypoints_out_msg_ = msg;
     // TODO(james): Test properly
 
     repeat_waypoints_ = msg.repeat();

@@ -12,7 +12,7 @@
 #include "ui/server.h"
 #include "sim/sim_inter.h"
 #include "control/simple.h"
-#include "control/line_tacking.h"
+//#include "control/line_tacking.h"
 #include "control/waypoint_manager.h"
 #include "sensor/state_estimator.h"
 #include "sim/csv_logging.h"

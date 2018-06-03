@@ -295,14 +295,6 @@ class LinePlan : public Node {
 
   std::atomic<int> tack_mode_{msg::ControlMode_TACKER_NONE};
 
-  int cnt_ = 0; // Counter for iteration to send out obstacles less often
-  // Send out obstacles and waypoints periodically to ensure
-  // that everyone else is up-to-date with us.
-  msg::Obstacles *obstacles_out_msg_;
-  ProtoQueue<msg::Obstacles> obstacles_queue_;
-  msg::WaypointList *waypoints_out_msg_;
-  ProtoQueue<msg::WaypointList> waypoints_queue_;
-
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, TurnCostTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, CrossFinishTest);
   FRIEND_TEST_FUN(testing::LinePlanUtilTest, SingleLineCostTest);
