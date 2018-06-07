@@ -99,10 +99,10 @@ class SimpleControlTest : public TestWrapper {
 
 namespace {
 double ToLat(double y) {
-  return y / 111015. + 38.9816688;
+  return y / 111078. + 42.276126;
 }
 double ToLon(double x) {
-  return x / 86647. - 76.47591338;
+  return x / 82499.6 - 71.756934;
 }
 void SetWaypoint(msg::Waypoint* p, double x, double y) {
   p->set_x(ToLon(x));

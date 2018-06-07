@@ -1,5 +1,22 @@
-polygons: {
-  points: {x: -76.47755, y: 38.98270},
-  points: {x: -76.4776, y: 38.98270},
-  points: {x: -76.4776, y: 38.98265},
+# Obstacles must be:
+# -Convex
+# -Vertices in Counter-Clockwise order
+polygons: { # East shore
+  points: {x: -71.754769, y: 42.274509}, # E end of route 9 bridge
+  points: {x: -71.7500006, y: 42.274509},
+  points: {x: -71.7500000, y: 42.293183},
+  points: {x: -71.756237, y: 42.293183}, # E end of I-290
+},
+polygons: { # Route 9 bridge
+  points: {x: -71.754769, y: 42.274509}, # E end of route 9 bridge
+  points: {x: -71.757368, y: 42.274510}, # W end of route 9 bridge
+  points: {x: -71.757368, y: 42.2700000},
+  points: {x: -71.754769, y: 42.2700000},
+},
+polygons: { # West shore
+  points: {x: -71.757368, y: 42.274510}, # W end of route 9 bridge
+  points: {x: -71.757106, y: 42.284240}, # Point in middle of west shore
+  points: {x: -71.758410, y: 42.29324}, # W end of I-290 bridge
+  points: {x: -71.7600000, y: 42.29324},
+  points: {x: -71.7600000, y: 42.274510},
 },

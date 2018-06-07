@@ -110,7 +110,7 @@ void SimulatorNode::Iterate() {
     if (last_state_.has_pos()) {
       fake_airmar_.set_gps_zero(last_state_.pos().y(), last_state_.pos().x());
     } else {
-      fake_airmar_.set_gps_zero(38.9816688, -76.47591338);
+      fake_airmar_.set_gps_zero(42.276126, -71.756934);
     }
     started_ = true;
   }
