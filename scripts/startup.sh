@@ -16,7 +16,7 @@ $DIR/ballast_control_main &
 $DIR/rigid_wing_main &
 $DIR/monitor_main &
 $DIR/state_estimator_main &
-$DIR/scamp_main &
+$DIR/scamp_main -consts_file $DIR/zero_consts.pba &
 $DIR/sbus-test-run &
 $DIR/waypoint_manager_main &
 sleep 5
