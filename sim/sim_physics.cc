@@ -325,7 +325,7 @@ Vector3d TrivialDynamics::SailForces() {
   wa(2, 0) = 0;
   const double delta = deltas;// + (deltas > 0.0 ? 0.1 : -0.1);
   return AeroForces(wa, delta, 1.225 /*rhoair,kg/m^3*/, 4 /*Sail area,m^2*/,
-                    0.25 /*mindrag*/, 1.5 /*max drag*/, 1.5 /*max lift*/,
+                    0.05 /*mindrag*/, 1.0 /*max drag*/, 1.5 /*max lift*/,
                     false /*luff*/);
 }
 Vector3d TrivialDynamics::RudderForces() {

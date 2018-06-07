@@ -27,7 +27,10 @@ class SCAMP : public Node {
     BALLAST = 2,
   };
 
-  int GetMode(Actuator a) { return a == RUDDER ? rudder_mode_ : winch_mode_; }
+  int GetMode(Actuator a) {
+    return a == RUDDER ? rudder_mode_
+                       : (a == WINCH ? winch_mode_ : ballast_mode_);
+  }
 
   bool IsDisabled(Actuator a) {
     return GetMode(a) == msg::ControlMode_MODE_DISABLE;
@@ -50,6 +53,7 @@ class SCAMP : public Node {
   msg::can::CANMaster *pwm_msg_;
   ProtoQueue<msg::ZeroingConstants> consts_queue_;
   msg::ZeroingConstants *consts_msg_;
+  std::atomic<double> sail_pos_{0};
   std::atomic<int> raw_winch_{90};
   std::atomic<int> volts_winch_{90};
   std::atomic<int> raw_rudder_{90};

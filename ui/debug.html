@@ -35,6 +35,7 @@
       </tr>
       <tr>
         <td> Sail Cmd: <span class="data_output" field="sail_cmd" /> </td>
+        <td> Manual Sail Cmd: <span class="data_output" field="manual_sail_cmd" /> </td>
         <td> Rudder Cmd: <span class="data_output" field="rudder_cmd" /> </td>
         <td> Heading Cmd: <span class="data_output" field="heading_cmd" /> </td>
         <td> Ballast Cmd: <span class="data_output" field="ballast_cmd" /> </td>
@@ -44,7 +45,7 @@
     </table>
     <div>
       Rigid Wing Send:
-      State: <input type="textbox" class="data_input" field="state" msg="rigid_wing_cmd" value="0">
+      State: <input type="textbox" class="data_input" field="state" msg="rigid_wing_cmd" value="7">
       Heel: <input type="textbox" class="data_input" field="heel" msg="rigid_wing_cmd" value="0">
       Max Heel: <input type="textbox" class="data_input" field="max_heel" msg="rigid_wing_cmd" value="1">
       Servo Pos: <input type="textbox" class="data_input" field="servo_pos" msg="rigid_wing_cmd" value="50">
@@ -108,6 +109,11 @@
       Waypoints: <span class="data_output" field="waypoints"></span> </td>
       Send Waypoints: <input type="textbox" id="wp_many"> </td>
     <input type="button" onclick='sendMessage("waypoints", {restart: true, defined_start: false, points: JSON.parse($("#wp_many").val())});' value="Send Waypoints">
+    </div>
+    <div>
+      Obstacles: <span class="data_output" field="planner_obstacles"></span> </td>
+      Send Obstacles: <input type="textbox" id="plan_obs"> </td>
+    <input type="button" onclick='sendMessage("planner_obstacles", {polygons: JSON.parse($("#plan_obs").val())});' value="Send Obstacles">
     </div>
     <div>
       Ping: <input type="textbox" class="data_input" field="a" msg="ping" value="0.0">

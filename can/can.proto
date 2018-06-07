@@ -182,7 +182,7 @@ message SailbotConn {
 }
 
 message BatteryVoltage {
-  optional float voltage = 2; // in volts
+  optional float voltage = 1; // in volts
 }
 
 message CANMaster {

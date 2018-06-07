@@ -30,6 +30,8 @@ WebSocketServer::WebSocketServer(int port)
   t.detach();
 }
 
+// NOTE: There still seem to be issues with the way that everything shuts down,
+// resulting in possible seg faults.
 WebSocketServer::~WebSocketServer() {
   for (auto &thread : threads_) {
     thread.join();
@@ -215,6 +217,10 @@ std::string WebSocketServer::GetCurrentVal(const std::string &msg) {
   const google::protobuf::Reflection* reflect = submsg->GetReflection();
   std::string out_str;
   std::ostringstream out_stream;
+  if (!reflect->HasField(*submsg, val_field)) {
+    LOG(INFO) << "Field not filled in";
+    return "";
+  }
   switch (val_field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       google::protobuf::util::MessageToJsonString(

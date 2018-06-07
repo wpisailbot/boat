@@ -1,6 +1,11 @@
 #include "scamp.h"
 #include "control/actuator_cmd.pb.h"
+#include "control/util.h"
+#include "util/proto_util.h"
 #include "gflags.h"
+
+DEFINE_string(consts_file, "zero_consts.pba",
+              "The file containing the intiial constants for zeroing");
 
 namespace sailbot {
 
@@ -13,9 +18,12 @@ SCAMP::SCAMP()
       consts_msg_(AllocateMessage<msg::ZeroingConstants>()) {
   pwm_msg_->set_outgoing(true);
 
-  consts_msg_->set_rudder_zero(99);
-  consts_msg_->set_winch_0_pot(980);
-  consts_msg_->set_winch_90_pot(600);
+  if (!util::ReadProtoFromFile(FLAGS_consts_file.c_str(), consts_msg_)) {
+    consts_msg_->set_rudder_zero(99);
+    consts_msg_->set_ballast_zero(-1.775);
+    consts_msg_->set_winch_0_pot(0);
+    consts_msg_->set_winch_90_pot(1023);
+  }
 
   RegisterHandler<msg::ZeroingConstants>(
       "zeroing_consts", [this](const msg::ZeroingConstants &msg) {
@@ -26,17 +34,35 @@ SCAMP::SCAMP()
         if (msg.has_rudder_zero()) {
           consts_msg_->set_rudder_zero(msg.rudder_zero());
         }
+        if (msg.has_ballast_zero()) {
+          consts_msg_->set_ballast_zero(msg.ballast_zero());
+        }
+        if (msg.write_constants()) {
+          util::WriteProtoToFile(FLAGS_consts_file.c_str(), *consts_msg_);
+        }
       });
 
   RegisterHandler<msg::can::CANMaster>("can65281" /*Analog Pot*/,
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
-    state_msg_->set_sail(
-        WinchPotToAngle(msg.analog_pot().val())); // TODO(james): Add sign
-    state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * -M_PI / 180.);
-    state_msg_->set_ballast(raw_ballast_);
+    state_msg_->Clear();
+    sail_pos_ = WinchPotToAngle(msg.analog_pot().val());
+    state_msg_->set_sail(sail_pos_); // TODO(james): Add sign
+    state_msg_->set_rudder((raw_rudder_ - consts_msg_->rudder_zero()) * M_PI / 180.);
     state_queue_.send(state_msg_);
   });
+
+  RegisterHandler<msg::can::CANMaster>("can65285" /*Ballast State*/,
+                                       [this](const msg::can::CANMaster &msg) {
+    std::unique_lock<std::mutex> lck(state_msg_mut_);
+    if (msg.has_ballast_state() && msg.ballast_state().has_ballast()) {
+      state_msg_->Clear();
+      state_msg_->set_ballast(msg.ballast_state().ballast() -
+                              consts_msg_->ballast_zero());
+      state_queue_.send(state_msg_);
+    }
+  });
+
   RegisterHandler<msg::SailCmd>("sail_cmd", [this](const msg::SailCmd &cmd) {
     if (IsAuto(WINCH)) {
       volts_winch_ = cmd.voltage();
@@ -46,7 +72,7 @@ SCAMP::SCAMP()
   RegisterHandler<msg::SailCmd>("manual_sail_cmd",
                                 [this](const msg::SailCmd &cmd) {
     if (IsManualWiFi(WINCH)) {
-      volts_winch_ = is_connected_ ? cmd.voltage() : 0.;
+      volts_winch_ = cmd.voltage();
     }
   });
 
@@ -61,6 +87,13 @@ SCAMP::SCAMP()
                                   [this](const msg::RudderCmd &cmd) {
     if (IsManualWiFi(RUDDER)) {
       SetRawFromRudderCmd(cmd);
+    }
+  });
+
+  RegisterHandler<msg::BallastCmd>("ballast_cmd",
+                                   [this](const msg::BallastCmd &cmd) {
+    if (IsAuto(BALLAST)) {
+      SetRawFromBallastCmd(cmd);
     }
   });
 
@@ -108,7 +141,7 @@ SCAMP::SCAMP()
     if (IsDisabled(WINCH)) {
       raw_winch_ = 90;
     }
-    if (IsDisabled(BALLAST) || !IsManualWiFi(BALLAST)) {
+    if (IsDisabled(BALLAST)) {
       raw_ballast_ = 90;
     }
   });
@@ -131,17 +164,16 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   // Don't allow it to run amok outside of bounds
   {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
-    float pos = state_msg_->sail();
-    if (pos > M_PI / 2. - 0.1) {
+    if (sail_pos_ > M_PI / 2. - 0.1) {
       volts = std::min(volts, (float)0.);
-    } else if (pos < 0.1) {
+    } else if (sail_pos_ < 0.1) {
       volts = std::max(volts, (float)0.);
     }
   }
   // Also, create a deadband
   volts = std::abs(volts) < 1 ? 0 : volts;
   // And only permit 6V, until we know what we are doing:
-  volts = std::min(std::max(volts, (float)-6.), (float)6.);
+  volts = std::min(std::max(volts, (float)-12.), (float)12.);
   volts *= (consts_msg_->winch_90_pot() > consts_msg_->winch_0_pot()) ? -1 : 1;
   int raw_val = volts / 12. * 90. + 90;
 
@@ -149,13 +181,18 @@ void SCAMP::SetRawFromSailCmd(float volts) {
 }
 
 void SCAMP::SetRawFromRudderCmd(const msg::RudderCmd &cmd) {
-  int raw_val = -cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
+  int raw_val = cmd.pos() / M_PI * 180. + consts_msg_->rudder_zero();
 
   raw_rudder_ = raw_val;
 }
 
 void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
-  raw_ballast_ = cmd.vel()+90;
+  if (cmd.has_vel()) {
+    raw_ballast_ = cmd.vel() + 90;
+  } else if (cmd.has_voltage()) {
+    double volts = util::Clip((double)cmd.voltage(), -12.0, 12.0);
+    raw_ballast_ = volts * 90.0 / 12.0 + 90.0;
+  }
 }
 
 float SCAMP::WinchPotToAngle(float pot_val) {

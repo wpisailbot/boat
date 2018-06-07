@@ -7,6 +7,8 @@ var shadowBoatState = "orig_boat_state"
 var shadowQuaternionQueue = shadowBoatState + ".orientation.";
 var shadowPositionQueue = shadowBoatState + ".pos";
 var waypointsQueue = "waypoints";
+var pathpointsQueue = "planner_points";
+var obstaclesQueue = "planner_obstacles";
 var inertialFrame = "inertial_frame";
 var quaternion = {w: 1, x: 0, y: 0, z: 0};
 var shadowQuaternion = {w: 1, x: 0, y: 0, z: 0};
@@ -188,6 +190,50 @@ function addVector(frame, color, x, y, xyQueue, angleQueue, lenQueue, scale) {
   }
 }
 
+function drawPoints(points, id_base) {
+  var i = 0;
+  for (; i < 10; ++i) {
+    var id = id_base + i;
+    $("#"+id).remove();
+  }
+  for (i = 1; i < points.length; i++) {
+    var id = id_base + i;
+    var prevpos = toInertialSvgCoords(points[i-1]);
+    var pos = toInertialSvgCoords(points[i]);
+    $("#"+id).remove();
+    var iframe = $("." + inertialFrame);
+    iframe.html(iframe.html() + "<line id='" + id + "' x1='" + prevpos.x +
+                "' y1='" + prevpos.y + "' x2='" + pos.x + "' y2='" + pos.y
+                + "'style='stroke:rgb(0,0,0);stroke-width:1' />");
+  }
+}
+
+function pathpointsListener() {
+  var points = fields[pathpointsQueue].value.points;
+  var id_base = "path_points";
+  if (points != null) {
+    drawPoints(points, id_base);
+  }
+}
+
+function pathObstacleListener() {
+  var obstacles = fields[obstaclesQueue].value.polygons;
+  var ii = 0;
+  var id_base = "path_obstacles";
+  for (; ii < 10; ii++) {
+    var id = id_base + ii + "_";
+    drawPoints([], id);
+  }
+  for (ii = 0; ii < obstacles.length; ii++) {
+    var id = id_base + ii + "_";
+    var obspoints = obstacles[ii].points;
+    if (obspoints.length > 1) {
+      obspoints.push(obspoints[0]);
+      drawPoints(obspoints, id);
+    }
+  }
+}
+
 function waypointsListener() {
   var points = fields[waypointsQueue].value.points;
   var id_base = "waypoint_marker";
@@ -271,14 +317,87 @@ function waypointsListener() {
   setGridScale("smallGrid", gridxscale * scale, gridyscale * scale);
 }
 
+var lastClickPosition = null;
+var isCreatingObstacles = false;
 function clicked(evt){
   var e = evt.target;
   var dim = e.getBoundingClientRect();
   var x = evt.clientX - dim.left;
   var y = evt.clientY - dim.top;
   var simPos = svgInertialToBoat(svgMainToInertial({x : x, y : y}));
-  // If CTRL is pressed, reset waypoints
-  gotoWaypoint(simPos.x, simPos.y, evt.shiftKey);
+  if (!isCreatingObstacles) {
+    gotoWaypoint(simPos.x, simPos.y, evt.shiftKey);
+  } else {
+    if (lastClickPosition != null && lastClickPosition.length == 2) {
+      var pts = null;
+      if (false) {
+        // Create rectangle; points must be enumerated
+        // counter-clockwise
+        // The other two vertices, such that if simPos
+        // is to the upper right of lastClickPosition,
+        // the correct ordering is [lastClickPosition, pt1, simPos, pt2]
+        var pt1 = {x: simPos.x, y: lastClickPosition[0].y};
+        var pt2 = {x: lastClickPosition[0].x, y: simPos.y};
+        if (((pt2.y - pt1.y) > 0) == ((pt2.x - pt1.x) > 0)) {
+          var tmp = pt1;
+          pt1 = pt2;
+          pt2 = tmp;
+        }
+        pts = [lastClickPosition, pt1, simPos, pt2];
+      } else {
+        var pt1 = lastClickPosition[0];
+        var pt2 = lastClickPosition[1];
+        var pt3 = simPos;
+        // We need to send a Counter-Clockwise set of points,
+        // so check which side of [p1, p2] [p1, p3] is on
+        // by computing a vector perpendicular to [p1, p2]
+        // and projecting [p1, p3] onto it:
+        var perp = {x: pt1.y - pt2.y, y: pt2.x - pt1.x};
+        var p1p3 = {x: pt3.x - pt1.x, y: pt3.y - pt1.y};
+        var proj = perp.x * p1p3.x + perp.y * p1p3.y;
+        // If the projection is positive, then we are all good,
+        // otherwise swap p2/p3:
+        if (proj < 0) {
+          var tmp = pt3;
+          pt3 = pt2;
+          pt2 = tmp;
+        }
+        pts = [pt1, pt2, pt3];
+      }
+      var obstacles = fields[obstaclesQueue].value;
+      if (obstacles == null) {
+        obstacles = {};
+      }
+      if (obstacles.polygons == null) {
+        obstacles.polygons = [];
+      }
+      obstacles.polygons.push({points: pts});
+      sendMessage(obstaclesQueue, obstacles);
+
+      // Stop obstacle creation
+      isCreatingObstacles = false;
+      lastClickPosition = null;
+      $("#create-obstacle").val("Create Obstacle");
+    } else {
+      if (lastClickPosition == null) {
+        lastClickPosition = [];
+      }
+      lastClickPosition.push(simPos);
+    }
+  }
+}
+
+function startCreateObstacles() {
+  if (isCreatingObstacles) {
+    // Cancel
+    isCreatingObstacles = false;
+    lastClickPosition = null;
+    $("#create-obstacle").val("Create Obstacle");
+  } else {
+    isCreatingObstacles = true;
+    lastClickPosition = null;
+    $("#create-obstacle").val("Cancel Obstacle");
+  }
 }
 
 // restart = whether to add on waypoint or to restart from scratch.
@@ -320,6 +439,7 @@ function initializeBoatHandlers() {
   $("#background").on("click", clicked);
   $("#goto-submit").on("click", submitWaypoints);
   $("#goto-rel-submit").on("click", submitRelativeWaypoint);
+  $("#create-obstacle").on("click", startCreateObstacles);
   addHandler(quaternionQueue + "w", function() { quaternionListener("w"); });
   addHandler(quaternionQueue + "x", function() { quaternionListener("x"); });
   addHandler(quaternionQueue + "y", function() { quaternionListener("y"); });
@@ -333,6 +453,8 @@ function initializeBoatHandlers() {
   addHandler(positionQueue, boatPositionListener);
   addHandler(shadowPositionQueue, shadowBoatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
+  addHandler(pathpointsQueue, pathpointsListener);
+  addHandler(obstaclesQueue, pathObstacleListener);
 
   addVector("demo_hull_loc", "green", 0, 0, "boat_state.vel", null, null, 15);
   addVector("demo_hull_loc", "orange", 0, 0, "true_wind", null, null, 15);

@@ -61,11 +61,15 @@
         <td> Goto X: <input type="textbox" id="goto-x"> </td>
         <td> Goto Y: <input type="textbox" id="goto-y"> </td>
         <td> <input type="button" id="goto-submit" value="Go"> </td>
+        <td> <input type="button" id="clear-obstacles" value="Clear Obstacles"
+              onclick='sendMessage("planner_obstacles", {});'>
+        </td>
       </tr>
       <tr>
         <td> Goto X rel m: <input type="textbox" id="goto-rel-x"> </td>
         <td> Goto Y rel m: <input type="textbox" id="goto-rel-y"> </td>
         <td> <input type="button" id="goto-rel-submit" value="Go"> </td>
+        <td> <input type="button" id="create-obstacle" value="Create Obstacle"> </td>
       </tr>
       <tr>
         <td> Time: <span class="data_output" field="time"></span> sec </td>
@@ -115,15 +119,16 @@
         <td>
           Ballast:
           <select class="data_input" field="ballast_mode" msg="control_mode">
+            <option value="1" selected>Autonomous</option>
             <option value="2">WiFi Joystick</option>
-            <option value="3" selected>Disable</option>
+            <option value="3">Disable</option>
           </select>
         </td>
         <td>
           <input type="button" class="data_submit" msg="control_mode" value="Send Mode">
         </td>
         <td>
-          <input type="button" value="DISABLE" onclick="sendMessage('control_mode', {winch_mode: 3, rudder_mode: 3})">
+          <input type="button" value="DISABLE" onclick="sendMessage('control_mode', {winch_mode: 3, rudder_mode: 3, ballast_mode: 3})">
         </td>
       </tr>
       <tr>

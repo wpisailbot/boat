@@ -19,6 +19,11 @@ double DistToLine(Point l0, Point l1, Point pt);
  * point on (l0, l1) to pt.
  */
 bool ProjectsToLine(Point l0, Point l1, Point pt);
+/**
+ * Determines weather the point pt projects onto the ray that
+ * starts at l0 and passes through l1.
+ */
+bool ProjectsToRay(Point l0, Point l1, Point pt);
 
 /**
  * 2D polygon, all math done in Euclidean plane. i.e., this will not perfectly
@@ -41,17 +46,27 @@ class Polygon {
    */
   Polygon(std::vector<Point> pts);
 
+  static bool ValidatePoints(const std::vector<Point> pts);
+
+  // Redoes the processing on the points, e.g. to recalculate
+  // the cached centroid.
+  void ProcessPts();
+
   std::vector<Point> pts() const { return pts_; }
   std::vector<Point> *mutable_pts() { return &pts_; }
   Point pt(size_t ii) const { return pts_[ii]; }
+  Point centroid() const { return centroid_; }
 
   /**
-   * Return the distance to point pt, returning
-   * zero if the point is inside the polygon.
+   * Return the distance to point pt.
+   * If pt is on an edge, returns zero.
+   * If pt is inside the polygon, returns a negative number
+   * that is maximal at the centroid
    */
   double DistToPoint(Point pt) const;
  private:
   std::vector<Point> pts_;
+  Point centroid_;
 };  // class Polygon
 
 }  // namespace sailbot

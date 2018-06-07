@@ -73,8 +73,11 @@ void SimulatorNode::ProcessRudder(const msg::RudderCmd& cmd) {
 }
 
 void SimulatorNode::ProcessBallast(const msg::BallastCmd& cmd) {
-  if (cmd.has_vel() && !std::isnan(cmd.vel()))
+  if (cmd.has_vel() && !std::isnan(cmd.vel())) {
     bdot_ = cmd.vel();
+  } else if (cmd.has_voltage()) {
+    bdot_ = cmd.voltage() / 12.0;
+  }
 }
 
 void SimulatorNode::Run() {
@@ -107,7 +110,7 @@ void SimulatorNode::Iterate() {
     if (last_state_.has_pos()) {
       fake_airmar_.set_gps_zero(last_state_.pos().y(), last_state_.pos().x());
     } else {
-      fake_airmar_.set_gps_zero(38.9816688, -76.47591338);
+      fake_airmar_.set_gps_zero(42.276126, -71.756934);
     }
     started_ = true;
   }

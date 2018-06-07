@@ -48,11 +48,11 @@ class FakeAirmar : public Node {
   ProtoQueue<msg::can::CANMaster> cog_rapid_update_;
   ProtoQueue<msg::can::CANMaster> wind_data_;
   // Radians of lat/lon
-  std::atomic<double> lat_{38.9816688 * M_PI / 180.},
-      lon_{-76.47591338 * M_PI / 180.};
+  std::atomic<double> lat_{42.276126 * M_PI / 180.},
+      lon_{-71.756934 * M_PI / 180.};
   // Number of meters per radian latitude.
-  std::atomic<double> lat_scale_{111015. / M_PI * 180.},
-      lon_scale_{86647. / M_PI * 180.};
+  std::atomic<double> lat_scale_{111078. / M_PI * 180.},
+      lon_scale_{82499.6 / M_PI * 180.};
 
   int counter_; // For keeping track of the number of iterations.
 };

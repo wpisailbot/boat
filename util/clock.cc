@@ -15,6 +15,9 @@ bool monotonic_clock::fake_clock = false;
 std::atomic<monotonic_clock::rep> monotonic_clock::time_;
 std::condition_variable_any monotonic_clock::tick_;
 monotonic_clock::rep monotonic_clock::next_wakeup_ = 0;
+std::priority_queue<monotonic_clock::rep, std::vector<monotonic_clock::rep>,
+                    std::greater<monotonic_clock::rep>>
+    monotonic_clock::wakeup_times_;
 std::mutex monotonic_clock::wakeup_time_mutex_;
 
 std::shared_timed_mutex ClockInstance::m_;
@@ -52,11 +55,21 @@ void monotonic_clock::sleep_until(time_point time,
     ts.tv_nsec = len - ts.tv_sec * 1000000000LL;
     clock_nanosleep(clock_, TIMER_ABSTIME /*flags*/, &ts, NULL);
   } else {
+    if (len <= time_) {
+      return;
+    }
     set_wakeup(len);
     tick_.notify_all();
     tick_.wait(l, [&]() {
-      set_wakeup(len);
-      return len <= time_ || IsShutdown();
+      if (IsShutdown()) return true;
+      if (len <= time_) {
+        std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
+        if (!wakeup_times_.empty() && wakeup_times_.top() == len) {
+          wakeup_times_.pop();
+        }
+        return true;
+      }
+      return false;
     });
   }
 }
@@ -94,13 +107,17 @@ void ClockManager::Run(monotonic_clock::rep start_time) {
           break;
       }
       first_run = false;
-      monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
+      if (monotonic_clock::next_wakeup() >= monotonic_clock::time_) {
+        monotonic_clock::set_time(monotonic_clock::next_wakeup()/*, lck*/);
+      }
     }
     // Strictly speaking, the time set here doesn't matter (as long as the
     // time continue to monotonically increase), because the condition
     // variable watiers in sleep_until will check wither IsShutdown() is
     // true when we call set_time.
-    monotonic_clock::set_time(monotonic_clock::next_wakeup_/*, lck*/);
+    if (monotonic_clock::next_wakeup() >= monotonic_clock::time_) {
+      monotonic_clock::set_time(monotonic_clock::next_wakeup()/*, lck*/);
+    }
   }
 }
 

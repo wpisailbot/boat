@@ -83,6 +83,7 @@ double CsvLogger::GetField(const msg::LogEntry& msg, const std::string& field) {
 }
 
 void CsvLogger::Iterate() {
+  writing_ = true;
   size_t BUF_LEN = 40000;
   char buf[BUF_LEN];
   int index = 0;
@@ -100,6 +101,7 @@ void CsvLogger::Iterate() {
     }
   }
   buf[index-1] = '\n'; // Overwrite last comma
+  writing_ = false;
   if (running_) file_.write(buf, index);
 }
 

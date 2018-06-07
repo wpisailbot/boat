@@ -18,21 +18,24 @@ SimpleControl::SimpleControl(bool do_rudder)
       do_rudder_(do_rudder),
       sail_msg_(AllocateMessage<msg::SailCmd>()),
       rudder_msg_(AllocateMessage<msg::RudderCmd>()),
-      ballast_msg_(AllocateMessage<msg::BallastCmd>()),
+      heel_msg_(AllocateMessage<msg::HeelCmd>()),
       rigid_msg_(AllocateMessage<msg::RigidWingCmd>()),
       boat_state_(AllocateMessage<msg::BoatState>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       heading_(0),
       sail_cmd_("sail_cmd", true),
       rudder_cmd_("rudder_cmd", true),
-      ballast_cmd_("ballast_cmd", true),
+      heel_cmd_("heel_cmd", true),
       rigid_cmd_("rigid_wing_cmd", true),
       consts_queue_("control_consts", true) {
 
   consts_msg_->set_max_rudder(1.0);
   consts_msg_->set_rudder_kp(1.);
   consts_msg_->set_winch_kp(13);
-  consts_msg_->set_sail_heel_k(1);
+  consts_msg_->set_sail_heel_k(0);
+
+  consts_msg_->set_nominal_heel(0.15);
+
   consts_msg_->set_rigid_port_servo_pos(15);
   consts_msg_->set_rigid_starboard_servo_pos(85);
   {
@@ -49,8 +52,12 @@ SimpleControl::SimpleControl(bool do_rudder)
   });
   RegisterHandler<msg::ControllerConstants>(
       "control_consts", [this](const msg::ControllerConstants &msg) {
-        std::unique_lock<std::mutex> l(consts_mutex_);
-        *consts_msg_ = msg;
+        if (msg.has_max_rudder() && msg.has_rudder_kp() && msg.has_winch_kp() &&
+            msg.has_sail_heel_k() && msg.has_rigid_port_servo_pos() &&
+            msg.has_rigid_starboard_servo_pos() && msg.has_nominal_heel()) {
+          std::unique_lock<std::mutex> l(consts_mutex_);
+          *consts_msg_ = msg;
+        }
       });
   RegisterHandler<msg::Vector3f>("wind", [this](const msg::Vector3f &msg) {
     wind_x_ = msg.x();
@@ -69,12 +76,11 @@ SimpleControl::SimpleControl(bool do_rudder)
                                     [this](const msg::ControlMode &mode) {
     if (mode.has_rigid_mode()) {
       switch (mode.rigid_mode()) {
-      case msg::ControlMode::MANUAL_RC:
-      case msg::ControlMode::FILTERED_RC:
-        auto_rigid_wing_ = false;
+      case msg::ControlMode::AUTO:
+        auto_rigid_wing_ = true;
         break;
       default:
-        auto_rigid_wing_ = true;
+        auto_rigid_wing_ = false;
         break;
       }
     }
@@ -96,6 +102,7 @@ void SimpleControl::Iterate() {
   float vy = boat_state_->vel().y();
   float yaw = boat_state_->euler().yaw();
   float heel = boat_state_->euler().roll();
+  float heel_rate = boat_state_->omega().x();
   VLOG(2) << "yaw: " << yaw << " heel: " << heel;
 
   float goal_heading = heading_;
@@ -127,29 +134,35 @@ void SimpleControl::Iterate() {
                                   : consts_msg_->rigid_starboard_servo_pos());
   }
 
-  ballast_msg_->set_vel(-0.5 * heel);
-
   float vel = std::sqrt(vx * vx + vy * vy);
   double max_rudder =
       vel < 0 ? 0.3 : (vel < 0.5 ? 0.75 * consts_msg_->max_rudder()
                                  : consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
+  float heading_err = util::norm_angle(goal_heading - cur_heading);
   float goal_rudder =
-      std::min(std::max(-0.4 * util::norm_angle(goal_heading - cur_heading /*yaw*/),
-                        -max_rudder),
-               max_rudder);
+      std::min(std::max(-0.4 * heading_err, -max_rudder), max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));
   sail_cmd_.send(sail_msg_);
-  if ((counter_ % int(.1 / dt)) == 0)
+  if (auto_rigid_wing_ && (counter_ % int(.1 / dt)) == 0)
     rigid_cmd_.send(rigid_msg_);
   if (do_rudder_) {
     rudder_cmd_.send(rudder_msg_);
   }
-  ballast_cmd_.send(ballast_msg_);
-  consts_queue_.send(consts_msg_);
+  if (std::abs(alphaw) > 1.4) {
+    // Don't send new heel command when we are sailing pretty much downwind;
+    // prevents oscillations which some people don't seem to like.
+    double heel_goal = consts_msg_->nominal_heel() * util::Sign(wind_source_dir) +
+                       0 * util::Clip(1.0 * heading_err, -0.25, 0.25);
+    heel_msg_->set_heel(heel_goal);
+    heel_cmd_.send(heel_msg_);
+  }
+  if (counter_ % 100 == 0) {
+    consts_queue_.send(consts_msg_);
+  }
 }
 
 }  // control

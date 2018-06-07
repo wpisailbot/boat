@@ -30,6 +30,7 @@ class CsvLogger : public Node {
   std::vector<double> data_;
   std::map<std::string, int> data_indices_;
   std::atomic<bool> running_{true};
+  std::atomic<bool> writing_{false};
 
   std::ofstream file_;
 

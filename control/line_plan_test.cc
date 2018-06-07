@@ -48,14 +48,14 @@ void TryCrossFinishCost(double alpha, double expcost, double expdalpha,
                         const char *desc) {
   double cost, dalpha;
   LinePlan::CrossFinishCost(alpha, &cost, &dalpha);
-  EXPECT_EQ(expcost, cost) << desc << ": Incorrect cost";
-  EXPECT_EQ(expdalpha, dalpha) << desc << ": Incorrect dcostdalpha";
+  EXPECT_NEAR(expcost, cost, 1e-3) << desc << ": Incorrect cost";
+  EXPECT_NEAR(expdalpha, dalpha, 1e-3) << desc << ": Incorrect dcostdalpha";
 }
 
 TEST(LinePlanUtilTest, CrossFinishTest) {
-  TryCrossFinishCost(0.0, 1.0, -4.0, "Basic alpha=0");
-  TryCrossFinishCost(0.5, 0.0, 0.0, "At min cost");
-  TryCrossFinishCost(1.0, 1.0, 4.0, "At alpha=1");
+  TryCrossFinishCost(0.0, 17.4743, -69.8971, "Basic alpha=0");
+  TryCrossFinishCost(0.5, 11.6582, 0.0, "At min cost");
+  TryCrossFinishCost(1.0, 13.5914, 6.7957, "At alpha=1");
 }
 
 TEST(LinePlanUtilTest, SingleLineCostTest) {
@@ -195,27 +195,27 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   double cost, dcost;
 
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &cost, &dcostdturn, nullptr);
+                         winddir, 1.0, &cost, &dcostdturn, nullptr);
 
   // First, just check that empirically measured derivatives match the actual
   // derivatives.
   double eps = 1e-4, tol = 1e-3;
   LinePlan::LinePairCost(startpt, endpt, turnpt + Eigen::Vector2d(eps, 0.0),
-                         preheading, postheading, winddir, &dcost, &dcostdturn,
-                         nullptr);
+                         preheading, postheading, winddir, 1.0, &dcost,
+                         &dcostdturn, nullptr);
   EXPECT_NEAR(dcostdturn.x(), (dcost - cost) / eps, tol)
       << "X partial doesn't match numeric/analytic";
 
   LinePlan::LinePairCost(startpt, endpt, turnpt + Eigen::Vector2d(0.0, eps),
-                         preheading, postheading, winddir, &dcost, &dcostdturn,
-                         nullptr);
+                         preheading, postheading, winddir, 1.0, &dcost,
+                         &dcostdturn, nullptr);
   EXPECT_NEAR(dcostdturn.y(), (dcost - cost) / eps, tol)
       << "Y partial doesn't match numeric/analytic";
 
   // Moving endpt farther out should increase costs
   endpt *= 2.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   endpt /= 2.0;
   EXPECT_LT(cost, dcost) << "Increasing segment lengths should increase cost";
 
@@ -223,7 +223,7 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   endpt << 0.0, 2.0;
   postheading = 3.0 * M_PI_4;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   endpt << 2.0, 2.0;
   postheading = M_PI_4;
   EXPECT_LT(cost, dcost) << "Creating elbow should increase cost";
@@ -231,21 +231,21 @@ TEST(LinePlanUtilTest, LinePairCostTest) {
   // Adjusting postheading should incur a cost:
   postheading *= -1.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   postheading *= -1.0;
   EXPECT_LT(cost, dcost) << "Adding turn at end should increase cost";
 
   // Adjusting preheading should incur a cost:
   preheading *= -1.0;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   preheading *= 1.0;
   EXPECT_LT(cost, dcost) << "Adding turn at beginning should increase cost";
 
   // Forcing us to go through the wind should increase cost:
   winddir = M_PI;
   LinePlan::LinePairCost(startpt, endpt, turnpt, preheading, postheading,
-                         winddir, &dcost, &dcostdturn, nullptr);
+                         winddir, 1.0, &dcost, &dcostdturn, nullptr);
   winddir = 0.0;
   EXPECT_LT(cost, dcost) << "Going upwind should increase cost";
 }
@@ -265,26 +265,32 @@ TEST(LinePlanUtilTest, ObstacleCostTest) {
   obstacles.push_back(Polygon({{2.0, 0.0}, {2.0, 2.0}}));
 
   // A line of length one distance 1.0 from the obstacle should
-  // produce a cost of nearly e^{-1}.
+  // produce a cost of nearly (10 - 1)^2 / 100
   LinePlan::ObstacleCost({1.0, 0.0}, {1.0, 1.0}, obstacles, &cost,
                          &dcostdstart);
-  double expcost = kCost * std::exp(-1.0);
+  double expcost = kCost * (10 - 1) * (10 - 1) / 100.0;
+  // The derivative in the x direction (away/towards the
+  // obstacle) should the the derivative w.r.t. the
+  // distance times one half (because we are only
+  // moving one end of the line).
+  double dexpcostdx = kCost * (10 - 1) / 100.0;
   double tol = 5e-4;
   EXPECT_NEAR(expcost, cost, tol);
   EXPECT_NEAR(-expcost, dcostdstart.y(), tol);
   // x derivative should be around half of the derivative of exp(-x):
-  EXPECT_NEAR(expcost / 2.0, dcostdstart.x(), tol);
+  EXPECT_NEAR(dexpcostdx, dcostdstart.x(), tol);
 
   // Check that integrating over line not of length 1 works:
   obstacles.clear();
   obstacles.push_back(Polygon({{2.0, 0.0}, {2.0, 5.0}}));
   LinePlan::ObstacleCost({1.0, 0.0}, {1.0, 2.5}, obstacles, &cost,
                          &dcostdstart);
-  expcost = kCost * std::exp(-1.0) * 2.5;
+  expcost = kCost * 9 * 9 * 2.5 / 100.0;
+  dexpcostdx = kCost * 9 * 2.5 / 100.0;
   EXPECT_NEAR(expcost, cost, tol);
   EXPECT_NEAR(-expcost / 2.5, dcostdstart.y(), tol);
   // x derivative should be around half of the derivative of exp(-x):
-  EXPECT_NEAR(expcost / 2.0, dcostdstart.x(), tol);
+  EXPECT_NEAR(dexpcostdx, dcostdstart.x(), tol);
 }
 
 // Run a set of tests on BackPass, for situations when we are only using one
@@ -303,7 +309,7 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   std::vector<Point> orig_tackpts = tackpts;
   double orig_alpha = alpha;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr, nullptr);
   EXPECT_EQ(orig_tackpts[0], tackpts[0])
       << "BackPass should never touch the first point in tackpts";
   EXPECT_EQ(orig_alpha, alpha) << "In theory, should make no change to alpha";
@@ -312,7 +318,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // Now, for kicks, try with endpt on the goal line:
   nextpt << 0.0, 10.0;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_EQ(orig_tackpts[0], tackpts[0])
       << "BackPass should never touch the first point in tackpts";
   EXPECT_EQ(orig_alpha, alpha) << "In theory, should make no change to alpha";
@@ -324,7 +331,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // you go more upwind on the second.
   nextpt << 0.0, 10.0;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/-1.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha) << "Expected alpha to increase to move downwind";
   alpha = 0.5;
 
@@ -334,14 +342,16 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   nextpt << 0.0, 50.0; // Make very far away; otherwise any changes in initial
                        // turn will be counteracted by the second turn.
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha) << "Expected alpha to increase to turn less";
   alpha = 0.5;
 
   // A deviation in alpha should be corrected:
   alpha = 0.45;
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_LT(orig_alpha, alpha)
       << "Expected alpha to increase to pass through center of the gate";
   alpha = 0.5;
@@ -349,7 +359,8 @@ TEST(LinePlanUtilTest, BackPassTestOnePoint) {
   // Presence of an obstacle should shift the line:
   obstacles.push_back(Polygon({{3.0, 5.0}, {4.0, 13.0}, {2.5, 12.0}}));
   LinePlan::BackPass(gate, nextpt, /*winddir=*/0.0, obstacles, cur_yaw,
-                     /*step=*/1.0, &tackpts, &alpha, nullptr, nullptr);
+                     /*step=*/1.0, /*prescale=*/true, &tackpts, &alpha, nullptr,
+                     nullptr);
   EXPECT_GT(orig_alpha, alpha)
       << "Expected alpha to decrease to avoid obstacle";
   alpha = 0.5;
@@ -419,7 +430,7 @@ class BackPassTest : public ::testing::Test {
 
   void BackPass(double wind_dir, double step) {
     LinePlan::BackPass(gate, nextpt, wind_dir, obstacles, cur_yaw, step,
-                       &tackpts, &alpha, nullptr, nullptr);
+                       /*prescale=*/true, &tackpts, &alpha, nullptr, nullptr);
   }
 
   std::vector<Point> tackpts{{0.0, 0.0}, {10.0, 0.0}};
@@ -489,7 +500,10 @@ TEST_F(BackPassTest, UpwindMultipointTack) {
   nextpt << 15.0, 0.0;
   tackpts = {{0.0, 0.0}, {5.0, 1.0}, {10.0, -1.0}};
   orig_tackpts = tackpts;
-  BackPass(M_PI, 1.0);
+  // Need to run multiple passes because it takes a moment for things to settle.
+  for (int ii = 0; ii < 10; ++ii) {
+    BackPass(M_PI, 0.05);
+  }
   EXPECT_LT(orig_tackpts[1].y(), tackpts[1].y())
       << "First point should've moved up a tick";
   EXPECT_GT(orig_tackpts[2].y(), tackpts[2].y())
@@ -502,7 +516,9 @@ TEST_F(BackPassTest, OutOfAlignmentInitial) {
   orig_tackpts = tackpts;
   alpha = 0.3;
   orig_alpha = alpha;
-  BackPass(0.0, 1.0);
+  for (int ii = 0; ii < 10; ++ii) {
+    BackPass(0.0, 0.05);
+  }
   EXPECT_GT(orig_tackpts[1].y(), tackpts[1].y())
       << "Middle point should've moved down to straighten out";
   EXPECT_LT(orig_alpha, alpha)
@@ -737,6 +753,7 @@ TEST_F(OptimizerTest, UpwindBasicOpt) {
 
 // Test upwind leg, forcing more tacks due to obstacles:
 TEST_F(OptimizerTest, UpwindForceTacks) {
+  FLAGS_v = 1;
   winddir = M_PI;
   alpha = 0.0;
   tackpts.clear();

@@ -20,6 +20,12 @@ cc_library(
   deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
 )
 cc_library(
+  name="ballast_control",
+  srcs=["ballast.cc"],
+  hdrs=["ballast.h"],
+  deps=[":actuator_cmd_proto", "//util:node", ":util"],
+)
+cc_library(
   name="adaptive_control",
   srcs=["adaptive.cc"],
   hdrs=["adaptive.h"],
@@ -31,6 +37,7 @@ cc_library(
   hdrs=["line_plan.h"],
   deps=[":actuator_cmd_proto",
         "//util:node",
+        "//util:proto_util",
         "//math:polygon",
         "//sim:sim_physics"],
 )
@@ -38,7 +45,10 @@ cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
-  deps=[":actuator_cmd_proto", "//util:node"],
+  deps=[":actuator_cmd_proto",
+        ":util",
+        "//util:proto_util",
+        "//util:node"],
 )
 cc_binary(
   name="scamp_main",
@@ -62,9 +72,19 @@ cc_binary(
   deps=[":simple_control"],
 )
 cc_binary(
+  name="ballast_control_main",
+  srcs=["ballast_main.cc"],
+  deps=[":ballast_control"],
+)
+cc_binary(
   name="adaptive_control_main",
   srcs=["adaptive_main.cc"],
   deps=[":adaptive_control"],
+)
+cc_binary(
+  name="line_plan_main",
+  srcs=["line_plan_main.cc"],
+  deps=[":line_plan"],
 )
 cc_library(
   name="line_tacking",
@@ -102,7 +122,7 @@ cc_test(
   timeout="eternal",
   deps=[":simple_control",
         ":adaptive_control",
-        ":line_tacking",
+        #":line_tacking",
         ":line_plan",
         ":waypoint_manager",
         "//sensor:state_estimator",

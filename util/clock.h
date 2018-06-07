@@ -4,6 +4,7 @@
 #include <time.h>
 #include <chrono>
 #include <thread>
+#include <queue>
 #include <condition_variable>
 #include <mutex>
 #include <shared_mutex>
@@ -75,7 +76,10 @@ class monotonic_clock {
    * If running a fake clock, the time at which the nex tsleeping thread needs
    * to be woken up.
    */
-  static rep next_wakeup() { return next_wakeup_; }
+  static rep next_wakeup() {
+    std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
+    return wakeup_times_.empty() ? time_.load() : wakeup_times_.top();
+  }
 
  private:
   static bool fake_clock;
@@ -89,6 +93,8 @@ class monotonic_clock {
   static std::condition_variable_any tick_;
   static rep next_wakeup_;
   static std::mutex wakeup_time_mutex_;
+  static std::priority_queue<rep, std::vector<rep>, std::greater<rep>>
+      wakeup_times_;
 
   // ClockInstance::m_ MUST be locked with a unique_lock if attempting to call
   // set_time. This is to protect the interplay between time_ and next_wakeup_.
@@ -103,10 +109,11 @@ class monotonic_clock {
   // changed
   static void set_wakeup(rep time) {
     std::unique_lock<std::mutex> lck(wakeup_time_mutex_);
-    if (next_wakeup_ <= time_) {
-      next_wakeup_ = std::max(time, time_.load());
-    } else {
-      next_wakeup_ = std::min(next_wakeup_, time);
+    if (time > time_) {
+      wakeup_times_.push(time);
+    }
+    while (!wakeup_times_.empty() && wakeup_times_.top() < time_) {
+      wakeup_times_.pop();
     }
   }
 

@@ -1,0 +1,8 @@
+# Navigation challenge
+restart: true,
+defined_start: false,
+repeat: false,
+points: {x: -71.757074, y: 42.276344}, # Point in front of docks
+points: {x: -71.757074, y: 42.275901}, # Point ~50m south of start point
+points: {x: -71.756687, y: 42.276123}, # Point ~43m west of midpoint of first 2 pts
+points: {x: -71.757074, y: 42.276344},  # End point (= Start point)

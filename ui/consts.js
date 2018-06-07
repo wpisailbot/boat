@@ -2,8 +2,8 @@ function checkAndSendZeros() {
   var winch_0_pot = parseFloat($("#zeroing_consts-winch_0_pot").val());
   var winch_90_pot = parseFloat($("#zeroing_consts-winch_90_pot").val());
   var rudder_zero = parseFloat($("#zeroing_consts-rudder_zero").val());
-  console.log(rudder_zero);
-  if (isNaN(winch_0_pot) || isNaN(winch_90_pot) || isNaN(rudder_zero)) {
+  var ballast_zero = parseFloat($("#zeroing_consts-ballast_zero").val());
+  if (isNaN(winch_0_pot) || isNaN(winch_90_pot) || isNaN(rudder_zero) || isNaN(ballast_zero)) {
     alert("All field should be filled in");
     return;
   }
@@ -33,5 +33,6 @@ function checkAndSendZeros() {
   msg["winch_0_pot"] = winch_0_pot;
   msg["winch_90_pot"] = winch_90_pot;
   msg["rudder_zero"] = rudder_zero;
+  msg["ballast_zero"] = ballast_zero;
   sendMessage(queue, msg);
 }

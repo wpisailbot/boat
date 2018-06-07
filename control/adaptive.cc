@@ -347,8 +347,10 @@ AdaptiveControl::AdaptiveControl()
   RegisterHandler<msg::ControllerConstants>(
       "control_consts", [this](const msg::ControllerConstants &msg) {
     std::unique_lock<std::mutex> l(consts_mutex_);
-    *consts_msg_ = msg;
-    physics_.Qf = msg.qf();
+    if (msg.has_qf()) {
+      *consts_msg_ = msg;
+      physics_.Qf = msg.qf();
+    }
   });
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &sbus) {
     std::unique_lock<std::mutex> l(boat_state_mutex_);
