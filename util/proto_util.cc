@@ -1,6 +1,8 @@
 #include "proto_util.h"
 #include "glog/logging.h"
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -62,6 +64,26 @@ bool ReadProtoFromFile(const char *fname, google::protobuf::Message *proto) {
   google::protobuf::io::FileInputStream finput(fd);
   finput.SetCloseOnDelete(true);
   if (!google::protobuf::TextFormat::Parse(&finput, proto)) {
+    LOG(WARNING) << "Failed to parse protobuf";
+    return false;
+  }
+  return true;
+}
+
+// Returns true on success
+bool WriteProtoToFile(const char *fname, const google::protobuf::Message &proto) {
+  if (fname == nullptr) {
+    return false;
+  }
+  int fd = open(fname, O_WRONLY | O_CREAT,
+                S_IROTH | S_IWUSR | S_IRUSR | S_IWOTH | S_IRGRP | S_IWGRP);
+  if (fd < 0) {
+    PLOG(WARNING) << "Failed to open file " << fname;
+    return false;
+  }
+  google::protobuf::io::FileOutputStream foutput(fd);
+  foutput.SetCloseOnDelete(true);
+  if (!google::protobuf::TextFormat::Print(proto, &foutput)) {
     LOG(WARNING) << "Failed to parse protobuf";
     return false;
   }

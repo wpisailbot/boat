@@ -47,6 +47,7 @@ cc_library(
   hdrs=["scamp.h"],
   deps=[":actuator_cmd_proto",
         ":util",
+        "//util:proto_util",
         "//util:node"],
 )
 cc_binary(
