@@ -120,6 +120,8 @@ message ZeroingConstants {
   optional int32 winch_0_pot = 2;
   optional int32 winch_90_pot = 3;
   optional double ballast_zero = 4;
+  // Winch angle when sheeted out to winch_90_pot
+  optional double winch_out_angle = 6; // radians
   optional bool write_constants = 5 [default = false];
 }
 

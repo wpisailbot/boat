@@ -161,6 +161,11 @@
         <td> <span class="data_output" field="zeroing_consts.winch_90_pot"></span> </td>
         <td> <input type="textbox" id="zeroing_consts-winch_90_pot"> </td>
       </tr>
+      <tr>
+        <td> Winch Full Out Angle </td>
+        <td> <span class="data_output" field="zeroing_consts.winch_out_angle"></span> </td>
+        <td> <input type="textbox" id="zeroing_consts-winch_out_angle"> </td>
+      </tr>
       </table>
       <input type="button" onclick="checkAndSendZeros();" value="Send Zeroing Constants">
       <input type="button" onclick='sendMessage("zeroing_consts", {write_constants: true});' value="Save Constants">

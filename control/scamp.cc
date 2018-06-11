@@ -23,6 +23,7 @@ SCAMP::SCAMP()
     consts_msg_->set_ballast_zero(-1.775);
     consts_msg_->set_winch_0_pot(0);
     consts_msg_->set_winch_90_pot(1023);
+    consts_msg_->set_winch_out_angle(M_PI_2);
   }
 
   RegisterHandler<msg::ZeroingConstants>(
@@ -36,6 +37,9 @@ SCAMP::SCAMP()
         }
         if (msg.has_ballast_zero()) {
           consts_msg_->set_ballast_zero(msg.ballast_zero());
+        }
+        if (msg.has_winch_out_angle()) {
+          consts_msg_->set_winch_out_angle(msg.winch_out_angle());
         }
         if (msg.write_constants()) {
           util::WriteProtoToFile(FLAGS_consts_file.c_str(), *consts_msg_);
@@ -164,9 +168,9 @@ void SCAMP::SetRawFromSailCmd(float volts) {
   // Don't allow it to run amok outside of bounds
   {
     std::unique_lock<std::mutex> lck(state_msg_mut_);
-    if (sail_pos_ > M_PI / 2. - 0.1) {
+    if (sail_pos_ >= consts_msg_->winch_out_angle()) {
       volts = std::min(volts, (float)0.);
-    } else if (sail_pos_ < 0.1) {
+    } else if (sail_pos_ <= 0.0) {
       volts = std::max(volts, (float)0.);
     }
   }
@@ -198,7 +202,8 @@ void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
 float SCAMP::WinchPotToAngle(float pot_val) {
   const int kPotRange =
       consts_msg_->winch_90_pot() - consts_msg_->winch_0_pot();
-  return (pot_val - consts_msg_->winch_0_pot()) / kPotRange * M_PI / 2;
+  return (pot_val - consts_msg_->winch_0_pot()) / kPotRange *
+         consts_msg_->winch_out_angle();
 }
 
 }  // namespace sailbot
