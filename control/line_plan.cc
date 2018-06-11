@@ -223,8 +223,14 @@ void LinePlan::UpdateWaypointInc() {
     return;
   }
   if (!repeat_waypoints_ && next_waypoint_ == waypoints_.size() - 1) {
-    state_msg_->set_done(true);
-    state_msg_->set_last_waypoint(next_waypoint_ - 1);
+    // If we are close to the goal, set done;
+    // otherwise latch to the previous value
+    if ((waypoints_[next_waypoint_].first - boat_pos_).norm() < 5) {
+      state_msg_->set_done(true);
+      state_msg_->set_last_waypoint(next_waypoint_);
+    } else {
+      state_msg_->set_last_waypoint(next_waypoint_ - 1);
+    }
     state_queue_.send(state_msg_);
     // If we are already on the last waypoint, don't do anything.
     return;

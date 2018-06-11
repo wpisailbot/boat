@@ -63,6 +63,7 @@ SCAMP::SCAMP()
       state_msg_->Clear();
       state_msg_->set_ballast(msg.ballast_state().ballast() -
                               consts_msg_->ballast_zero());
+      ballast_pos_ = state_msg_->ballast();
       state_queue_.send(state_msg_);
     }
   });
@@ -195,6 +196,11 @@ void SCAMP::SetRawFromBallastCmd(const msg::BallastCmd &cmd) {
     raw_ballast_ = cmd.vel() + 90;
   } else if (cmd.has_voltage()) {
     double volts = util::Clip((double)cmd.voltage(), -12.0, 12.0);
+    if (ballast_pos_ >= 1.1) {
+      volts = std::min(volts, 0.0);
+    } else if (ballast_pos_ <= -1.1) {
+      volts = std::max(volts, 0.0);
+    }
     raw_ballast_ = volts * 90.0 / 12.0 + 90.0;
   }
 }

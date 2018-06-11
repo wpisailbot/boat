@@ -9,8 +9,8 @@ BallastControl::BallastControl()
     : Node(dt), ballast_msg_(AllocateMessage<msg::BallastCmd>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       ballast_cmd_("ballast_cmd", true), consts_queue_("control_consts", true) {
-  consts_msg_->set_ballast_heel_kp(0.5);
-  consts_msg_->set_ballast_heel_ki(0.2);
+  consts_msg_->set_ballast_heel_kp(0.3);
+  consts_msg_->set_ballast_heel_ki(0.3);
   consts_msg_->set_ballast_heel_kd(0.0);
   consts_msg_->set_ballast_heel_kff_goal(0.0);
 
@@ -72,7 +72,7 @@ void BallastControl::Iterate() {
   double dheel_error = -heel_dot_;
   heel_error_integrator_ = heel_error_integrator_ + heel_error * dt;
   heel_error_integrator_ =
-      util::Clip((double)heel_error_integrator_, -1.0 / consts_msg_->ballast_heel_ki(), 1.0 / consts_msg_->ballast_heel_ki());
+      util::Clip((double)heel_error_integrator_, -3.0, 3.0);
 
   double ballast_goal =
       consts_msg_->ballast_heel_kp() * heel_error +
@@ -96,7 +96,7 @@ void BallastControl::Iterate() {
                            consts_msg_->ballast_arm_kff_arm() * ballast_ -
                            consts_msg_->ballast_arm_kff_heel() * heel_;
   ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
-  double voltage_deadband = last_voltage_ == 0 ? 2.5 : 1.0;
+  double voltage_deadband = last_voltage_ == 0 ? 3.5 : 1.5;
   if (std::abs(ballast_error) < 0.001 || std::abs(ballast_) > 1.5 ||
       std::abs(ballast_voltage) < voltage_deadband) {
     // If sufficiently close, then tack advantage of non-backdrivability:

@@ -29,6 +29,7 @@ class SimpleControl : public Node {
   std::mutex consts_mutex_;
   std::atomic<float> wind_x_{0}, wind_y_{0};
   std::atomic<bool> auto_rigid_wing_{true};
+  std::atomic<double> rudder_integrator_{0.0};
   ProtoQueue<msg::SailCmd> sail_cmd_;
   ProtoQueue<msg::RudderCmd> rudder_cmd_;
   ProtoQueue<msg::HeelCmd> heel_cmd_;

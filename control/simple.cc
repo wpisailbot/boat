@@ -29,8 +29,9 @@ SimpleControl::SimpleControl(bool do_rudder)
       rigid_cmd_("rigid_wing_cmd", true),
       consts_queue_("control_consts", true) {
 
-  consts_msg_->set_max_rudder(1.2);
-  consts_msg_->set_rudder_kp(3.);
+  consts_msg_->set_max_rudder(1.0);
+  consts_msg_->set_rudder_kp(1.5);
+  consts_msg_->set_rudder_ki(0.);
   consts_msg_->set_winch_kp(13);
   consts_msg_->set_sail_heel_k(0);
 
@@ -70,6 +71,7 @@ SimpleControl::SimpleControl(bool do_rudder)
     if (msg.has_extra_sail()) {
       extra_sail_ = msg.extra_sail();
     }
+    rudder_integrator_ = 0.0;
     VLOG(2) << "Got heading cmd: " << heading_.load();
   });
   RegisterHandler<msg::ControlMode>("control_mode",
@@ -141,9 +143,12 @@ void SimpleControl::Iterate() {
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   double heading_err = util::norm_angle(goal_heading - cur_heading);
+  rudder_integrator_ =
+      util::Clip(rudder_integrator_ + heading_err * dt, -1.5, 1.5);
   double goal_rudder =
-      std::min(std::max(-consts_msg_->rudder_kp() * heading_err, -max_rudder),
-               max_rudder);
+      -util::Clip(consts_msg_->rudder_kp() * heading_err +
+                      consts_msg_->rudder_ki() * rudder_integrator_,
+                  -max_rudder, max_rudder);
   VLOG(2) << "goalh: " << goal_heading << " goal_rudder: " << goal_rudder;
   rudder_msg_->set_pos(goal_rudder);
   rudder_msg_->set_vel(1. * (goal_rudder - boat_state_->internal().rudder()));

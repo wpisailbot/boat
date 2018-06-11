@@ -95,6 +95,7 @@ message ControllerConstants {
   optional float winch_kp = 3;
   optional float sail_heel_k = 4;
   optional float qf = 5;
+  optional float rudder_ki = 6;
 
   // PD constants for loop controlling arm to arm angle
   optional float ballast_arm_kp = 10;
