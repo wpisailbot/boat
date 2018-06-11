@@ -113,7 +113,7 @@ void WaypointManager::DoStationKeep() {
   switch (station_keep_state_) {
     case GOTO_START:
       if (tacker_done_) {
-        station_keep_end_ = Time() + std::chrono::seconds(150);
+        station_keep_end_ = Time() + std::chrono::seconds(280);
         station_keep_state_ = WAIT;
         control_mode_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
@@ -128,7 +128,8 @@ void WaypointManager::DoStationKeep() {
       //rudder_mode_msg_->set_pos(1);
       //rudder_mode_queue_.send(rudder_mode_msg_);
       if (Time() > station_keep_end_) {
-        station_keep_state_ = BACK;
+        //station_keep_state_ = BACK;
+        station_keep_state_ = LEAVE;
         station_keep_end_ = Time() + std::chrono::seconds(20);
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
         control_mode_queue_.send(control_mode_msg_);
