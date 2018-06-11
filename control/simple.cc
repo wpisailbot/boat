@@ -136,8 +136,8 @@ void SimpleControl::Iterate() {
 
   float vel = std::sqrt(vx * vx + vy * vy);
   double max_rudder =
-      vel < 0 ? 0.3 : (vel < 0.5 ? 0.75 * consts_msg_->max_rudder()
-                                 : consts_msg_->max_rudder());
+      vel < 0 ? 0.3 : (vel < 1.0 ? consts_msg_->max_rudder()
+                                 : 0.5 * consts_msg_->max_rudder());
   //float boat_heading = std::atan2(vy, vx);
   float cur_heading = yaw; // vel > 0.1 ? std::atan2(vy, vx) : yaw;
   double heading_err = util::norm_angle(goal_heading - cur_heading);

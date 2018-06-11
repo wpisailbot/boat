@@ -72,7 +72,7 @@ void BallastControl::Iterate() {
   double dheel_error = -heel_dot_;
   heel_error_integrator_ = heel_error_integrator_ + heel_error * dt;
   heel_error_integrator_ =
-      util::Clip((double)heel_error_integrator_, -1.0, 1.0);
+      util::Clip((double)heel_error_integrator_, -1.0 / consts_msg_->ballast_heel_ki(), 1.0 / consts_msg_->ballast_heel_ki());
 
   double ballast_goal =
       consts_msg_->ballast_heel_kp() * heel_error +
