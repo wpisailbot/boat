@@ -19,10 +19,10 @@ SCAMP::SCAMP()
   pwm_msg_->set_outgoing(true);
 
   if (!util::ReadProtoFromFile(FLAGS_consts_file.c_str(), consts_msg_)) {
-    consts_msg_->set_rudder_zero(99);
+    consts_msg_->set_rudder_zero(107);
     consts_msg_->set_ballast_zero(-1.775);
-    consts_msg_->set_winch_0_pot(0);
-    consts_msg_->set_winch_90_pot(1023);
+    consts_msg_->set_winch_0_pot(292);
+    consts_msg_->set_winch_90_pot(660);
     consts_msg_->set_winch_out_angle(M_PI_2);
   }
 

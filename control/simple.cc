@@ -29,8 +29,8 @@ SimpleControl::SimpleControl(bool do_rudder)
       rigid_cmd_("rigid_wing_cmd", true),
       consts_queue_("control_consts", true) {
 
-  consts_msg_->set_max_rudder(1.0);
-  consts_msg_->set_rudder_kp(1.5);
+  consts_msg_->set_max_rudder(0.7);
+  consts_msg_->set_rudder_kp(0.5);
   consts_msg_->set_rudder_ki(0.);
   consts_msg_->set_winch_kp(13);
   consts_msg_->set_sail_heel_k(0);

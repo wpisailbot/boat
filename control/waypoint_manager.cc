@@ -43,6 +43,8 @@ WaypointManager::WaypointManager()
 
   RegisterHandler<msg::ChallengeControl>(
       "challenge_control", [this](const msg::ChallengeControl &msg) {
+        heading_cmd_msg_->set_extra_sail(0.);
+        heading_cmd_queue_.send(heading_cmd_msg_);
         if (!msg.has_challenge()) {
           return;
         }
@@ -125,8 +127,6 @@ void WaypointManager::DoStationKeep() {
       heading_cmd_msg_->set_extra_sail(1.5);
       heading_cmd_queue_.send(heading_cmd_msg_);
       heading_cmd_msg_->Clear();
-      //rudder_mode_msg_->set_pos(1);
-      //rudder_mode_queue_.send(rudder_mode_msg_);
       if (Time() > station_keep_end_) {
         //station_keep_state_ = BACK;
         station_keep_state_ = LEAVE;
@@ -154,7 +154,7 @@ void WaypointManager::DoStationKeep() {
       }
       break;
     case LEAVE:
-      heading_cmd_msg_->set_extra_sail(0.2);
+      heading_cmd_msg_->set_extra_sail(0.0);
       heading_cmd_msg_->set_heading(util::norm_angle(upwind_dir_ + M_PI * .75));
       heading_cmd_queue_.send(heading_cmd_msg_);
       break;

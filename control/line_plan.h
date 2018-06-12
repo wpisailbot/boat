@@ -248,6 +248,7 @@ class LinePlan : public Node {
   // Potentially useful state information
   std::atomic<double> yaw_;
   std::atomic<double> wind_dir_;
+  std::atomic<int> crossed_cnt_{0};
   // Positions in meters reference system
   Point boat_pos_;
   Point boat_pos_lonlat_;

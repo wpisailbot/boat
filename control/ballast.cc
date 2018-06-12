@@ -9,8 +9,8 @@ BallastControl::BallastControl()
     : Node(dt), ballast_msg_(AllocateMessage<msg::BallastCmd>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       ballast_cmd_("ballast_cmd", true), consts_queue_("control_consts", true) {
-  consts_msg_->set_ballast_heel_kp(0.3);
-  consts_msg_->set_ballast_heel_ki(0.3);
+  consts_msg_->set_ballast_heel_kp(0.1);
+  consts_msg_->set_ballast_heel_ki(0.1);
   consts_msg_->set_ballast_heel_kd(0.0);
   consts_msg_->set_ballast_heel_kff_goal(0.0);
 
@@ -31,8 +31,11 @@ BallastControl::BallastControl()
             msg.has_ballast_arm_kd() && msg.has_ballast_arm_kff_arm() &&
             msg.has_ballast_arm_kff_heel() && msg.has_ballast_heel_kff_goal()) {
           std::unique_lock<std::mutex> l(consts_mutex_);
+          if (std::abs(msg.ballast_heel_ki() - consts_msg_->ballast_heel_ki()) >
+              1e-3) {
+            heel_error_integrator_ = 0.0;
+          }
           *consts_msg_ = msg;
-          heel_error_integrator_ = 0.0;
         }
       });
 
@@ -72,7 +75,7 @@ void BallastControl::Iterate() {
   double dheel_error = -heel_dot_;
   heel_error_integrator_ = heel_error_integrator_ + heel_error * dt;
   heel_error_integrator_ =
-      util::Clip((double)heel_error_integrator_, -3.0, 3.0);
+      util::Clip((double)heel_error_integrator_, -5.0, 5.0);
 
   double ballast_goal =
       consts_msg_->ballast_heel_kp() * heel_error +
