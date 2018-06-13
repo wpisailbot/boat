@@ -163,6 +163,7 @@ message InternalBoatState {
 message TackerState {
   optional bool done = 1; // Whether the tacker has reached its last waypoint
   optional int32 last_waypoint = 2; // The current waypoint
+  optional bool near_waypoint = 3;
 }
 
 message ChallengeControl {

@@ -9,10 +9,10 @@ BallastControl::BallastControl()
     : Node(dt), ballast_msg_(AllocateMessage<msg::BallastCmd>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       ballast_cmd_("ballast_cmd", true), consts_queue_("control_consts", true) {
-  consts_msg_->set_ballast_heel_kp(0.1);
-  consts_msg_->set_ballast_heel_ki(0.1);
+  consts_msg_->set_ballast_heel_kp(0.25);
+  consts_msg_->set_ballast_heel_ki(0.05);
   consts_msg_->set_ballast_heel_kd(0.0);
-  consts_msg_->set_ballast_heel_kff_goal(0.0);
+  consts_msg_->set_ballast_heel_kff_goal(0.1);
 
   consts_msg_->set_ballast_arm_kp(40.0);
   consts_msg_->set_ballast_arm_kd(0.0);
@@ -46,10 +46,12 @@ BallastControl::BallastControl()
     }
   });
 
-//  RegisterHandler<msg::HeelCmd>("heel_cmd", [this](const msg::HeelCmd &msg) {
+  //RegisterHandler<msg::HeelCmd>("heel_cmd", [this](const msg::HeelCmd &msg) {
   RegisterHandler<msg::HeadingCmd>("heading_cmd", [this](const msg::HeadingCmd &msg) {
     if (msg.has_heading()) {
       double cmd = msg.heading();
+    //if (msg.has_heel()) {
+    //  double cmd = msg.heel();
       if (cmd == 0) {
         heel_error_integrator_ = 0.0;
       } else if (util::Sign(cmd) != util::Sign(heel_goal_.load())) {

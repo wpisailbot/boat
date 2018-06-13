@@ -32,8 +32,8 @@ StateEstimator::StateEstimator()
                                        [this](const msg::can::CANMaster &msg) {
     std::unique_lock<std::mutex> lck(state_msg_mutex_);
     if (msg.has_attitude()) {
-      if (msg.attitude().has_roll())
-        euler_angles_[0] = msg.attitude().roll();
+      //if (msg.attitude().has_roll())
+      //  euler_angles_[0] = msg.attitude().roll();
       if (msg.attitude().has_pitch())
         euler_angles_[1] = msg.attitude().pitch();
       //if (msg.attitude().has_yaw())

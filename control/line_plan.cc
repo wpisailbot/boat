@@ -269,6 +269,7 @@ void LinePlan::UpdateWaypointInc() {
       --crossed_cnt_;
     }
   }
+  state_msg_->set_near_waypoint((waypoints_[next_waypoint_].first - boat_pos_).norm() < 15.0);
   state_msg_->set_done(false);
   state_msg_->set_last_waypoint(next_waypoint_ - 1);
   state_queue_.send(state_msg_);

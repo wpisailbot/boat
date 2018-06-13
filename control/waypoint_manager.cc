@@ -4,12 +4,12 @@
 namespace sailbot {
 namespace control {
 
-static constexpr int kVisionConfidenceThreshold = 2;
-static constexpr int kVisionFoundThreshold = 30;
-static constexpr int kVisionObstacleThreshold = 30;
+static constexpr int kVisionConfidenceThreshold = 250;
+static constexpr int kVisionFoundThreshold = 700;
+static constexpr int kVisionObstacleThreshold = 200;
 
 WaypointManager::WaypointManager()
-    : Node(0.1), station_keep_end_(Time()),
+    : Node(0.25), station_keep_end_(Time()),
       control_mode_msg_(AllocateMessage<msg::ControlMode>()),
       control_mode_queue_("control_mode", true),
       rudder_mode_msg_(AllocateMessage<msg::RudderCmd>()),
@@ -41,6 +41,7 @@ WaypointManager::WaypointManager()
                                     [this](const msg::TackerState &state) {
     tacker_done_ = state.done();
     last_waypoint_ = state.last_waypoint();
+    near_waypoint_ = state.near_waypoint();
   });
 
   RegisterHandler<msg::ChallengeControl>(
@@ -207,7 +208,8 @@ void WaypointManager::DoObstacleAvoid() {
 //  float turnrightwind = -turnleft;
   switch (obstacle_state_) {
     case WAYPOINT:
-      if (vision_confidence_ > kVisionObstacleThreshold) {
+      if (!near_waypoint_ && vision_confidence_ > kVisionObstacleThreshold) {
+        obs_cnt_ = 0;
         control_mode_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
         control_mode_queue_.send(control_mode_msg_);
@@ -219,10 +221,11 @@ void WaypointManager::DoObstacleAvoid() {
       }
       break;
     case AVOID:
+      ++obs_cnt_;
       heading_cmd_msg_->set_heading(
           util::norm_angle(initial_avoid_diff_heading_ + boat_yaw_));
       heading_cmd_queue_.send(heading_cmd_msg_);
-      if (vision_confidence_ < kVisionObstacleThreshold) {
+      if (obs_cnt_ > 50 && vision_confidence_ < kVisionObstacleThreshold) {
         control_mode_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
         control_mode_queue_.send(control_mode_msg_);
