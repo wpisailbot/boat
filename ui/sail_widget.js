@@ -2,6 +2,7 @@ var boatState = "boat_state"
 var quaternionQueue = boatState + ".orientation.";
 var sailState = boatState + ".internal.sail";
 var rudderState = boatState + ".internal.rudder";
+var ballastState = boatState + ".internal.ballast";
 var positionQueue = boatState + ".pos";
 var shadowBoatState = "orig_boat_state"
 var shadowQuaternionQueue = shadowBoatState + ".orientation.";
@@ -136,6 +137,10 @@ function sailListener() {
 
 function rudderListener() {
   setRotation("rudder_path", -fields[rudderState].value);
+}
+
+function ballastListener() {
+  setRotation("ballast_path", -fields[ballastState].value);
 }
 
 var vectorInc = 0;
@@ -450,6 +455,7 @@ function initializeBoatHandlers() {
   addHandler(shadowQuaternionQueue + "z", function() { shadowQuaternionListener("z"); });
   addHandler(sailState, sailListener);
   addHandler(rudderState, rudderListener);
+  addHandler(ballastState, ballastListener);
   addHandler(positionQueue, boatPositionListener);
   addHandler(shadowPositionQueue, shadowBoatPositionListener);
   addHandler(waypointsQueue, waypointsListener);
