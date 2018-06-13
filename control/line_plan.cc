@@ -670,7 +670,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
   if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
   // TODO(james): Clip alpha to 1 programmatically based on are_gates_.
-  *alpha = util::Clip(*alpha, 0.2, 1.0);
+  *alpha = util::Clip(*alpha, 0.1, 1.0);
   if (finalcost != nullptr) {
     // Strictly speaking calculates cost of previous iteration, but this avoids
     // an instability if dcostdalpha is very high.

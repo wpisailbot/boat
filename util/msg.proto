@@ -51,6 +51,7 @@ message LogEntry {
   optional WaypointList planner_points = 518;
   optional Obstacles planner_obstacles = 519;
   optional HeelCmd heel_cmd = 520;
+  optional SearchState search_state = 521;
 
   // Constants channels
   optional TackerConstants tacker_consts = 700;

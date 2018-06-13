@@ -186,6 +186,15 @@ message VisionData {
   repeated Buoy buoys = 3;
 }
 
+message SearchState {
+  enum STATE {
+    NO_TARGET = 0;
+    GOING_TO_BUOY = 1;
+    AT_BUOY = 2;
+  }
+  optional STATE state = 1;
+}
+
 message BoatState {
   // Use lat/lon in degrees for position on real boat
   // We keep the pos_float field for purposes of reading old logs.

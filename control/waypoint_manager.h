@@ -54,6 +54,9 @@ class WaypointManager : public Node {
   msg::RudderCmd* rudder_mode_msg_;
   ProtoQueue<msg::RudderCmd> rudder_mode_queue_;
 
+  msg::SearchState* search_state_msg_;
+  ProtoQueue<msg::SearchState> search_state_queue_;
+
   msg::HeadingCmd* heading_cmd_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_queue_;
 }; // class WaypointManager

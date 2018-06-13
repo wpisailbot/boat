@@ -14,6 +14,8 @@ WaypointManager::WaypointManager()
       control_mode_queue_("control_mode", true),
       rudder_mode_msg_(AllocateMessage<msg::RudderCmd>()),
       rudder_mode_queue_("rudder_cmd", true),
+      search_state_msg_(AllocateMessage<msg::SearchState>()),
+      search_state_queue_("search_state", true),
       heading_cmd_msg_(AllocateMessage<msg::HeadingCmd>()),
       heading_cmd_queue_("heading_cmd", true) {
   RegisterHandler<msg::SBUS>("sbus_value", [this](const msg::SBUS &msg) {
@@ -92,6 +94,9 @@ WaypointManager::WaypointManager()
   RegisterHandler<msg::BoatState>("boat_state", [this](const msg::BoatState &msg) {
     boat_yaw_ = msg.euler().yaw();
   });
+
+  search_state_msg_->set_state(msg::SearchState::NO_TARGET);
+  search_state_queue_.send(search_state_msg_);
 }
 
 void WaypointManager::Iterate() {
@@ -164,27 +169,35 @@ void WaypointManager::DoStationKeep() {
 void WaypointManager::DoVisionSearch() {
   switch (vision_state_) {
     case FOLLOW_WAYPOINTS:
+      search_state_msg_->set_state(msg::SearchState::NO_TARGET);
       if ((tacker_done_ || last_waypoint_ >= 1) &&
           vision_confidence_ > kVisionConfidenceThreshold) {
+        search_state_msg_->set_state(msg::SearchState::GOING_TO_BUOY);
         control_mode_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
         control_mode_queue_.send(control_mode_msg_);
         vision_state_ = FOLLOW_VISION;
       }
+      search_state_queue_.send(search_state_msg_);
       break;
     case FOLLOW_VISION:
       heading_cmd_msg_->set_heading(vision_abs_heading_);
       heading_cmd_queue_.send(heading_cmd_msg_);
       if (vision_confidence_ > kVisionFoundThreshold) {
+        search_state_msg_->set_state(msg::SearchState::AT_BUOY);
+        // Station Keep
+        heading_cmd_msg_->set_heading(upwind_dir_ + 0 * M_PI / 8);
+        heading_cmd_msg_->set_extra_sail(1.5);
+        heading_cmd_queue_.send(heading_cmd_msg_);
+        heading_cmd_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
-        control_mode_msg_->set_winch_mode(msg::ControlMode::DISABLE);
-        control_mode_msg_->set_rudder_mode(msg::ControlMode::DISABLE);
         control_mode_queue_.send(control_mode_msg_);
       } else if (vision_confidence_ < kVisionConfidenceThreshold) {
         control_mode_msg_->Clear();
         control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
         control_mode_queue_.send(control_mode_msg_);
       }
+      search_state_queue_.send(search_state_msg_);
       break;
   }
 }
