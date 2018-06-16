@@ -34,6 +34,13 @@ the CAN interface. I then discuss the testing infrastructure. Finally, I go into
 a discussion of the actual logic controlling the boat and discuss the various
 controllers and the such.
 
+There is a section at the end on the controller/planner and the things that we
+learned at IRSC2018. All of the non-controller/planner code seemed to be largely
+robust at IRSC. The only change I would suggest beyond that would be to
+investigate more thoroughly the performance and usefulness of the current
+websocket server, as due to lossy connections with the 900 MHz radios at ranges
+>~200m, the current protocol may not make sense for telemetry and RC control.
+
 # Nomenclature
 
 IPC: InterProcess Communication, refers to any method of communication between
@@ -1729,6 +1736,8 @@ Simulation, controllers, "state estimation"/zeroing/etc
 ## Controls Notes
 - Airmar heading data is unreliable--should use combination of gps velocity +
   heading (e.g., weighted average that weights gps more as speed increases)
+  I currently hypothesize that this has to do with excessive heel angles--when
+  the Airmar is known to stop providing _any_ attitude data past +/-50 degrees.
 - For turning on the previous boat, it turned out to be critical to add some
   code that lets out the sail when turning downwind and sheets in when turning
   upwind.
@@ -1738,3 +1747,140 @@ Simulation, controllers, "state estimation"/zeroing/etc
   ballast angle based on the heading error.
 
 Overall, the entire control system could be much more model-based.
+
+## State Estimation
+
+Currently, we have very little actual work done on the state estimation. It
+essentially consists of taking the raw Airmar data and transforming some of the
+angles and the such to be in a convenient coordinate system (e.g., the provided
+winds are provided in compass headings and refer to the direction the wind is
+_coming_ from; I've preferred to provide a velocity vector for the wind,
+oriented in the direction the wind is blowing _to_, with an (East, North)
+coordinate system instead of a (North, West) coordinate system).
+
+Thus far, this system has only caused issues when Airmar data has been
+inaccurate. However, there is some potential gain to be had:
+- For movable ballast related things in particular, a more model-based
+  estimation system (presumably a Kalman Filter or EKF) would allow for better
+  dynamic estimation, e.g., of the current heel angle, and would allow us to be
+  more tolerant of noise in the Airmar (and the real world).
+
+### Airmar Heading Inaccuracy
+
+In the endurance race at Sailbot 2018, I started to observer some serious
+issues with the heading from the Airmar, which was tending to be >30 degrees
+off of our true heading and so causing us to go substantially of course. When
+running courses near the shore, this caused us to veer off into the shore
+without being able to correct for it.
+
+The obvious solution is to simply use GPS velocity whenever possible; this would
+also increase our tolerance to genuine issues such as leeway.
+Also, a more model based estimation approach might allow a reduced reliance on
+the Airmar.
+
+I am not entirely sure of the source of the error in the Airmar, but I do
+believe that it has always been there to some extent; previously I had just discounted it by
+assuming that it was due to leeway issues or if I was checking it shortly after
+starting the Airmar, that it was due to compass calibrations not having kicked
+in.
+
+Based on a cursory look at the data, the error has the following traits:
+- Pretty consistently results in heading being off from GPS velocity by 30-50
+  deg
+- Sometimes, though, it is fine.
+- Which direction it is off by seems to correlate with the current tack of the
+  boat; it is not always off in the same direction.
+- There is not an immediately obvious correlation with, e.g., extreme heel and
+  the issue (it occurs even at relatively normal heel angles).
+- Under dynamic situations (i.e., while turning), the Airmar tends to behave
+  poorly. Sometimes it lags, sometimes it over-responds, sometimes it jumps
+  around (and not necessarily to the right place).
+
+There are a few potential sources of this error; they could well be compounding
+on each other in some way:
+- Magnetic Declination; magnetic North != true North, but at most can account
+  for 15 deg of the issue and doesn't explain why we don't see it 100% of the
+  time or why we sometimes have seen the issue occur in different directions.
+- Poor Airmar mounting; if the Airmar is not mounted straight, it could cause
+  some issue, but it'd be the same type of issue as magnetic vs. true North
+- Missing calibration--perhaps there was a calibration procedure that we failed
+  to follow
+- Bad Airmar filtering algorithms--the Airmar is a black box of filtering and
+  may do an atrocious job of filtering the data, to the point where it may
+  be less useful than just using a cheap, unfiltered sensor. It may, e.g., do a
+  bad job of accounting for rocking of the boat when calculating heading, or
+  poorly handle even slight heel angles.
+- Actual leeway--the boat doesn't go straight; there is some leeway. However,
+  this leeway should not be anywhere near even 30, let alone 50, degrees.
+- Hardware damage to the Airmar--I don't believe this is the case, but if some
+  water damage managed to get something off without breaking it in the Airmar,
+  then that may be a source of some issues.
+
+## Controller
+
+In Fall of 2017, I worked on a more model-based adaptive controller for the sail
+and rudder. Unfortunately, because we never had any chance to do any testing on
+the real boat and I wanted to be conservative in taking risks at the
+competition, the controller has not been tested outside of a single run in
+October or November of 2017 and simulation. I believe it should work (it doesn't
+yet have ballast, but that'd actually be a relatively easy addition), and it
+should account for things like weather-helm better than the hand-selected
+algorithms in simple.cc. The implementation can be found in
+`control/adaptive.*`.
+
+Currently, the basic method of operation (see my RBE594 final paper for some
+more discussion) is to numerically solve (in a very coarse fashion) for the
+optimal sail/rudder positions to minimize a cost function where we are trying to
+maximize forwards force and achieve some overall yaw torque/acceleration.
+To add ballast control, I would probably add ballast arm angle as an
+optimization variable, and work to figure out some semi-analytical solution so
+that you don't have to numerically solve a multi-DOF system in the controller.
+
+The adaptiveness is also somewhat naively written; I would encourage
+investigating alternative methods for providing adaptive behavior. On-the-water
+testing may be necessary.
+
+## Planner
+
+For RBE594, I also worked on a new planner for generating goal headings. This
+actually did get used, because the existing planner was awful.
+
+This is in `control/line_plan.*`
+
+The main work on the planner is to try to tune it to improve stability.
+Currently there are a couple of stability issues:
+- When near a buoy (so it only has to plan a short path), the gradient descent
+  tends to produce significantly different solutions iteration to iteration. I'm
+  not entirely sure why, but assume it has to do with the overall cost values
+  being small relative to the cost gradient, and so the variations in how well
+  the gradient descent happened to work are greater than the variations in the
+  actual cost, causing different solutions to be better each time.
+- When the goal point is in an obstacle, similar issues occur, where the
+  gradient descent becomes unstable due to the high cost gradients.
+- Sometimes, possible due to noisy wind readings or brief gusts, the generated
+  path will change for a single iteration. I don't know if this is an issue
+  with the planner itself or with the filtering on the wind data (or the
+  filtering on any other data), but it should be looked at).
+
+
+Note that currently, in order to create obstacles for the shore, you should make
+them massive (and they have to be convex). If you don't make them deep enough,
+then sometimes the planner ends up finding a path that involves going around the
+obstacle you created for the shore, or it discovers that it can produce a
+reasonably low cost path by cutting through the shore in some manner.
+
+There're a bunch of tuning parameters for the planner in `control/line_plan.h`.
+Be sure you know what they mean before changing them too much.
+
+As a note on gradient descent-based optimization algorithms, you do have to
+ensure that any cost functions you add are smooth and won't result in
+discontinuities or even unusually steep gradients.
+
+One sest of parameters that may be interesting to change are kMaxTotalpts` and
+`kMaxLegs`; the first is the maximum number of turning points that we will
+attempt to use in our optimization, while the maximum legs are the maximum
+number of buoys we will look forwards (which must be at least one). Increasing
+these will very rapidly increase the run-time of the overall algorithm (either
+exponential or combinatorial; too lazy to think about which it is), so when you
+make changes, be sure that you try them out on a BBB to see what sort of
+performance implications they have.
