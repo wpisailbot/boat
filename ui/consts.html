@@ -65,6 +65,11 @@
         <td> <input type="textbox" class="data_input" field="rudder_kp" msg="control_consts"> </td>
       </tr>
       <tr>
+        <td> Rudder Ki: </td>
+        <td> <span class="data_output" field="control_consts.rudder_ki"></span> </td>
+        <td> <input type="textbox" class="data_input" field="rudder_ki" msg="control_consts"> </td>
+      </tr>
+      <tr>
         <td> Winch Kp: </td>
         <td> <span class="data_output" field="control_consts.winch_kp"></span> </td>
         <td> <input type="textbox" class="data_input" field="winch_kp" msg="control_consts"> </td>
@@ -160,6 +165,11 @@
         <td> Winch Pot value at 90 deg </td>
         <td> <span class="data_output" field="zeroing_consts.winch_90_pot"></span> </td>
         <td> <input type="textbox" id="zeroing_consts-winch_90_pot"> </td>
+      </tr>
+      <tr>
+        <td> Winch Full Out Angle </td>
+        <td> <span class="data_output" field="zeroing_consts.winch_out_angle"></span> </td>
+        <td> <input type="textbox" id="zeroing_consts-winch_out_angle"> </td>
       </tr>
       </table>
       <input type="button" onclick="checkAndSendZeros();" value="Send Zeroing Constants">

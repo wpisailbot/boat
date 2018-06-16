@@ -3,6 +3,7 @@ function checkAndSendZeros() {
   var winch_90_pot = parseFloat($("#zeroing_consts-winch_90_pot").val());
   var rudder_zero = parseFloat($("#zeroing_consts-rudder_zero").val());
   var ballast_zero = parseFloat($("#zeroing_consts-ballast_zero").val());
+  var winch_out_angle = parseFloat($("#zeroing_consts-winch_out_angle").val());
   if (isNaN(winch_0_pot) || isNaN(winch_90_pot) || isNaN(rudder_zero) || isNaN(ballast_zero)) {
     alert("All field should be filled in");
     return;
@@ -34,5 +35,6 @@ function checkAndSendZeros() {
   msg["winch_90_pot"] = winch_90_pot;
   msg["rudder_zero"] = rudder_zero;
   msg["ballast_zero"] = ballast_zero;
+  msg["winch_out_angle"] = winch_out_angle;
   sendMessage(queue, msg);
 }

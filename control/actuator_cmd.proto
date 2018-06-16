@@ -95,6 +95,7 @@ message ControllerConstants {
   optional float winch_kp = 3;
   optional float sail_heel_k = 4;
   optional float qf = 5;
+  optional float rudder_ki = 6;
 
   // PD constants for loop controlling arm to arm angle
   optional float ballast_arm_kp = 10;
@@ -120,6 +121,8 @@ message ZeroingConstants {
   optional int32 winch_0_pot = 2;
   optional int32 winch_90_pot = 3;
   optional double ballast_zero = 4;
+  // Winch angle when sheeted out to winch_90_pot
+  optional double winch_out_angle = 6; // radians
   optional bool write_constants = 5 [default = false];
 }
 
@@ -160,6 +163,7 @@ message InternalBoatState {
 message TackerState {
   optional bool done = 1; // Whether the tacker has reached its last waypoint
   optional int32 last_waypoint = 2; // The current waypoint
+  optional bool near_waypoint = 3;
 }
 
 message ChallengeControl {
@@ -181,6 +185,15 @@ message VisionData {
   optional float heading = 1;
   optional float confidence = 2;
   repeated Buoy buoys = 3;
+}
+
+message SearchState {
+  enum STATE {
+    NO_TARGET = 0;
+    GOING_TO_BUOY = 1;
+    AT_BUOY = 2;
+  }
+  optional STATE state = 1;
 }
 
 message BoatState {

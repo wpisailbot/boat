@@ -127,6 +127,7 @@ void LineTacker::Iterate() {
   }
   double gh = GoalHeading();
   heading_msg_->set_heading(gh);
+  heading_msg_->set_extra_sail(0.);
   switch (tack_mode_) {
     case msg::ControlMode_TACKER_LINE:
     case msg::ControlMode_TACKER_REWARD:

@@ -17,7 +17,11 @@ cc_library(
   name="simple_control",
   srcs=["simple.cc"],
   hdrs=["simple.h"],
-  deps=["//rigid_wing:rigid_wing_proto", ":actuator_cmd_proto", "//util:node", "//sim:sim_physics"],
+  deps=["//rigid_wing:rigid_wing_proto",
+        ":actuator_cmd_proto",
+        "//util:node",
+        "//util:proto_util",
+        "//sim:sim_physics"],
 )
 cc_library(
   name="ballast_control",

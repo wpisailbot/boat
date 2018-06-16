@@ -1,9 +1,8 @@
-# Endurance race
+# Nav challenge
 restart: true,
 defined_start: true,
-repeat: true,
-points: {x: -71.757074, y: 42.276344}, # Point in front of docks
-points: {x: -71.756732, y: 42.274838}, # SW point
-points: {x: -71.755304, y: 42.274943}, # SE point
-points: {x: -71.755797, y: 42.279809}, # NE point
-points: {x: -71.756827, y: 42.279857}, # NW point
+repeat: false,
+points: {x: -71.75626, y: 42.27681},
+points: {x: -71.75694, y: 42.2767},
+points: {x: -71.75685, y: 42.27642},
+points: {x: -71.75626, y: 42.27681},

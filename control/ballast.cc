@@ -9,10 +9,10 @@ BallastControl::BallastControl()
     : Node(dt), ballast_msg_(AllocateMessage<msg::BallastCmd>()),
       consts_msg_(AllocateMessage<msg::ControllerConstants>()),
       ballast_cmd_("ballast_cmd", true), consts_queue_("control_consts", true) {
-  consts_msg_->set_ballast_heel_kp(1.0);
-  consts_msg_->set_ballast_heel_ki(2.0);
+  consts_msg_->set_ballast_heel_kp(0.25);
+  consts_msg_->set_ballast_heel_ki(0.05);
   consts_msg_->set_ballast_heel_kd(0.0);
-  consts_msg_->set_ballast_heel_kff_goal(4.0);
+  consts_msg_->set_ballast_heel_kff_goal(0.1);
 
   consts_msg_->set_ballast_arm_kp(40.0);
   consts_msg_->set_ballast_arm_kd(0.0);
@@ -31,8 +31,11 @@ BallastControl::BallastControl()
             msg.has_ballast_arm_kd() && msg.has_ballast_arm_kff_arm() &&
             msg.has_ballast_arm_kff_heel() && msg.has_ballast_heel_kff_goal()) {
           std::unique_lock<std::mutex> l(consts_mutex_);
+          if (std::abs(msg.ballast_heel_ki() - consts_msg_->ballast_heel_ki()) >
+              1e-3) {
+            heel_error_integrator_ = 0.0;
+          }
           *consts_msg_ = msg;
-          heel_error_integrator_ = 0.0;
         }
       });
 
@@ -43,32 +46,38 @@ BallastControl::BallastControl()
     }
   });
 
-  RegisterHandler<msg::HeelCmd>("heel_cmd", [this](const msg::HeelCmd &msg) {
-    if (msg.has_heel()) {
-      if (msg.heel() == 0) {
+  //RegisterHandler<msg::HeelCmd>("heel_cmd", [this](const msg::HeelCmd &msg) {
+  RegisterHandler<msg::HeadingCmd>("heading_cmd", [this](const msg::HeadingCmd &msg) {
+    if (msg.has_heading()) {
+      double cmd = msg.heading();
+    //if (msg.has_heel()) {
+    //  double cmd = msg.heel();
+      if (cmd == 0) {
         heel_error_integrator_ = 0.0;
-      } else if (util::Sign(msg.heel()) != util::Sign(heel_goal_.load())) {
+      } else if (util::Sign(cmd) != util::Sign(heel_goal_.load())) {
         heel_error_integrator_ = -heel_error_integrator_;
       }
-      heel_goal_ = msg.heel();
+      heel_goal_ = cmd;
     }
   });
 
   RegisterHandler<msg::BoatState>("boat_state",
                                   [this](const msg::BoatState &msg) {
-    heel_ = msg.euler().roll();
-    heel_dot_ = msg.omega().x();
+    //heel_ = msg.euler().roll();
+    //heel_dot_ = msg.omega().x();
+    heel_ = msg.euler().yaw();
+    heel_dot_ = msg.omega().z();
     ballast_ = msg.internal().ballast();
     ballast_dot_ = msg.internal().ballastdot();
   });
 }
 
 void BallastControl::Iterate() {
-  double heel_error = heel_goal_ - heel_;
+  double heel_error = util::norm_angle(heel_goal_ - heel_);
   double dheel_error = -heel_dot_;
   heel_error_integrator_ = heel_error_integrator_ + heel_error * dt;
   heel_error_integrator_ =
-      util::Clip((double)heel_error_integrator_, -1.0, 1.0);
+      util::Clip((double)heel_error_integrator_, -5.0, 5.0);
 
   double ballast_goal =
       consts_msg_->ballast_heel_kp() * heel_error +
@@ -92,7 +101,7 @@ void BallastControl::Iterate() {
                            consts_msg_->ballast_arm_kff_arm() * ballast_ -
                            consts_msg_->ballast_arm_kff_heel() * heel_;
   ballast_voltage = util::Clip(ballast_voltage, -12.0, 12.0);
-  double voltage_deadband = last_voltage_ == 0 ? 2.5 : 1.0;
+  double voltage_deadband = last_voltage_ == 0 ? 3.5 : 1.5;
   if (std::abs(ballast_error) < 0.001 || std::abs(ballast_) > 1.5 ||
       std::abs(ballast_voltage) < voltage_deadband) {
     // If sufficiently close, then tack advantage of non-backdrivability:

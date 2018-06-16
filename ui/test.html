@@ -27,6 +27,10 @@
               <path d="M 0 -10 q 50 -10 100 10 q -50 20 -100 10 l 0 -20 z" stroke="blue" stroke-width="3" fill="none" />
               <path d="M 0 0 l -15 0" stroke="red" stroke-width="3" fill="none" transform="rotate(10)" class="rudder_path" />
               <g transform="translate(50, 0)">
+                <g transform="rotate(43)" class="ballast_path">
+                  <path d="M 0 0 l -30 0" stroke="black" stroke-width="1" fill="none" stroke-opacity="50%" />
+                  <circle cx="-30" cy="0" r="5" stroke="black" fill="black" />
+                </g>
                 <path d="M 0 0 l -40 0" stroke="red" stroke-width="3" fill="none" transform="rotate(20)" class="sail_path" />
               </g>
             </g>
@@ -47,6 +51,10 @@
             <path d="M 0 0 l -15 0" stroke="red" stroke-width="2" fill="none" stroke-opacity="50%" transform="rotate(10)" class="rudder_path" />
             <path d="M -100 0 l 300 0" stroke="black" stroke-dasharray="5, 5" stroke-width="1" fill="none" />
             <g transform="translate(50, 0)">
+              <g class="ballast_path" transform="rotate(43)">
+                <path d="M 0 0 l -30 0" stroke="black" stroke-width="1" fill="none" stroke-opacity="50%" />
+                <circle cx="-30" cy="0" r="5" stroke="black" fill="black" />
+              </g>
               <path d="M 0 0 l -40 0" stroke="red" stroke-width="2" fill="none" stroke-opacity="50%" transform="rotate(20)" class="sail_path" />
             </g>
           </g>
@@ -110,10 +118,10 @@
 
           <select class="data_input" field="tacker" msg="control_mode">
             <option value="3">Disable</option>
-            <option value="0" selected>No Planning</option>
+            <option value="0">No Planning</option>
             <option value="1">Old "Line" Tacker</option>
             <option value="2">Heuristic Tacker</option>
-            <option value="4">Line Planner</option>
+            <option value="4" selected>Line Planner</option>
           </select>
         </td>
         <td>

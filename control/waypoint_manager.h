@@ -35,8 +35,10 @@ class WaypointManager : public Node {
   std::atomic<bool> tacker_done_{false};
   std::atomic<int> last_waypoint_{0};
   std::atomic<bool> last_sbus_manual_{false};
+  std::atomic<bool> near_waypoint_{false};
   std::atomic<float> upwind_dir_{0};
   std::atomic<int> vision_confidence_{0};
+  std::atomic<int> obs_cnt_{0};
   std::atomic<float> vision_abs_heading_{0};
   std::atomic<float> boat_yaw_{0};
   std::atomic<float> initial_avoid_diff_heading_{0};
@@ -53,6 +55,9 @@ class WaypointManager : public Node {
   ProtoQueue<msg::ControlMode> control_mode_queue_;
   msg::RudderCmd* rudder_mode_msg_;
   ProtoQueue<msg::RudderCmd> rudder_mode_queue_;
+
+  msg::SearchState* search_state_msg_;
+  ProtoQueue<msg::SearchState> search_state_queue_;
 
   msg::HeadingCmd* heading_cmd_msg_;
   ProtoQueue<msg::HeadingCmd> heading_cmd_queue_;

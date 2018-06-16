@@ -54,6 +54,7 @@ class SCAMP : public Node {
   ProtoQueue<msg::ZeroingConstants> consts_queue_;
   msg::ZeroingConstants *consts_msg_;
   std::atomic<double> sail_pos_{0};
+  std::atomic<double> ballast_pos_{0};
   std::atomic<int> raw_winch_{90};
   std::atomic<int> volts_winch_{90};
   std::atomic<int> raw_rudder_{90};

@@ -223,8 +223,17 @@ void LinePlan::UpdateWaypointInc() {
     return;
   }
   if (!repeat_waypoints_ && next_waypoint_ == waypoints_.size() - 1) {
-    state_msg_->set_done(true);
-    state_msg_->set_last_waypoint(next_waypoint_ - 1);
+    // If we are close to the goal, set done;
+    // otherwise latch to the previous value
+    if ((waypoints_[next_waypoint_].first - boat_pos_).norm() < 15) {
+      state_msg_->set_done(true);
+      state_msg_->set_last_waypoint(next_waypoint_);
+    } else {
+      state_msg_->set_done(false);
+      state_msg_->set_last_waypoint(next_waypoint_ - 1);
+    }
+    //state_msg_->set_done(true);
+    //state_msg_->set_last_waypoint(next_waypoint_ - 1);
     state_queue_.send(state_msg_);
     // If we are already on the last waypoint, don't do anything.
     return;
@@ -247,16 +256,21 @@ void LinePlan::UpdateWaypointInc() {
                     ProjectsToRay(gate_start, gate_end, boat_pos_);
     }
   }
-  if (passed_line) {
+  bool near_way = (waypoints_[next_waypoint_].first - boat_pos_).norm() < 8.0;
+  if (passed_line || near_way) {
     // Check that distances are different signs:
     double d0 = DistToLine(gate_start, gate_end, prev_boat_pos_);
     double d1 = DistToLine(gate_start, gate_end, boat_pos_);
-    if (d0 * d1 <= 0) {
+    if (d0 * d1 <= 0 || near_way) {// && (++crossed_cnt_) > 0) {
       ++next_waypoint_;
       // For if we are repeating
       next_waypoint_ = next_waypoint_ % waypoints_.size();
+      crossed_cnt_ = 0;
+    } else {
+      --crossed_cnt_;
     }
   }
+  state_msg_->set_near_waypoint(near_way);
   state_msg_->set_done(false);
   state_msg_->set_last_waypoint(next_waypoint_ - 1);
   state_queue_.send(state_msg_);
@@ -658,7 +672,7 @@ void LinePlan::BackPass(const std::pair<Eigen::Vector2d, Eigen::Vector2d> &gate,
   if (viable != nullptr) *viable = *viable && lineviable;
   *alpha -= step * dcostdalpha;
   // TODO(james): Clip alpha to 1 programmatically based on are_gates_.
-  *alpha = util::Clip(*alpha, 0.05, 1.0);
+  *alpha = util::Clip(*alpha, 0.1, 1.0);
   if (finalcost != nullptr) {
     // Strictly speaking calculates cost of previous iteration, but this avoids
     // an instability if dcostdalpha is very high.
@@ -1193,6 +1207,7 @@ void LinePlan::ReceiveWaypoints(const msg::WaypointList &msg) {
     }
     std::unique_lock<std::mutex> lck(data_mutex_);
     // TODO(james): Test properly
+    crossed_cnt_ = 0;
 
     repeat_waypoints_ = msg.repeat();
 
