@@ -256,11 +256,12 @@ void LinePlan::UpdateWaypointInc() {
                     ProjectsToRay(gate_start, gate_end, boat_pos_);
     }
   }
-  if (passed_line) {
+  bool near_way = (waypoints_[next_waypoint_].first - boat_pos_).norm() < 8.0;
+  if (passed_line || near_way) {
     // Check that distances are different signs:
     double d0 = DistToLine(gate_start, gate_end, prev_boat_pos_);
     double d1 = DistToLine(gate_start, gate_end, boat_pos_);
-    if (d0 * d1 <= 0) {// && (++crossed_cnt_) > 0) {
+    if (d0 * d1 <= 0 || near_way) {// && (++crossed_cnt_) > 0) {
       ++next_waypoint_;
       // For if we are repeating
       next_waypoint_ = next_waypoint_ % waypoints_.size();
@@ -269,7 +270,7 @@ void LinePlan::UpdateWaypointInc() {
       --crossed_cnt_;
     }
   }
-  state_msg_->set_near_waypoint((waypoints_[next_waypoint_].first - boat_pos_).norm() < 15.0);
+  state_msg_->set_near_waypoint(near_way);
   state_msg_->set_done(false);
   state_msg_->set_last_waypoint(next_waypoint_ - 1);
   state_queue_.send(state_msg_);

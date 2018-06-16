@@ -2,10 +2,11 @@
 # -Convex
 # -Vertices in Counter-Clockwise order
 polygons: { # East shore
-  points: {x: -71.75490, y: 42.27451}, # E end of route 9 bridge
+  points: {x: -71.75553, y: 42.27900}, # E end of route 9 bridge
+  points: {x: -71.75553, y: 42.27451}, # E end of route 9 bridge
   points: {x: -71.75000, y: 42.27451},
   points: {x: -71.75000, y: 42.29318},
-  points: {x: -71.75635, y: 42.29318}, # E end of I-290
+  points: {x: -71.75380, y: 42.29318}, # E end of I-290
 },
 polygons: { # Route 9 bridge
   points: {x: -71.754769, y: 42.27452}, # E end of route 9 bridge
@@ -14,8 +15,8 @@ polygons: { # Route 9 bridge
   points: {x: -71.754769, y: 42.2700000},
 },
 polygons: { # West shore
-  points: {x: -71.75725, y: 42.27451}, # W end of route 9 bridge
-  points: {x: -71.75690, y: 42.28424}, # Point in middle of west shore
+  points: {x: -71.75680, y: 42.27451}, # W end of route 9 bridge
+  points: {x: -71.75640, y: 42.28424}, # Point in middle of west shore
   points: {x: -71.75841, y: 42.29324}, # W end of I-290 bridge
   points: {x: -71.76000, y: 42.29324},
   points: {x: -71.76000, y: 42.27451},
