@@ -59,16 +59,25 @@ message Obstacles {
 
 message ControlMode {
   enum MODE {
+    // Direct control from Hobby RC receiever, ignoring safety limits
     MANUAL_RC = 0;
+    // Allow autonomous controller to run, by listening to *_cmd
     AUTO = 1;
+    // Run based on manual control over the network, listening to *_manual_cmd queues
     MANUAL_WIFI = 2;
+    // Disable the actuator
     DISABLE = 3;
+    // Run from a Hobby RC receiver, but with safety limits
     FILTERED_RC = 4;
   }
   enum TACKER {
+    // No tacker: just try to drive straight to waypoints
     NONE = 0;
+    // Line Tacker: See control/line_tacking.*
     LINE = 1;
+    // Heuristic based tacker, also defined in control/line_tacking.*
     REWARD = 2;
+    // No tacker, do not send out heading commands (allows for RC of heading)
     DISABLED = 3;
     LINE_PLAN = 4;
   }
