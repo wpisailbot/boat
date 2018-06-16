@@ -1547,10 +1547,194 @@ whenever a read times out.
 
 ## External Joystick Control
 
+In order to provide a way to remote-control the boat, we use a Logitech
+joystick hooked up to a laptop, which then uses the WebSocket interface
+to send commands to the boat.
+
+The WebSocket UI has already been described, and on the laptop side
+all that this control really requires is that we have some way
+of reading the joystick inputs and then sending a json message over
+the websocket.
+Thus far, we have used the code in
+https://github.com/wpisailbot/F310_Gamepad_Parser which is forked from
+https://github.com/JohnLZeller/F310_Gamepad_Parser. There is nothing
+particularly novel here; the joysticks are mapped to the sail/rudder/ballast
+and buttons are used for changing modes and setting the rigid wing and the such.
+
+There is marginally more complexity on the boat side, but that is purely
+to allow us to easily switch between different modes. In order to make it so
+that we can switch between who gets to control different actuators, we
+define a `control_mode` queue which consists of a `ControlMode` message
+defined in `control/actuator_cmd.proto`:
+
+```protobuf
+message ControlMode {
+  enum MODE {
+    // Direct control from Hobby RC receiever, ignoring safety limits
+    MANUAL_RC = 0;
+    // Allow autonomous controller to run, by listening to *_cmd
+    AUTO = 1;
+    // Run based on manual control over the network, listening to *_manual_cmd queues
+    MANUAL_WIFI = 2;
+    // Disable the actuator
+    DISABLE = 3;
+    // Run from a Hobby RC receiver, but with safety limits
+    FILTERED_RC = 4;
+  }
+  enum TACKER {
+    // No tacker: just try to drive straight to waypoints
+    NONE = 0;
+    // Line Tacker: See control/line_tacking.*
+    LINE = 1;
+    // Heuristic based tacker, also defined in control/line_tacking.*
+    REWARD = 2;
+    // No tacker, do not send out heading commands (allows for RC of heading)
+    DISABLED = 3;
+  }
+  optional MODE winch_mode = 1;
+  optional TACKER tacker = 2;
+  optional MODE rudder_mode = 3;
+  optional MODE rigid_mode = 4;
+  optional MODE ballast_mode = 5;
+}
+```
+
+The tacker mode and actuator modes are each handled slightly differently, mostly
+because when originally done, all the tackers were defined in a single source file
+whereas the actuators where being controlled from a variety of sources.
+
+The tacker mode is handled in the tacking code by any tackers that are running
+at the time. The tacker code itself takes on the obligation of not sending
+out heading commands; if anyone does not fulfill this obligation, then multiple
+commands may be sent out over the `heading_cmd` queue, confusing the controller.
+
+For the actuator modes, the switching is handled by the destination code, i.e.
+whatever code actually processes the commands. For everything but the
+rigid wing, this is `control/scamp.*` and for the rigid wing it is
+`rigid_wing/rigid_wing.*`. For these, separate queues are defined where
+relevant (there is a separated RC, manual, and autonomous queue for
+each). This has the advantage that there is only one process that
+must handle the switching, but requires defining more queues.
+
+Once we do all this, the joystick command is handled no differently
+then the regular autonomous command, except that it kicks in for a different
+mode.
+
 ## RC Control
+
+For RC control, we are referring to the use of a traditional RC
+transmitter/receiver pair which will typically have longer range than WiFi. This
+is no longer particularly relevant now that we have the longer range Ethernet
+bridges for communications, but it was the simplest solution originally.
+
+On the boat, this consisted of a RC receiver hooked such that it provided an
+SBUS command to the boat (for our particular hookup, this involved a separate
+board that parsed the PWM signals and output SBUS, but some RC receivers will
+output SBUS by default). SBUS is simply a UART protocol that just required
+inverting the signal (switching HIGH/LOW) to be readable by the Beaglebone
+itself. The code to parse the SBUS signal is defined in `sensor/read-sbus*`,
+and outputs an array of channel values.
+
+Once this happens, the `control/scamp.*` code scales the values into
+an appropriate range for the motor controllers and passes the commands through
+(if we are in one of the RC modes).
+
+Using this code requires that you ensure that a UART port is open on the
+Beaglebone (the code specifically expects UART4, but that is readily changed).
+
+I am not sure if the UART ports on the current versions of the beaglebone
+get enabled by default on boot or if you will need to make an appropriate
+entry in the `/boot/uEnv.txt` file, but no more setup than that should
+be necessary, as the baud rate and the such are all set by the C++ code.
 
 ## Motor Controllers
 
+The code that runs on-board the newest (Spring 2018) motor controllers is available
+at https://github.com/wpisailbot/stm32_motor_controller
+
+The code that ran on the SCAMPs in 2017 is at
+https://github.com/wpisailbot/SCAMP
+
+On the boat side of things, interfacing with both of these controllers is done
+via custom-defined NMEA2000 messages for which we use PGNs of the form `0xFF--`.
+This choice of PGN is purely arbitrary in that it did not seem to overlap with
+any existing PGNs. To facilitate ease of use, we define the messages
+as consisting of byte-aligned fields and keep individual messages to at most
+8 bytes so that they can fit inside a single packet.
+
+There is not much complexity on the boat side when it comes to actually handling
+these interactions, as the actual parsing is handled by the CAN code and the
+higher level logic mostly consists of the code in `control/scamp.cc` deciding
+which numbers to pass through to the actual CAN messages based on the mode
+code described above. As such, I will just go through the three
+messages that we have defined at this writing (May 7, 2018) for interacting
+with the motor controllers:
+
+```cpp
+// As defined in can/canboat-pgn.h:
+
+// Analog Read is a holdover from when we had an analog pot
+// on the SCAMP in 2017 to measure winch angle. It is meant
+// to be the feedback from the winch, and should provide a
+// 1-byte message representing the winch position in some way.
+// The current field should just provide the current running
+// through the motor controller, in whatever units are desirable
+{ "Analog Read", 0xFF01, true, 1, 0,
+  { { "Val", BYTES(1), 4, false, 0, "" }
+  , { "Current", BYTES(1), 1, false, 0, "" }
+  , { 0 }
+  }
+}
+
+// The name of this is also a holdover.
+// This message provides voltage commands for each of the
+// three actuators, using values from 0-180 (fitting with typical
+// arduino Servo commands). 90 should signify zero volts, with 0 and
+// 180 being the two extremes.
+,
+{ "PWM Write", 0xFF02, true, 3, 0,
+  { { "Winch", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { "Rudder", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { "Ballast", BYTES(1), 1, false, 0, "" } // Range 0-180
+  , { 0 }
+  }
+}
+,
+
+// Provide the current heel angle and ballast arm angle as
+// measured by the ballast sensors.
+{ "Ballast State", 0xFF05, true, 4, 0,
+  { { "Heel", BYTES(2), RES_RADIANS, true, "radians", "Heel angle of boat"}
+  , { "Ballast Arm", BYTES(2), RES_RADIANS, true, "radians", "Angle of ballast arm" }
+  , { 0 }
+  }
+}
+```
+
+## Status Monitor and On-Boat Display
+
+As of 2018, we have an [On-Boat
+Display](https://github.com/wpisailbot/OnBoatDisplay) which can display certain
+information. The interactions with this are largely similar to how we interact
+with the motor controllers (albeit with slightly different information being
+sent back and forth).
+
+In order to provide some useful information to show on the display, we need to
+keep track of some general status information to use.
+
 # Controls Software
 
-Simulation, controllers
+Simulation, controllers, "state estimation"/zeroing/etc
+
+## Controls Notes
+- Airmar heading data is unreliable--should use combination of gps velocity +
+  heading (e.g., weighted average that weights gps more as speed increases)
+- For turning on the previous boat, it turned out to be critical to add some
+  code that lets out the sail when turning downwind and sheets in when turning
+  upwind.
+- Movable ballast control seems to be cleanest if you have two PID loops: One
+  (lower-level) that takes a goal ballast position and drives the arm to that
+  angle; and a second (higher-level) that takes a goal heading and chooses a
+  ballast angle based on the heading error.
+
+Overall, the entire control system could be much more model-based.

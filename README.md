@@ -1,7 +1,9 @@
 [![Build Status](https://travis-ci.org/wpisailbot/boat.svg?branch=master)](https://travis-ci.org/wpisailbot/boat)
 
+For detailed documentation, please check the DOCS.md instead of this file.
+
 This repository contains the code meant to run on the boat for the WPI Sailbot
-in the 2016-2017 school year.
+in the 2016-2017 and 2017-2018 school years.
 
 ## Structure
 
@@ -45,10 +47,12 @@ with sundry optimization options enabled. If you want the code to be restarted
 after being deployed (by default the code on the boat will keep running until
 manually killed or the BBB is rebooted), than add any extra argument after the
 IP address, e.g. `bazel run --cpu=bbb -c opt //scripts:deploy -- 192.168.0.21 r`.
+Note: Remote restarting of the code is currently broken, until `sudo` on the
+BBB stops requiring a password (due to an upgrade to the default BBB image)
 
 ## BBB Setup
 
-1) Create BBB with debian jessie running on it
+1) Create BBB with debian 9.3 running on it
 2) `apt-get install unzip g++-4.7 libatomic-ops-dev`
 3) Create symlink between sailbot html files and /var/www/sailbot/
 
