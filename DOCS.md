@@ -443,6 +443,10 @@ password `temppwd` by default.
    root in order to be able to find this file): \
      `pin 96 (PIN96): 481d0000.can (GPIO UNCLAIMED) function pinmux_dcan1_pins group pinmux_dcan1_pins` \
      `pin 97 (PIN97): 481d0000.can (GPIO UNCLAIMED) function pinmux_dcan1_pins group pinmux_dcan1_pins`
+   If you have troubles with this and you are booting off an SD card with an
+   older OS still in the builtin eMMC, try upgrading the eMMC OS as it may be
+   out of date and still providing uboot (TODO(james): Check this for myself;
+   Cosine reported it on an unrelated project).
 7. Make the code run on startup by adding an entry `@reboot /home/debian/bin/sailbot/startup.sh`
    to the root crontab (accessible via `sudo crontab -e`).
 7. Start the code by running a `sudo ~/bin/sailbot/startup.sh`
