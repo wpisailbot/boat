@@ -1244,6 +1244,26 @@ system components, including the simulator which spoofs the sensors and system
 dynamics. By also starting up the UI server, we can then debug the system by
 looking at the UI on `localhost` or the such.
 
+### Running simulations
+
+In order to run the simulations, you follow these steps:
+1. _optional_ In order to view the simulation live, you need to setup a local webserver
+   to view things. Follow step 6 of the 
+   [BBB Setup](https://github.com/wpisailbot/boat/blob/master/DOCS.md#bbb-setup)
+   but on your personal laptop and point `/home/debian/bin/sailbot/html` at the
+   `ui/` folder in this repository (e.g., `/home/james/sailbot/ui`).
+2. To run a simulation of a particular scenario, do e.g.
+   `bazel build -c opt //control:control_test && ./bazel-bin/control/control_test --gtest_filter=*Navigation*`.
+   Note that once it starts running, you can use the UI webpage in chrome to set new waypoints
+   or the such. If you edit the `control/control_test.cc` you can change how long the
+   test runs for, what its default waypoints are, etc. Look for the
+   `TEST_F(SimpleControlTest, NavigationChallenge) {` for the sample Navigation challenge points
+   (this is what the `gtest_filter` argument is doing; making you just run the tests with
+   `Navigation` in the name).
+3. Running the previous command creates a CSV file with data from the simulation run at 
+   `sim/python/basic_sim_data.csv`; you can then `cd sim/python` and run `./plot_basic_sim.py`
+   to view a plot of the output CSV data.
+
 # Boat-Specific Infrastructure
 
 Much of the previously discussed software infrastructure is relevant to many
