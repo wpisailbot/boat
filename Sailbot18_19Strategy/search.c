@@ -51,7 +51,9 @@ void sailToBuoy(){
 
 bool searchPattern(){
   // set waypoint gate 100m away
-  // DFS?
+  // check wind direction
+  // sail leftsided close hauled 
+  // once reaches 100m waypoint, tack
 }
 
 void sailForward(){
