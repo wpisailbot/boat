@@ -15,3 +15,18 @@
 * This code was written by Sydney Fisher and Sierra Palmer as part of the WPI 
 * 2018-2019 Sailbot team to accomplish this task
 */
+
+buoyFound = false
+while true do
+  img = getCameraImage()
+  while buoyFound == false do
+    detection(img) // Invoke detection algorithm
+    if buoy is detected then
+      buoyFound = true
+    end if
+  end while
+  sailing(img) // Invoke sailing/tracking algorithm
+  if buoy is lost then
+    buoyFound = false
+  end if
+end while
