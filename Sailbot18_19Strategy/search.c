@@ -16,17 +16,18 @@
 * 2018-2019 Sailbot team to accomplish this task
 */
 
-buoyFound = false
-while true do
-  img = getCameraImage()
-  while buoyFound == false do
-    detection(img) // Invoke detection algorithm
-    if buoy is detected then
-      buoyFound = true
-    end if
-  end while
-  sailing(img) // Invoke sailing/tracking algorithm
-  if buoy is lost then
-    buoyFound = false
-  end if
-end while
+
+buoyFound = false;
+while(true){
+  img = getCameraImage();
+  while (buoyFound == false){
+    detection(img)    // invoke detection algorithm
+    if (buoy == found){
+      buoyFound = true;
+    }
+  }
+   sailing(img); //invoke search alogrithm
+  if buoy is lost then {
+    buoyFound = false;
+  }
+}
