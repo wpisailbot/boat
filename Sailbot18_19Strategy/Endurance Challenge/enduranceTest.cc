@@ -8,7 +8,7 @@ void clockTimer(){
 	runTimer();
 }
 
-boolean buoyDetect(){
+bool buoyDetect(){
 	// The robot will sail forward at all times, but once the camera detects a
 	// buoy, the boat should sail towards the buoy. Otherwise, it needs to 
 	// keep sailing forward
