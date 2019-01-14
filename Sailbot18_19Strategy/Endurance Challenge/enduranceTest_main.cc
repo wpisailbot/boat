@@ -11,6 +11,8 @@
 * 2018-2019 Sailbot team to accomplish this task
 */
 
+#include "enduranceTest.h"
+
 int main(){
 	// Set the clock to 0 and have it start running for the duration of the 
 	// event
