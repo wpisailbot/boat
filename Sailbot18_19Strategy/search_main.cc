@@ -16,6 +16,8 @@
 * 2018-2019 Sailbot team to accomplish this task
 */
 
+#include "search.h"
+
 
 int main(){
   while(time < 300){
