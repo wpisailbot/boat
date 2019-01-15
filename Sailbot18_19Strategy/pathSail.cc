@@ -52,6 +52,25 @@
 // The sailing lane should be 12 m wide, with 6 m on either side of the starting point of the boat
 // Therefore, each grid square should be 2 meters squared
 
+// See http://eigen.tuxfamily.org/dox-devel/group__TopicUnalignedArrayAssert.html
+// This only seems to be an issue on the BBB, not normal laptops.
+#define EIGEN_DONT_VECTORIZE
+#define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
+#include "gtest/gtest.h"
+#include <gflags/gflags.h>
+
+#include "simple.h"
+#include "adaptive.h"
+#include "line_plan.h"
+#include "util/node.h"
+#include "ui/server.h"
+#include "sim/sim_inter.h"
+#include "control/simple.h"
+//#include "control/line_tacking.h"
+#include "control/waypoint_manager.h"
+#include "sensor/state_estimator.h"
+#include "sim/csv_logging.h"
+#include "util/testing.h"
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -59,7 +78,10 @@
 #include <algorithm>
 #include "pathSail.h"
 
-using namespace std;
+DEFINE_string(csv_file, "sim/python/basic_sim_data.csv", "File to save CSV data to");
+
+namespace sailbot{
+namespace testing{
 
 long goalPoint[1][2];
 std::string startLocation[1][2]; // [latitude, longitude]
@@ -390,5 +412,7 @@ void pathSail::buoyGoal(){
         goalPoint[0][1] = startLocationMeters[0][0] + longLaneDist;
     }
 }
+} // testing
+} // sailbot
 
 
