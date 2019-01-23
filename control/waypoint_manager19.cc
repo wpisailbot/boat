@@ -102,16 +102,17 @@ WaypointManager::WaypointManager()
 
 void WaypointManager::Iterate() {
   switch (mode_) {
+    case msg::ChallengeControl::ENDURANCE_CHALLENGE:
+          DoEduranceChallenge();
+          break;
+    case msg::ChallengeControl::PRECISIONNAV_CHALLENGE:
+          DoPrecisionNavChallenge();
+          break;
+    case msg::ChallengeControl::SEARCH_CHALLENGE:
+          DoSearchChallenge();
+          break;
     case msg::ChallengeControl::STATION_KEEP:
       DoStationKeep();
-      break;
-    case msg::ChallengeControl::WAYPOINT:
-      break;
-    case msg::ChallengeControl::VISION:
-      DoVisionSearch();
-      break;
-    case msg::ChallengeControl::OBSTACLE:
-      DoObstacleAvoid();
       break;
   }
 }
