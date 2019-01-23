@@ -53,26 +53,26 @@ WaypointManager::WaypointManager()
         }
         mode_ = msg.challenge();
         switch (msg.challenge()) {
-        case msg::ChallengeControl::STATION_KEEP:
+        case msg::ChallengeControl::ENDURANCE_CHALLENGE:
           station_keep_state_ = GOTO_START;
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           control_mode_queue_.send(control_mode_msg_);
           break;
-        case msg::ChallengeControl::WAYPOINT:
+        case msg::ChallengeControl::PRECISIONNAV_CHALLENGE:
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           break;
-        case msg::ChallengeControl::VISION:
-          vision_state_ = FOLLOW_WAYPOINTS;
+        case msg::ChallengeControl::SEARCH_CHALLENGE:
+          vision_state_ = FOLLOW_WAYPOINTS; 
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
           control_mode_queue_.send(control_mode_msg_);
           break;
-        case msg::ChallengeControl::OBSTACLE:
+        case msg::ChallengeControl::STATION_KEEP:
           obstacle_state_ = WAYPOINT;
           control_mode_msg_->set_rudder_mode(msg::ControlMode::AUTO);
           control_mode_msg_->set_winch_mode(msg::ControlMode::AUTO);
