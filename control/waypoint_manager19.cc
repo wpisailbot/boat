@@ -103,14 +103,14 @@ WaypointManager::WaypointManager()
 void WaypointManager::Iterate() {
   switch (mode_) {
     case msg::ChallengeControl::ENDURANCE_CHALLENGE:
-          DoEduranceChallenge();
-          break;
+      DoEduranceChallenge();
+      break;
     case msg::ChallengeControl::PRECISIONNAV_CHALLENGE:
-          DoPrecisionNavChallenge();
-          break;
+      DoPrecisionNavChallenge();
+      break;
     case msg::ChallengeControl::SEARCH_CHALLENGE:
-          DoSearchChallenge();
-          break;
+      DoSearchChallenge();
+      break;
     case msg::ChallengeControl::STATION_KEEP:
       DoStationKeep();
       break;
@@ -168,73 +168,25 @@ void WaypointManager::DoStationKeep() {
   }
 }
 
-void WaypointManager::DoVisionSearch() {
-  switch (vision_state_) {
-    case FOLLOW_WAYPOINTS:
-      search_state_msg_->set_state(msg::SearchState::NO_TARGET);
-      if ((tacker_done_ || last_waypoint_ >= 1) &&
-          vision_confidence_ > kVisionConfidenceThreshold) {
-        search_state_msg_->set_state(msg::SearchState::GOING_TO_BUOY);
-        control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
-        control_mode_queue_.send(control_mode_msg_);
-        vision_state_ = FOLLOW_VISION;
-      }
-      search_state_queue_.send(search_state_msg_);
-      break;
-    case FOLLOW_VISION:
-      heading_cmd_msg_->set_heading(vision_abs_heading_);
-      heading_cmd_queue_.send(heading_cmd_msg_);
-      if (vision_confidence_ > kVisionFoundThreshold) {
-        search_state_msg_->set_state(msg::SearchState::AT_BUOY);
-        // Station Keep
-        heading_cmd_msg_->set_heading(upwind_dir_ + 0 * M_PI / 8);
-        heading_cmd_msg_->set_extra_sail(1.5);
-        heading_cmd_queue_.send(heading_cmd_msg_);
-        heading_cmd_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
-        control_mode_queue_.send(control_mode_msg_);
-      } else if (vision_confidence_ < kVisionConfidenceThreshold) {
-        control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
-        control_mode_queue_.send(control_mode_msg_);
-      }
-      search_state_queue_.send(search_state_msg_);
-      break;
+void WaypointManager::DoPrecisionNavChallenge() {
+  switch (station_keep_state_) {
+
   }
 }
 
-void WaypointManager::DoObstacleAvoid() {
-//  float turnleftwind = util::norm_angle(M_PI / 2 + boat_yaw_ ;
-//  float turnrightwind = -turnleft;
-  switch (obstacle_state_) {
-    case WAYPOINT:
-      if (!near_waypoint_ && vision_confidence_ > kVisionObstacleThreshold) {
-        obs_cnt_ = 0;
-        control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::DISABLED);
-        control_mode_queue_.send(control_mode_msg_);
-        initial_avoid_diff_heading_ =
-            M_PI / 2.0 *
-            (util::norm_angle(vision_abs_heading_ - boat_yaw_) > 0 ? 1.0
-                                                                   : -1.0);
-        obstacle_state_ = AVOID;
-      }
-      break;
-    case AVOID:
-      ++obs_cnt_;
-      heading_cmd_msg_->set_heading(
-          util::norm_angle(initial_avoid_diff_heading_ + boat_yaw_));
-      heading_cmd_queue_.send(heading_cmd_msg_);
-      if (obs_cnt_ > 50 && vision_confidence_ < kVisionObstacleThreshold) {
-        control_mode_msg_->Clear();
-        control_mode_msg_->set_tacker(msg::ControlMode::LINE_PLAN);
-        control_mode_queue_.send(control_mode_msg_);
-        obstacle_state_ = WAYPOINT;
-      }
-      break;
+void WaypointManager::DoEduranceChallenge() {
+  switch (station_keep_state_) {
+
   }
 }
+
+void WaypointManager::DoSearchChallenge() {
+  switch (station_keep_state_) {
+
+  }
+}
+
+
 
 } // namespace control
-} // namespace sailbot
+} // namespace sailbot        
