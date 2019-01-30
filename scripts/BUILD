@@ -15,6 +15,7 @@ genrule(
         "//control:scamp_main",
         "//control:line_tacking_main",
         "//control:waypoint_manager_main",
+        "//control:rudderTest_main",
         "//sensor:state_estimator_main",
         "//sensor:sbus-test-run",
         "//can:can-ping",

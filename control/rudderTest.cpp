@@ -19,6 +19,7 @@ namespace control{
         {
             if do_rudder{
                 rudder_msg_->set_pos(1.5);
+                rudder_cmd_.send(rudder_msg_);
             }
         }
 
