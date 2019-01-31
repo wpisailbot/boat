@@ -18,7 +18,7 @@ namespace control{
         rudderControl::rudderControl()
         {
             if do_rudder{
-                rudder_msg_->set_pos(1.5);
+                rudder_msg_->set_pos(0.75);
                 rudder_cmd_.send(rudder_msg_);
             }
         }
