@@ -90,6 +90,12 @@ cc_binary(
   srcs=["line_plan_main.cc"],
   deps=[":line_plan"],
 )
+cc_library(
+  name="rudderTest",
+  srcs=["rudderTest.cc"],
+  hdrs=["rudderTest.h"],
+  deps=[":rudderTest"],
+)
 cc_binary(
     name="rudderTest_main",
     srcs=["rudderTest_main.cc],
