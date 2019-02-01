@@ -93,7 +93,7 @@ cc_binary(
 cc_library(
   name="rudderTest",
   srcs=["rudderTest.cc"],
-  hdrs=["rudderTest.h"],
+  hdrs=["rudderTest.h", "simple.h"],
 )
 cc_binary(
   name="rudderTest_main",
