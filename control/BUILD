@@ -98,8 +98,8 @@ cc_library(
 ) 
 cc_binary(
   name="ballastTest_main",
-  srcs=["ballastTest_main.cc"]
-  deps={":ballastTest"]
+  srcs=["ballastTest_main.cc"],
+  deps={":ballastTest"],
 )
 cc_library(
   name="rudderTest",
