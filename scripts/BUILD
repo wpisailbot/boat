@@ -1,6 +1,6 @@
 genrule(
   name="zip_outs",
-  srcs=[#"bringup-can.sh",
+  srcs=["bringup-can.sh",
         "startup.sh",
         #"killall.sh",
         #"waypoints.pba",
