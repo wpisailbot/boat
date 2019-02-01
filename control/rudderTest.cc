@@ -15,8 +15,8 @@ namespace control{
 
     void RudderTest::simpleRudder(){
             if (rudder){
-                msg::RudderCmd::rudder_msg_->set_pos(0.75);
-                msg::RudderCmd::rudder_cmd_.send(rudder_msg_);
+                control::SimpleControl::msg::RudderCmd::rudder_msg_->set_pos(0.75);
+                control::SimpleControl::msg::RudderCmd::rudder_cmd_.send(rudder_msg_);
             }
             else {
                 msg::RudderCmd::rudder_msg_->set_pos(0);
