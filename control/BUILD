@@ -91,11 +91,22 @@ cc_binary(
   deps=[":line_plan"],
 )
 cc_library(
+  name="ballastTest",
+  srcs=["ballastTest.cc"],
+  hdrs=["ballastTest.h", "simple.h"],
+  deps=["//util:node", ":util"],
+) 
+cc_binary(
+  name="ballastTest_main",
+  srcs=["ballastTest_main.cc"]
+  deps={":ballastTest"]
+)
+cc_library(
   name="rudderTest",
   srcs=["rudderTest.cc"],
   hdrs=["rudderTest.h", "simple.h"],
   deps=["//util:node", ":util"],
-)
+) 
 cc_binary(
   name="rudderTest_main",
   srcs=["rudderTest_main.cc"],
