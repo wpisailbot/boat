@@ -97,9 +97,9 @@ cc_library(
   deps=[":rudderTest", ":simple"],
 )
 cc_binary(
-    name="rudderTest_main",
-    srcs=["rudderTest_main.cc],
-    deps=[":rudderTest"],
+  name="rudderTest_main",
+  srcs=["rudderTest_main.cc"],
+  deps=[":rudderTest"],
 )
 cc_library(
   name="line_tacking",
