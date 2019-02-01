@@ -13,11 +13,9 @@
 namespace sailbot {
 namespace control{
 
-    void simpleRudder(){
-        do_rudder_ == true;
-        rudderControl::rudderControl()
+    void RudderTest::simpleRudder(){
         {
-            if do_rudder{
+            if rudder{
                 rudder_msg_->set_pos(0.75);
                 rudder_cmd_.send(rudder_msg_);
             }
