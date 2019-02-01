@@ -94,7 +94,7 @@ cc_library(
   name="rudderTest",
   srcs=["rudderTest.cc"],
   hdrs=["rudderTest.h", "simple.h"],
-  deps=["//util:node"],
+  deps=["//util:node", ":util"],
 )
 cc_binary(
   name="rudderTest_main",
