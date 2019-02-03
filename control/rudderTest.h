@@ -7,6 +7,7 @@
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
 #include <mutex>
+class SimpleControl;
 
 #ifndef BOAT_RUDDERTEST_H
 #define BOAT_RUDDERTEST_H
