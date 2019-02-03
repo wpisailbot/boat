@@ -12,11 +12,14 @@ class SimpleControl : public Node {
   SimpleControl(bool do_rudder=false);
 
   void Iterate() override;
+
+  msg::RudderCmd *rudder_msg_;
+  ProtoQueue<msg::RudderCmd> rudder_cmd_;
+
  private:
   constexpr static float dt = 0.01;
   const bool do_rudder_;
   msg::SailCmd *sail_msg_;
-  msg::RudderCmd *rudder_msg_;
   msg::HeelCmd *heel_msg_;
   msg::RigidWingCmd *rigid_msg_;
   msg::BoatState *boat_state_;
