@@ -15,11 +15,11 @@ namespace control{
 
     void RudderTest::simpleRudder(){
             if (rudder){
-                control::msg::rudder_msg_->set_pos(0.75);
+                control::msg::RudderCmd->rudder_msg_->set_pos(0.75);
                 control::msg::rudder_cmd_.send(rudder_msg_);
             }
             else {
-                msg::RudderCmd::rudder_msg_->set_pos(0);
+                control::msg::RudderCmd->rudder_msg_->set_pos(0);
         }
 
     }
