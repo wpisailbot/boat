@@ -96,11 +96,11 @@ cc_binary(
 #  hdrs=["ballastTest.h", "simple.h"],
 #  deps=["//util:node", ":util"],
 #)
-cc_binary(
-  name="ballastTest_main",
-  srcs=["ballastTest_main.cc"],
-  deps=[":ballastTest"],
-)
+#cc_binary(
+#  name="ballastTest_main",
+#  srcs=["ballastTest_main.cc"],
+#  deps=[":ballastTest"],
+#)
 cc_library(
   name="rudderTest",
   srcs=["rudderTest.cc"],
