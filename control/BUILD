@@ -75,11 +75,11 @@ cc_binary(
   srcs=["simple_main.cc"],
   deps=[":simple_control"],
 )
-cc_binary(
-  name="ballast_control_main",
-  srcs=["ballast_main.cc"],
-  deps=[":ballast_control"],
-)
+#cc_binary(
+#  name="ballast_control_main",
+#  srcs=["ballast_main.cc"],
+#  deps=[":ballast_control"],
+#)
 cc_binary(
   name="adaptive_control_main",
   srcs=["adaptive_main.cc"],
@@ -90,12 +90,12 @@ cc_binary(
   srcs=["line_plan_main.cc"],
   deps=[":line_plan"],
 )
-cc_library(
-  name="ballastTest",
-  srcs=["ballastTest.cc"],
-  hdrs=["ballastTest.h", "simple.h"],
-  deps=["//util:node", ":util"],
-) 
+#cc_library(
+#  name="ballastTest",
+#  srcs=["ballastTest.cc"],
+#  hdrs=["ballastTest.h", "simple.h"],
+#  deps=["//util:node", ":util"],
+#)
 cc_binary(
   name="ballastTest_main",
   srcs=["ballastTest_main.cc"],
