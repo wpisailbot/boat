@@ -13,15 +13,15 @@
 namespace sailbot {
 namespace control{
 
-    void RudderTest::simpleRudder(){
+   /* void RudderTest::simpleRudder(){
             if (rudder){
-                sailbot::msg::RudderCmd rudder_msg_->set_pos(0.75);
+                sailbot::msg::RudderCmd rudder_msg_->set_pos(0.75); // error with needing an initializer
                 sailbot::ProtoQueue<msg::RudderCmd> rudder_cmd_.send(rudder_msg_);
             }
             else {
-                sailbot::msg::RudderCmd::rudder_msg_->set_pos(0);
+                sailbot::msg::RudderCmd rudder_msg_->set_pos(0);
         }
 
-    }
+    } */
 } //control
 } //sailbot
