@@ -46,6 +46,12 @@ cc_library(
         "//sim:sim_physics"],
 )
 cc_library(
+  name="rudderTest",
+  srcs=["rudderTest.cc"],
+  hdrs=["rudderTest.h", "simple.h"],
+  deps=["//util:node", ":util"],
+)
+cc_library(
   name="scamp",
   srcs=["scamp.cc"],
   hdrs=["scamp.h"],
@@ -101,12 +107,6 @@ cc_binary(
 #  srcs=["ballastTest_main.cc"],
 #  deps=[":ballastTest"],
 #)
-cc_library(
-  name="rudderTest",
-  srcs=["rudderTest.cc"],
-  hdrs=["rudderTest.h", "simple.h"],
-  deps=["//util:node", ":util"],
-) 
 cc_binary(
   name="rudderTest_main",
   srcs=["rudderTest_main.cc"],
