@@ -15,7 +15,7 @@ $DIR/simple_control_main &
 $DIR/ballast_control_main &
 $DIR/rigid_wing_main &
 $DIR/monitor_main &
-$DIR/ballastTest_main &
+#$DIR/ballastTest_main &
 $DIR/rudderTest_main &
 $DIR/state_estimator_main &
 $DIR/scamp_main -consts_file $DIR/zero_consts.pba &
