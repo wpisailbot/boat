@@ -81,11 +81,11 @@ cc_binary(
   srcs=["simple_main.cc"],
   deps=[":simple_control"],
 )
-#cc_binary(
-#  name="ballast_control_main",
-#  srcs=["ballast_main.cc"],
-#  deps=[":ballast_control"],
-#)
+cc_binary(
+  name="ballast_control_main",
+  srcs=["ballast_main.cc"],
+  deps=[":ballast_control"],
+)
 cc_binary(
   name="adaptive_control_main",
   srcs=["adaptive_main.cc"],
