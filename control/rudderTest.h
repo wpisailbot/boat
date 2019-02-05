@@ -19,9 +19,10 @@ namespace sailbot {
         class RudderTest : public Node {
         public:
             void simpleRudder();
-
-        private:
             const bool rudder = true;
+        private:
+            msg::RudderCmd *rudder_msg_;
+            ProtoQueue<msg::RudderCmd> rudder_cmd_;
         };
     }
 }

@@ -10,18 +10,24 @@
 #include <Eigen/Geometry>
 #include "control/util.h"
 
+package sailbot.msg;
+
 namespace sailbot {
 namespace control{
 
-   /* void RudderTest::simpleRudder(){
-            if (rudder){
-                sailbot::msg::RudderCmd rudder_msg_->set_pos(0.75); // error with needing an initializer
-                sailbot::ProtoQueue<msg::RudderCmd> rudder_cmd_.send(rudder_msg_);
-            }
-            else {
-                sailbot::msg::RudderCmd rudder_msg_->set_pos(0);
-        }
+    void RudderTest::simpleRudder(rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)) {
+        if (RudderTest::rudder){
 
-    } */
+            //sailbot::msg::RudderCmd
+
+            rudder_msg_->set_pos(0.75); // error with needing an initializer
+            //sailbot::ProtoQueue<msg::RudderCmd>
+            rudder_cmd_.send(rudder_msg_);
+        }
+        else {
+            //sailbot::msg::RudderCmd
+            rudder_msg_->set_pos(0);
+        }
+    }
 } //control
 } //sailbot
