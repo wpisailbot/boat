@@ -6,11 +6,12 @@
 #include "rudderTest.h"
 
 int main(int argc, char *argv[]){
+    RudderTest rt;
+    const bool rudderTest = true;
+
     sailbot::util::SetCurrentThreadRealtimePriority(10);
     sailbot::util::Init(argc, argv);
 
-    const bool rudderTest = true;
-
-    sailbot::control::RudderTest::simpleRudder(rudderTest);
+    rt.simpleRudder(rudderTest);
 }
 
