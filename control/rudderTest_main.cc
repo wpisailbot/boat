@@ -9,6 +9,8 @@ int main(int argc, char *argv[]){
     sailbot::util::SetCurrentThreadRealtimePriority(10);
     sailbot::util::Init(argc, argv);
 
-    sailbot::control::RudderTest::simpleRudder(bool rudder = true);
+    const bool rudderTest = true;
+
+    sailbot::control::RudderTest::simpleRudder(rudderTest);
 }
 
