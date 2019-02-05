@@ -13,7 +13,7 @@
 namespace sailbot {
 namespace control{
 
-    void RudderTest::simpleRudder(RudderTest::rudder) : rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true){
+    void RudderTest::simpleRudder(rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)){
         if (RudderTest::rudderNew){
 
             //sailbot::msg::RudderCmd
