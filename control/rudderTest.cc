@@ -10,12 +10,10 @@
 #include <Eigen/Geometry>
 #include "control/util.h"
 
-package sailbot.msg;
-
 namespace sailbot {
 namespace control{
 
-    void RudderTest::simpleRudder(rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)) {
+    void RudderTest::simpleRudder(rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)){
         if (RudderTest::rudder){
 
             //sailbot::msg::RudderCmd
