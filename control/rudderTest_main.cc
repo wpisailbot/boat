@@ -4,6 +4,7 @@
 
 #include "simple.h"
 #include "rudderTest.h"
+package RudderTest;
 
 int main(int argc, char *argv[]){
     RudderTest rt;

@@ -7,7 +7,7 @@
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
 #include <mutex>
-class SimpleControl;
+// class SimpleControl;
 
 #ifndef BOAT_RUDDERTEST_H
 #define BOAT_RUDDERTEST_H
@@ -16,7 +16,7 @@ class SimpleControl;
 
 namespace sailbot {
     namespace control {
-        class RudderTest : public Node {
+        class RudderTest{
         public:
             void simpleRudder(bool rudder = true);
             const bool rudderNew = true;
