@@ -1,5 +1,5 @@
 //
-// Created by Sierra Palmer and Sydney Fisher on 1/28/19.
+// Created by Sierra Palmer and Sydney Fisher on 1/28/19. 
 //
 
 // A lot of this code is pulled from simple.cc in order to get the rudders to run correctly and autonomously
