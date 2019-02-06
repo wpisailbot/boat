@@ -7,19 +7,22 @@
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
 #include <mutex>
-class SimpleControl;
 
-#ifndef BOAT_RUDDERTEST_H
-#define BOAT_RUDDERTEST_H
 
-#endif //BOAT_RUDDERTEST_H
+//class SimpleControl;
+
+//#ifndef BOAT_RUDDERTEST_H
+//#define BOAT_RUDDERTEST_H
+
+//#endif //BOAT_RUDDERTEST_H
 
 namespace sailbot {
     namespace control {
-        class RudderTest{
+        class RudderTest : public Node {
         public:
-            void simpleRudder(bool rudder = true);
-            const bool rudderNew = true;
+            SimpleControl(bool do_rudder=false);
+            //void simpleRudder(bool rudder = true);
+            //const bool rudderNew = true;
         private:
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
