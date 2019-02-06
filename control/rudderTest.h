@@ -18,7 +18,8 @@
 
 namespace sailbot {
     namespace control {
-        class RudderTest : public Node {
+        class RudderTest {
+                //: public Node {
         public:
             void SimpleControl(bool do_rudder=false);
             void simpleRudder(bool do_rudderTest = true);

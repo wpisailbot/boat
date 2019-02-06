@@ -11,7 +11,7 @@ int main(int argc, char *argv[]){
     sailbot::util::Init(argc, argv);
     
     sailbot::control::RudderTest rt(true);
-    const bool rudderTest = true;
+    //const bool rudderTest = true;
     rt.Run();
     
 
