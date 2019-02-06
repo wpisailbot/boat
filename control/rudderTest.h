@@ -2,7 +2,7 @@
 // Created by Sierra Palmer on 1/28/19.
 //
 
-#pragma once
+//#pragma once
 #include "util/node.h"
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
