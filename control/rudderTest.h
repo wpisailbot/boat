@@ -25,8 +25,10 @@ namespace sailbot {
             void simpleRudder(bool do_rudderTest = true);
             const static bool rudderNew = true;
 
-            RudderTest(bool whetherTrue){
+            RudderTest(bool whetherTrue, rudder_msg_(AllocateMessage<msg::RudderCmd()) newMessage, rudder_cmd_("rudder_cmd", true))= newCommand){
                 rudderNew = whetherTrue;
+                *rudder_msg_ = newMessage;
+                rudder_cmd_ = newCommand;
             }
 
         private:
