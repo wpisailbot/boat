@@ -38,7 +38,7 @@ namespace control {
             sailbot::msg::RudderCmd
             rudder_msg_->set_pos(0);
         }
-    } */
+    } 
 } //control
 } //sailbot
 
