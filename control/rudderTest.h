@@ -1,5 +1,6 @@
+
 //
-// Created by Sierra Palmer on 1/28/19.
+// Created by Sierra Palmer and Sydney Fisher on 1/28/19.
 //
 
 //#pragma once
@@ -7,7 +8,6 @@
 #include "control/actuator_cmd.pb.h"
 #include "rigid_wing/rigid_wing.pb.h"
 #include <mutex>
-
 
 //class SimpleControl;
 
@@ -18,22 +18,17 @@
 
 namespace sailbot {
     namespace control {
-        class RudderTest {
-                //: public Node {
+        class RudderTest : public Node {
         public:
-            void SimpleControl(bool do_rudder=false);
-            void simpleRudder(bool do_rudderTest = true);
-            bool rudderNew = true;
-
-            RudderTest(bool whetherTrue, rudder_msg_(AllocateMessage<msg::RudderCmd()) newMessage, rudder_cmd_("rudder_cmd", true))= newCommand){
-                rudderNew = whetherTrue;
-                *rudder_msg_ = newMessage;
-                rudder_cmd_ = newCommand;
-            }
-
+            RudderTest(bool do_rudder=false);
+            void simpleRudder(bool do_rudder = true);
+            const bool rudderNew = true;
+	    
         private:
+            const bool do_rudder_;
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
+	    msg::ControllerConstants *consts_msg_;
         };
     }
 }
