@@ -13,16 +13,19 @@
 namespace sailbot {
 namespace control {
 
-     void RudderTest::SimpleControlTest(bool do_rudderTest,: Node(0.01),
-          do_rudderTest_(do_rudderTest),
+     RudderTest::RudderTest(bool do_rudder)
+        : Node(0.01),
+          do_rudder_(do_rudder),
           rudder_msg_(AllocateMessage<msg::RudderCmd>()),
-          rudder_cmd_("rudder_cmd", true) {
+          rudder_cmd_("rudder_cmd", true),
+	  consts_msg_(AllocateMessage<msg::ControllerConstants>())
+                                                                   {
           
      consts_msg_->set_max_rudder(0.5);
      consts_msg_->set_rudder_kp(0.5);
      consts_msg_->set_rudder_ki(0.02);
      
-     }
+}
     
     void RudderTest::simpleRudder(bool rudder = true, rudder_msg_(AllocateMessage<msg::RudderCmd()) = message, rudder_cmd_("rudder_cmd", true) = command){
         if (rudder){
