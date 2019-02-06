@@ -20,9 +20,9 @@ namespace sailbot {
     namespace control {
         class RudderTest : public Node {
         public:
-            SimpleControl(bool do_rudder=false);
-            //void simpleRudder(bool rudder = true);
-            //const bool rudderNew = true;
+            SimpleControlTest(bool do_rudder=false);
+            void simpleRudder(bool do_rudderTest = true);
+            const bool rudderNew = true;
         private:
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
