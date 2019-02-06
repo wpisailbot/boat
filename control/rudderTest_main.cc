@@ -1,5 +1,5 @@
 //
-// Created by Sierra Palmer on 1/28/19.
+// Created by Sierra Palmer and Sydney Fisher on 1/28/19.
 //
 
 #include "simple.h"
@@ -7,14 +7,13 @@
 //package RudderTest;
 
 int main(int argc, char *argv[]){
-    const sailbot::control::RudderTest rt;
     sailbot::util::SetCurrentThreadRealtimePriority(10);
     sailbot::util::Init(argc, argv);
     
-    //sailbot::control::RudderTest::simpleRudder(true);
-    //const bool rudderTest = true;
-    rt.simpleRudder(true);
+    sailbot::control::RudderTest rt(true);
+    const bool rudderTest = true;
+    rt.Run();
+    
 
     //rt.simpleRudder(rudderTest);
 }
-
