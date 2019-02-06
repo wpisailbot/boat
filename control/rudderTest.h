@@ -23,7 +23,7 @@ namespace sailbot {
         public:
             void SimpleControl(bool do_rudder=false);
             void simpleRudder(bool do_rudderTest = true);
-            const bool rudderNew = true;
+            //const bool rudderNew = true;
         private:
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
