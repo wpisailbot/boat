@@ -7,12 +7,13 @@
 //package RudderTest;
 
 int main(int argc, char *argv[]){
+    sailbot::control::RudderTest rt;
     sailbot::util::SetCurrentThreadRealtimePriority(10);
     sailbot::util::Init(argc, argv);
     
-    sailbot::control::RudderTest::simpleRudder(true);
+    //sailbot::control::RudderTest::simpleRudder(true);
     //const bool rudderTest = true;
-   // rt.simpleRudder(true);
+    rt.simpleRudder(true);
 
     //rt.simpleRudder(rudderTest);
 }
