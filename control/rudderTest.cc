@@ -1,5 +1,5 @@
 //
-// Created by Sierra Palmer on 1/28/19.
+// Created by Sierra Palmer and Sydney Fisher on 1/28/19.
 //
 
 // A lot of this code is pulled from simple.cc in order to get the rudders to run correctly and autonomously
@@ -27,18 +27,19 @@ namespace control {
      
 }
     
-    void RudderTest::simpleRudder(bool rudder = true, rudder_msg_(AllocateMessage<msg::RudderCmd()) = message, rudder_cmd_("rudder_cmd", true) = command){
-        if (rudder){
+    void RudderTest::simpleRudder(bool rudder){
+    //,  rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)
+        if (RudderTest::rudderNew){
 
-            sailbot::msg::RudderCmd  message->set_pos(0.75);
 
-            //rudder_msg_->set_pos(0.75); // error with needing an initializer
-            sailbot::ProtoQueue<msg::RudderCmd> command.send(rudder_msg_);
+            rudder_msg_->set_pos(0.75); // error with needing an initializer
+            //sailbot::ProtoQueue<msg::RudderCmd>
+            rudder_cmd_.send(rudder_msg_);
         }
         else {
-            sailbot::msg::RudderCmd message->set_pos(0);
+            //sailbot::msg::RudderCmd
+            rudder_msg_->set_pos(0);
         }
     } 
 } //control
 } //sailbot
-
