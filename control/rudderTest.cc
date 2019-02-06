@@ -24,18 +24,16 @@ namespace control {
      
      }
     
-    void RudderTest::simpleRudder(bool rudder = true, rudder_msg_(AllocateMessage<msg::RudderCmd()), rudder_cmd_("rudder_cmd", true)){
-        if (RudderTest::rudderNew){
+    void RudderTest::simpleRudder(bool rudder = true, rudder_msg_(AllocateMessage<msg::RudderCmd()) = message, rudder_cmd_("rudder_cmd", true) = command){
+        if (rudder){
 
-            sailbot::msg::RudderCmd
+            sailbot::msg::RudderCmd  message->set_pos(0.75);
 
-            rudder_msg_->set_pos(0.75); // error with needing an initializer
-            sailbot::ProtoQueue<msg::RudderCmd>
-            rudder_cmd_.send(rudder_msg_);
+            //rudder_msg_->set_pos(0.75); // error with needing an initializer
+            sailbot::ProtoQueue<msg::RudderCmd> command.send(rudder_msg_);
         }
         else {
-            sailbot::msg::RudderCmd
-            rudder_msg_->set_pos(0);
+            sailbot::msg::RudderCmd message->set_pos(0);
         }
     } 
 } //control
