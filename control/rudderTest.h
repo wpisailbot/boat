@@ -20,7 +20,7 @@ namespace sailbot {
     namespace control {
         class RudderTest : public Node {
         public:
-            SimpleControlTest(bool do_rudder=false);
+            SimpleControl(bool do_rudder=false);
             void simpleRudder(bool do_rudderTest = true);
             const bool rudderNew = true;
         private:
