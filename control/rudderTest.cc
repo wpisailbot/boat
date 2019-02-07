@@ -29,6 +29,7 @@ namespace control {
     
     void RudderTest::simpleRudder(bool rudder){
     //,  rudder_msg_(AllocateMessage<msg::RudderCmd>()), rudder_cmd_("rudder_cmd", true)
+    while(true){
         if (RudderTest::rudderNew){
 
 
@@ -41,6 +42,7 @@ namespace control {
             rudder_msg_->set_pos(.5);
 	    rudder_cmd_.send(rudder_msg_);
         }
+    }
     } 
 } //control
 } //sailbot
