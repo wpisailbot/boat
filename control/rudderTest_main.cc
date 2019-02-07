@@ -5,6 +5,7 @@
 #include "simple.h"
 #include "rudderTest.h"
 //package RudderTest;
+#include <iostream>
 
 int main(int argc, char *argv[]){
     sailbot::util::SetCurrentThreadRealtimePriority(10);
