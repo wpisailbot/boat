@@ -28,7 +28,7 @@ namespace sailbot {
             const bool do_rudder_;
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
-	    msg::ControllerConstants *consts_msg_;
+	        msg::ControllerConstants *consts_msg_;
         };
     }
 }

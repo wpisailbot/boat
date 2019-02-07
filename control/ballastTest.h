@@ -17,10 +17,25 @@ namespace sailbot {
     namespace control {
         class BallastTest : public Node {
         public:
+            BallastTest();
             void simpleBallast();
 
         private:
-            const bool ballast = true;
+            const bool ballast;
+            msg::
         };
     }
 }
+
+// class RudderTest : public Node {
+//        public:
+//            RudderTest(bool do_rudder=false);
+//            void simpleRudder(bool do_rudder = true);
+//            const bool rudderNew = true;
+//
+//        private:
+//            const bool do_rudder_;
+//            msg::RudderCmd *rudder_msg_;
+//            ProtoQueue<msg::RudderCmd> rudder_cmd_;
+//	        msg::ControllerConstants *consts_msg_;
+//        };
