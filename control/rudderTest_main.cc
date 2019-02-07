@@ -14,6 +14,6 @@ int main(int argc, char *argv[]){
     sailbot::control::RudderTest rt(true);
     const bool rudderTest = true;
     //cout << "Hello";
-    rt.Run();
+    rt.simpleRudder(true);
     //cout << "Here";
 }
