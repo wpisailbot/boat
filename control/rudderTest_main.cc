@@ -13,7 +13,7 @@ int main(int argc, char *argv[]){
     
     sailbot::control::RudderTest rt(true);
     const bool rudderTest = true;
-    cout << "Hello" << endl;
+    //cout << "Hello";
     rt.Run();
-    cout << "Here" << endl;
+    //cout << "Here";
 }
