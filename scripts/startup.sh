@@ -11,7 +11,7 @@ $DIR/can-dump &
 $DIR/server_main &
 sleep 0.5
 #$DIR/adaptive_control_main &
-$DIR/simple_control_main &
+#$DIR/simple_control_main &
 $DIR/ballast_control_main &
 $DIR/rigid_wing_main &
 $DIR/monitor_main &
