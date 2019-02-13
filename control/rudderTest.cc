@@ -36,6 +36,7 @@ namespace control {
             rudder_msg_->set_pos(0.75); // error with needing an initializer
             //sailbot::ProtoQueue<msg::RudderCmd>
             rudder_cmd_.send(rudder_msg_);
+	    LOG(INFO) << "Sending rudder message: " << rudder_cmd_->ShortDebugString();
         }
         else {
             //sailbot::msg::RudderCmd
