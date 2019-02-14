@@ -1,6 +1,6 @@
 
 //
-// Created by Sierra Palmer and Sydney Fisher on 1/28/19.
+// Created by Sierra Palmer on 1/28/19.
 //
 
 //#pragma once
@@ -21,14 +21,16 @@ namespace sailbot {
         class RudderTest : public Node {
         public:
             RudderTest(bool do_rudder=false);
-            void simpleRudder(bool do_rudder = true);
+            //void simpleRudder(bool do_rudder = true);
+            void Iterate() override;
             const bool rudderNew = true;
+            float counter = 0;
 	    
         private:
             const bool do_rudder_;
             msg::RudderCmd *rudder_msg_;
             ProtoQueue<msg::RudderCmd> rudder_cmd_;
-	        msg::ControllerConstants *consts_msg_;
+	    msg::ControllerConstants *consts_msg_;
         };
     }
 }
